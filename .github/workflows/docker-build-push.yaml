@@ -1,0 +1,19 @@
+name: "Docker Build and Push"
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+
+permissions:
+  contents: read
+  packages: write
+  # This is used to complete the identity challenge
+  # with sigstore/fulcio.
+  id-token: write
+
+jobs:
+  build-push:
+    uses: darbiadev/.github/.github/workflows/docker-build-push.yaml@570079218747889f03eafe6ef14f855635ecbdee
