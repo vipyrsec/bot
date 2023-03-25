@@ -5,4 +5,4 @@ Changelog
 =========
 
 - :release:`1.0.0 <25th March 2023>`
-- :feature:`1` Initialize package
+- :feature:`2` Initialize package
