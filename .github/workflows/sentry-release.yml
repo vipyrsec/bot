@@ -19,4 +19,4 @@ jobs:
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
         with:
-          version_prefix: "alessia@"
+          version_prefix: "${{ vars.SENTRY_PROJECT }}@"
