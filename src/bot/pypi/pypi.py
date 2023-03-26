@@ -17,6 +17,7 @@ class PackageParserException(Exception):
 @dataclass
 class Package:
     """Package metadata"""
+
     title: str
     package_link: str
     inspector_link: str

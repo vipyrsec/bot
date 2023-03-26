@@ -15,6 +15,7 @@ from bot.pypi.pypi import Package
 
 class EmbedPaginator:
     """Paginate embeds"""
+
     def __init__(self, packages: list[Package], per_page: int) -> None:
         self.idx = 0
         self.per_page = per_page
@@ -88,6 +89,7 @@ class EmbedPaginator:
 
 class PackageViewer(discord.ui.View):
     """Package viewer"""
+
     def __init__(self, *, packages: list[Package], author: discord.User | discord.Member) -> None:
         self.paginator = EmbedPaginator(packages, per_page=3)
         self.author = author
@@ -132,6 +134,7 @@ class PackageViewer(discord.ui.View):
 
 class Pypi(commands.Cog):
     """Cog for interacting with PyPI"""
+
     def __init__(self, bot: Bot):
         self.bot = bot
 
