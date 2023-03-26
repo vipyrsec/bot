@@ -40,6 +40,16 @@ FILE_LOGS = Miscellaneous.file_logs
 DEBUG_MODE = Miscellaneous.debug
 
 
+class _PyPi(EnvConfig):
+    """PyPi Cog Configuration"""
+
+    rss_feed_url = "https://pypi.org/rss/packages.xml"
+    show_author_in_embed = False
+
+
+PyPiConfigs = _PyPi()
+
+
 class _Bot(EnvConfig):
     """Bot data"""
 
