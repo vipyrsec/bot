@@ -11,15 +11,15 @@ from math import ceil
 class EmbedPaginator:
     def __init__(self, packages: list[Package], per_page: int) -> None:
         self.idx = 0
-        self.per_page = per_page 
+        self.per_page = per_page
         self.packages = packages
         self.embeds = self._build_embeds()
-    
+
     def _batched(self) -> Generator[list[Package], None, None]:
         it = iter(self.packages)
         while True:
             batch = list(islice(it, self.per_page))
-            if not batch: 
+            if not batch:
                 break
             yield batch
 
@@ -44,9 +44,9 @@ class EmbedPaginator:
                         package.author if PyPiConfigs.show_author_in_embed and package.author else ""
                     ))
                 )
-            
+
             embed.set_footer(text=f"Page {page_number+1}/{ceil(len(self.packages) / self.per_page)}")
-            
+
             embeds.append(embed)
 
         return embeds
@@ -84,7 +84,7 @@ class PackageViewer(discord.ui.View):
         self.message: discord.Message | None = None
 
         super().__init__()
-    
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.author:
             await interaction.response.send_message("This paginator is not for you!", ephemeral=True)
@@ -121,7 +121,7 @@ class PackageViewer(discord.ui.View):
 class Pypi(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-    
+
     @commands.command()
     async def pypi(self, ctx: commands.Context) -> None:
         packages = await get_packages(self.bot.http_session)

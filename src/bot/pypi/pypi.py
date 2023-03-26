@@ -27,7 +27,7 @@ def _find_item(element: Element, name: str) -> str:
         raise PackageParserException(f"<{name}> element was not found.")
     if item.text is None:
         raise PackageParserException(f"<{name}> element was found, but empty.")
-    
+
     return item.text
 
 def _parse_package(xml_element: Element) -> Package:
@@ -41,12 +41,12 @@ def _parse_package(xml_element: Element) -> Package:
     author = author_tag.text if (author_tag := xml_element.find("author")) is not None else None
 
     return Package(
-        title=title, 
-        package_link=package_link, 
-        guid=guid, 
-        description=description, 
-        author=author, 
-        publication_date=publication_date, 
+        title=title,
+        package_link=package_link,
+        guid=guid,
+        description=description,
+        author=author,
+        publication_date=publication_date,
         inspector_link=inspector_link
     )
 
@@ -54,5 +54,5 @@ async def get_packages(session: ClientSession) -> list[Package]:
     async with session.get(PyPiConfigs.rss_feed_url) as res:
         text = await res.text()
         root = ElementTree.fromstring(text)
-        
+
         return [_parse_package(package) for package in root.iter("item")]
