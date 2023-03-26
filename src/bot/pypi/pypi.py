@@ -1,3 +1,5 @@
+"""Interactions with PyPI"""
+
 from dataclasses import dataclass
 from datetime import datetime
 from xml.etree import ElementTree
@@ -9,11 +11,12 @@ from bot.constants import PyPiConfigs
 
 
 class PackageParserException(Exception):
-    pass
+    """Raised when parsing fails"""
 
 
 @dataclass
 class Package:
+    """Package metadata"""
     title: str
     package_link: str
     inspector_link: str
@@ -59,6 +62,7 @@ def _parse_package(xml_element: Element) -> Package:
 
 
 async def get_packages(session: ClientSession) -> list[Package]:
+    """Get recent packages from PyPI"""
     async with session.get(PyPiConfigs.rss_feed_url) as res:
         text = await res.text()
         root = ElementTree.fromstring(text)

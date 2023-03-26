@@ -47,3 +47,14 @@ profile = "black"
 
 [tool.pylint.format]
 max-line-length = 120
+good-names=["it"]
+
+[tool.pylint.messages_control]
+disable = "W1203,C0116,R0903,R0911"
+# justifications:
+# W1203 (logging-fstring-interpolation) - developer UX
+# R0903 (too-few-public-methods) - Models
+# R0911: (too-many-return-statements) - refactor me plz
+# C0114: (missing-module-docstring) - refactor me plz
+# C0115: (missing-class-docstring) - refactor me plz
+# C0116: (missing-function-docstring) - refactor me plz

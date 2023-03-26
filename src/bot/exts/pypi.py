@@ -1,3 +1,5 @@
+"""Cog for interacting with PyPI"""
+
 from itertools import islice
 from math import ceil
 from typing import Generator
@@ -12,6 +14,7 @@ from bot.pypi.pypi import Package
 
 
 class EmbedPaginator:
+    """Paginate embeds"""
     def __init__(self, packages: list[Package], per_page: int) -> None:
         self.idx = 0
         self.per_page = per_page
@@ -84,6 +87,7 @@ class EmbedPaginator:
 
 
 class PackageViewer(discord.ui.View):
+    """Package viewer"""
     def __init__(self, *, packages: list[Package], author: discord.User | discord.Member) -> None:
         self.paginator = EmbedPaginator(packages, per_page=3)
         self.author = author
@@ -91,6 +95,7 @@ class PackageViewer(discord.ui.View):
 
         super().__init__()
 
+    # pylint: disable-next=arguments-differ
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.author:
             await interaction.response.send_message("This paginator is not for you!", ephemeral=True)
@@ -126,6 +131,7 @@ class PackageViewer(discord.ui.View):
 
 
 class Pypi(commands.Cog):
+    """Cog for interacting with PyPI"""
     def __init__(self, bot: Bot):
         self.bot = bot
 
@@ -138,4 +144,5 @@ class Pypi(commands.Cog):
 
 
 async def setup(bot: Bot) -> None:
+    """Setup the cog on the bot"""
     await bot.add_cog(Pypi(bot))
