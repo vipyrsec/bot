@@ -38,14 +38,16 @@ class EmbedPaginator:
             for package in packages:
                 embed.add_field(
                     name=package.title,
-                    value="\n".join((
-                        package.description or "*No description provided*",
-                        "",
-                        discord.utils.format_dt(package.publication_date),
-                        f"[Package Link]({package.package_link})",
-                        f"[Inspector Link]({package.inspector_link})",
-                        package.author if PyPiConfigs.show_author_in_embed and package.author else ""
-                    ))
+                    value="\n".join(
+                        (
+                            package.description or "*No description provided*",
+                            "",
+                            discord.utils.format_dt(package.publication_date),
+                            f"[Package Link]({package.package_link})",
+                            f"[Inspector Link]({package.inspector_link})",
+                            package.author if PyPiConfigs.show_author_in_embed and package.author else "",
+                        )
+                    ),
                 )
 
             embed.set_footer(text=f"Page {page_number+1}/{ceil(len(self.packages) / self.per_page)}")
@@ -79,6 +81,7 @@ class EmbedPaginator:
 
     def last(self) -> None:
         self.idx = len(self.embeds) - 1
+
 
 class PackageViewer(discord.ui.View):
     def __init__(self, *, packages: list[Package], author: discord.User | discord.Member) -> None:
@@ -121,6 +124,7 @@ class PackageViewer(discord.ui.View):
         self.paginator.last()
         await interaction.response.edit_message(embed=self.paginator.current)
 
+
 class Pypi(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -131,6 +135,7 @@ class Pypi(commands.Cog):
         view = PackageViewer(packages=packages, author=ctx.author)
         message = await ctx.send(embed=view.paginator.current, view=view)
         view.message = message
+
 
 async def setup(bot: Bot) -> None:
     await bot.add_cog(Pypi(bot))

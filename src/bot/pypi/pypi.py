@@ -11,6 +11,7 @@ from bot.constants import PyPiConfigs
 class PackageParserException(Exception):
     pass
 
+
 @dataclass
 class Package:
     title: str
@@ -21,8 +22,10 @@ class Package:
     author: str | None
     publication_date: datetime
 
+
 def _parse_publication_date(publication_date: str) -> datetime:
     return datetime.strptime(publication_date, "%a, %d %b %Y %H:%M:%S %Z")
+
 
 def _find_item(element: Element, name: str) -> str:
     item = element.find(name)
@@ -32,6 +35,7 @@ def _find_item(element: Element, name: str) -> str:
         raise PackageParserException(f"<{name}> element was found, but empty.")
 
     return item.text
+
 
 def _parse_package(xml_element: Element) -> Package:
     title = _find_item(xml_element, "title").split(" ")[0]
@@ -50,8 +54,9 @@ def _parse_package(xml_element: Element) -> Package:
         description=description,
         author=author,
         publication_date=publication_date,
-        inspector_link=inspector_link
+        inspector_link=inspector_link,
     )
+
 
 async def get_packages(session: ClientSession) -> list[Package]:
     async with session.get(PyPiConfigs.rss_feed_url) as res:
