@@ -1,9 +1,12 @@
-from aiohttp import ClientSession
-from bot.constants import PyPiConfigs
-from xml.etree import ElementTree
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
+
+from aiohttp import ClientSession
+
+from bot.constants import PyPiConfigs
+
 
 class PackageParserException(Exception):
     pass

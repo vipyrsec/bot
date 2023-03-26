@@ -1,12 +1,15 @@
 from itertools import islice
+from math import ceil
 from typing import Generator
+
 import discord
 from discord.ext import commands
-from bot.pypi import get_packages
+
 from bot.bot import Bot
-from bot.pypi.pypi import Package
 from bot.constants import PyPiConfigs
-from math import ceil
+from bot.pypi import get_packages
+from bot.pypi.pypi import Package
+
 
 class EmbedPaginator:
     def __init__(self, packages: list[Package], per_page: int) -> None:
