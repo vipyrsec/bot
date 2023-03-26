@@ -1,6 +1,6 @@
 [project]
 name = "alessia"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
     "python-dotenv==1.0.0",
     "discord.py==2.2.2",
@@ -10,7 +10,7 @@ dependencies = [
     "coloredlogs==15.0.1",
     "psycopg[binary]==3.1.8",
     "SQLAlchemy==2.0.7",
-    "pydantic==1.10.6",
+    "pydantic==1.10.7",
 ]
 
 [project.urls]

@@ -23,7 +23,9 @@ sentry_sdk.init(
     integrations=[
         sentry_logging,
     ],
-    release=f"anubis@{getenv('GIT_SHA', 'development')}",
+    release=f"alessia@{getenv('GIT_SHA', 'development')}",
+    traces_sample_rate=0.5,
+    profiles_sample_rate=0.5,
 )
 
 log.setup()
