@@ -12,6 +12,7 @@ def _build_recipients_list_ms(
     return [{"emailAddress": {"address": recipient_address}} for recipient_address in recipient_addresses]
 
 
+# pylint: disable-next=too-many-arguments
 def send_email(
     graph_client: GraphClient,
     sender: str,
