@@ -11,21 +11,21 @@ for later analysis
 
 import logging
 from logging import getLogger
-from pathlib import Path
-from typing import Final
 
 import discord
 from aiohttp.client import ClientSession
 from discord.ext import commands, tasks
 from jinja2 import Template
 from letsbuilda.pypi import PyPIServices
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from bot.bot import Bot
 from bot.constants import DragonflyConfig
+from bot.database import engine
+from bot.database.models import PyPIPackageScan
 from bot.utils.mailer import send_email
 from bot.utils.microsoft import build_ms_graph_client
-
-AUTHOR_WHITELIST: Final[list[str]] = [".edu", ".gov", "tiger"]
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -225,41 +225,34 @@ async def run(
 
     scanned_packages: list[str] = []
     for package_metadata in new_packages_metadata:
-        checked_packages_log = Path("packages_checked.txt")
-        if checked_packages_log.exists():
-            if package_metadata.title in checked_packages_log.read_text():
+        with Session(engine) as session:
+            pypi_package_scan: PyPIPackageScan = session.scalars(
+                select(PyPIPackageScan).filter_by(name=package_metadata.title)
+            ).first()
+            if pypi_package_scan is not None:
                 continue
             else:
                 scanned_packages.append(package_metadata.title)
+                pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
 
-        if package_metadata.author is not None and any(text in package_metadata.author for text in AUTHOR_WHITELIST):
-            log.info(f"Skipping {package_metadata.title}")
-            with open("packages_checked.txt", "a") as file:
-                file.write(f"{package_metadata.title}\n")
-            continue
+            matches = await check_package(package_metadata.title, http_session=bot.http_session)
+            if matches is None:
+                log.info(f"{package_metadata.title} is a wheel, skipping")
 
-        matches = await check_package(package_metadata.title, http_session=bot.http_session)
-        if matches is None:
-            log.info(f"{package_metadata.title} is a wheel, skipping")
-            with open("packages_checked.txt", "a") as file:
-                file.write(f"{package_metadata.title}\n")
-            continue
+            if matches:
+                log.info(f"{package_metadata.title} is malicious!")
+                pypi_package_scan.rule_matches = matches
+                await notify_malicious_package(
+                    email_template=bot.templates["malicious_pypi_package_email"],
+                    channel=alerts_channel,
+                    package=package_metadata.title,
+                    matches=matches,
+                )
+            else:
+                log.info(f"{package_metadata.title} is safe")
 
-        if matches:
-            log.info(f"{package_metadata.title} is malicious!")
-            with open("packages_malicious.txt", "a") as file:
-                file.write(f"{package_metadata.title}\n")
-            await notify_malicious_package(
-                email_template=bot.templates["malicious_pypi_package_email"],
-                channel=alerts_channel,
-                package=package_metadata.title,
-                matches=matches,
-            )
-        else:
-            log.info(f"{package_metadata.title} is safe")
-
-        with open("packages_checked.txt", "a") as file:
-            file.write(f"{package_metadata.title}\n")
+            session.add(pypi_package_scan)
+            session.commit()
 
     await send_completion_webhook(log_channel, scanned_packages)
 

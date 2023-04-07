@@ -50,5 +50,6 @@ class PyPIPackageScan(Base, TimestampMixin):
         UUID(as_uuid=True), primary_key=True, server_default=FetchedValue()
     )
     """Object ID"""
+    name: Mapped[str]
     error: Mapped[str]
     rule_matches: Mapped[dict | None] = mapped_column(JSONB)
