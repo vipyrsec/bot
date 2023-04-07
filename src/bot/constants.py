@@ -41,6 +41,10 @@ DEBUG_MODE = Miscellaneous.debug
 
 
 class _DragonflyConfig(EnvConfig):
+    """Dragonfly Cog Configuration"""
+
+    EnvConfig.Config.env_prefix = "dragonfly_"
+
     alerts_channel_id = 1091743420487319563
     logs_channel_id = 1091743382130405396
     dragonfly_alerts_role_id = 1091463980402356326
@@ -56,6 +60,8 @@ DragonflyConfig = _DragonflyConfig()
 
 class _PyPi(EnvConfig):
     """PyPi Cog Configuration"""
+
+    EnvConfig.Config.env_prefix = "pypi_"
 
     rss_feed_url = "https://pypi.org/rss/packages.xml"
     show_author_in_embed = False
