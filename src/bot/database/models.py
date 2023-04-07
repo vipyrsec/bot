@@ -1,11 +1,13 @@
 """Database models"""
 
+import uuid
 from enum import Enum
 
-from sqlalchemy import BigInteger
+from sqlalchemy import BigInteger, FetchedValue
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from bot.database import engine
+from bot.database.mixins.timestamp import TimestampMixin
 
 
 class Base(DeclarativeBase):
@@ -15,7 +17,7 @@ class Base(DeclarativeBase):
 class Guild(Base):
     """A Discord guild"""
 
-    __tablename__ = "guilds"
+    __tablename__: str = "guilds"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str]
@@ -31,7 +33,7 @@ class Permissions(Enum):
 class RolesPermissions(Base):
     """RolesPermissions"""
 
-    __tablename__ = "roles_permissions"
+    __tablename__: str = "roles_permissions"
 
     roles_permissions_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     guild_id: Mapped[int] = mapped_column(BigInteger)
@@ -39,5 +41,14 @@ class RolesPermissions(Base):
     permission: Mapped[str]
 
 
-if __name__ == "__main__":
-    Base.metadata.create_all(engine)
+class PyPIPackageScan(Base, TimestampMixin):
+    """Scan results for PyPI packages"""
+
+    __tablename__: str = "pypi_package_scans"
+
+    pypi_package_scan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=FetchedValue()
+    )
+    """Object ID"""
+    error: Mapped[str]
+    rule_matches: Mapped[dict | None] = mapped_column(JSONB)
