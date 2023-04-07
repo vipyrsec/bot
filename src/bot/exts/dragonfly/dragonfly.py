@@ -80,7 +80,7 @@ class ConfirmReportModal(discord.ui.Modal):
 
         log.info("Sending report to with sender %s to %s with cc %s", DragonflyConfig.sender, self.recipient.value, ', '.join(DragonflyConfig.cc))
         send_email(
-            graph_client, 
+            graph_client,
             sender=DragonflyConfig.sender,
             subject=self.subject.value,
             to_recipients=[self.recipient.value],
@@ -99,7 +99,7 @@ class AutoReportView(discord.ui.View):
         self.matches = matches
 
     @discord.ui.button(
-        label="Report", 
+        label="Report",
         emoji="✉️",
         custom_id="REPORT_BTN",
         style=discord.ButtonStyle.red,
@@ -110,8 +110,8 @@ class AutoReportView(discord.ui.View):
         button: discord.ui.Button,
     ) -> None:
         modal = ConfirmReportModal(
-            email_template=self.email_template, 
-            package=self.package, 
+            email_template=self.email_template,
+            package=self.package,
             matches=self.matches,
         )
         await interaction.response.send_modal(modal)
@@ -123,8 +123,8 @@ class AutoReportView(discord.ui.View):
 async def notify_malicious_package(
     *,
     email_template: Template,
-    channel: discord.abc.Messageable, 
-    package: str, 
+    channel: discord.abc.Messageable,
+    package: str,
     matches: dict[str, list[str]],
 ) -> None:
     """
@@ -162,7 +162,7 @@ async def notify_malicious_package(
 
 
 async def send_completion_webhook(
-    channel: discord.abc.Messageable, 
+    channel: discord.abc.Messageable,
     packages: list[str]
 ):
     """Post the complete list of packages checked to the logs"""
@@ -187,12 +187,12 @@ async def check_package(
     http_session: ClientSession,
 ) -> dict[str, list[str]] | None:
     async with http_session.post(
-        DragonflyConfig.dragonfly_api_url + "/check/", 
+        DragonflyConfig.dragonfly_api_url + "/check/",
         json={"package_name": package_name},
     ) as res:
         if res.status != 200:
             return None
-        
+
         json = await res.json()
         return json["matches"]
 
@@ -223,7 +223,7 @@ async def run(
             with open("packages_checked.txt", "a") as file:
                 file.write(f"{package_metadata.title}\n")
             continue
-        
+
         matches = await check_package(package_metadata.title, http_session=bot.http_session)
         if matches is None:
             log.info(f"{package_metadata.title} is a wheel, skipping")
@@ -251,7 +251,7 @@ async def run(
 
 
 class Dragonfly(commands.Cog):
-    
+
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
         super().__init__()
@@ -266,8 +266,8 @@ class Dragonfly(commands.Cog):
 
         await run(
             self.bot,
-            alerts_channel=alerts_channel, 
-            log_channel=logs_channel, 
+            alerts_channel=alerts_channel,
+            log_channel=logs_channel,
         )
 
     @commands.command()
