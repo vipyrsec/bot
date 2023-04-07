@@ -104,7 +104,7 @@ class AutoReportView(discord.ui.View):
 
         if isinstance(interaction.user, discord.User):
             return False
-        
+
         if interaction.guild.get_role(DragonflyConfig.security_role_id) in interaction.user.roles:
             return True
 
