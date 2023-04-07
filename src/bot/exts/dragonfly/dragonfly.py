@@ -221,7 +221,7 @@ async def run(
     """Script entrypoint"""
     client = PyPIServices(http_session=bot.http_session)
     new_packages_metadata = await client.get_new_packages_feed()
-    log.info(f"\nDownloading {len(new_packages_metadata)} packages...\n")
+    log.info("Fetched %d new packages" % len(new_packages_metadata))
 
     scanned_packages: list[str] = []
     for package_metadata in new_packages_metadata:
