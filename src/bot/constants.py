@@ -45,14 +45,15 @@ class _DragonflyConfig(EnvConfig):
 
     EnvConfig.Config.env_prefix = "dragonfly_"
 
-    alerts_channel_id = 1091743420487319563
-    logs_channel_id = 1091743382130405396
+    alerts_channel_id = 1087968979689156629
+    logs_channel_id = 1087968979689156629
     dragonfly_alerts_role_id = 1091463980402356326
     security_role_id = 1086881843636359188
     dragonfly_api_url = "https://dragonfly.letsbuilda.dev"
     interval = 60
     sender: str = "system@letsbuilda.dev"
-    recipients: set[str] = set()
+    recipient = "bradley.reynolds@darbia.dev"
+    bcc: set[str] = set()
 
 
 DragonflyConfig = _DragonflyConfig()
