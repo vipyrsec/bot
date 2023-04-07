@@ -21,8 +21,6 @@ def send_email(
     to_recipients: list[str],
     cc_recipients: list[str] | None,
     bcc_recipients: list[str] | None,
-    # (file_name, mime_type, content)
-    _attachments=list[tuple[str, str, bytes]],
 ) -> None:
     """Send an email"""
     data = {

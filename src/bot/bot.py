@@ -8,6 +8,7 @@ from discord.ext import commands
 
 from bot import exts
 from bot.utils.extensions import walk_extensions
+from jinja2 import Template
 
 log = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class Bot(commands.Bot):
         *args,
         allowed_roles: list,
         http_session: aiohttp.ClientSession,
+        email_template: Template,
         **kwargs,
     ):
         """
@@ -35,6 +37,8 @@ class Bot(commands.Bot):
         )
 
         self.http_session = http_session
+
+        self.email_template = email_template
 
         self.all_extensions: frozenset[str] | None = None
 
