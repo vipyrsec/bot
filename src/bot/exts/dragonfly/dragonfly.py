@@ -79,7 +79,7 @@ class ConfirmReportModal(discord.ui.Modal):
             "Sending report to with sender %s with recipient %s with bcc %s",
             DragonflyConfig.sender,
             DragonflyConfig.recipient,
-            ", ".join(DragonflyConfig.bcc)
+            ", ".join(DragonflyConfig.bcc),
         )
 
         send_email(
