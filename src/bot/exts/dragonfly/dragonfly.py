@@ -41,7 +41,7 @@ class ConfirmReportModal(discord.ui.Modal):
     recipient = discord.ui.TextInput(
         label="To",
         placeholder="To",
-        default=DragonflyConfig.recipient,
+        default=str(DragonflyConfig.recipients),
         required=True,
         style=discord.TextStyle.short,
     )
@@ -275,7 +275,7 @@ class Dragonfly(commands.Cog):
 
     @commands.command()
     async def start(self, ctx: commands.Context) -> None:
-        if self.scan_loop.is_running:
+        if self.scan_loop.is_running():
             await ctx.send("Task is already running.")
         else:
             self.scan_loop.start()
@@ -283,7 +283,7 @@ class Dragonfly(commands.Cog):
 
     @commands.command()
     async def stop(self, ctx: commands.Context) -> None:
-        if self.scan_loop.is_running:
+        if self.scan_loop.is_running():
             self.scan_loop.stop()
             await ctx.send("Stopping task...")
         else:
