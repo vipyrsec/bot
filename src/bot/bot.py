@@ -21,7 +21,7 @@ class Bot(commands.Bot):
         *args,
         allowed_roles: list,
         http_session: aiohttp.ClientSession,
-        email_template: Template,
+        templates: dict[str, Template],
         **kwargs,
     ):
         """
@@ -38,7 +38,7 @@ class Bot(commands.Bot):
 
         self.http_session = http_session
 
-        self.email_template = email_template
+        self.templates = templates
 
         self.all_extensions: frozenset[str] | None = None
 

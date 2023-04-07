@@ -7,10 +7,10 @@ import aiohttp
 import discord
 import dotenv
 from discord.ext import commands
-from jinja2 import Environment, PackageLoader
 
 from bot import constants
 from bot.bot import Bot
+from .utils.templates import JINJA_TEMPLATES
 
 dotenv.load_dotenv()
 
@@ -30,16 +30,13 @@ def get_prefix(bot_, message_):
 async def main() -> None:
     """Run the bot."""
 
-    env = Environment(loader=PackageLoader("bot"))
-    template = env.get_template("email_template.jinja2")
-
     bot = Bot(
         guild_id=constants.Bot.guild_id,
         http_session=aiohttp.ClientSession(),
         allowed_roles=roles,
         command_prefix=get_prefix,
         intents=intents,
-        email_template=template,
+        templates=JINJA_TEMPLATES,
     )
 
     async with bot:

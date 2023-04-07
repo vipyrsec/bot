@@ -39,7 +39,6 @@ Matches = dict[str, list[str]]
 
 
 class ConfirmReportModal(discord.ui.Modal):
-
     title = "Confirm Report"
 
     recipient = discord.ui.TextInput(
@@ -254,7 +253,7 @@ async def run(
             with open("packages_malicious.txt", "a") as file:
                 file.write(f"{package_metadata.title}\n")
             await notify_malicious_package(
-                email_template=bot.email_template,
+                email_template=bot.templates["malicious_pypi_package_email"],
                 channel=alerts_channel,
                 package=package_metadata.title,
                 matches=matches,
