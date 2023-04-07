@@ -98,6 +98,20 @@ class AutoReportView(discord.ui.View):
         self.package = package
         self.matches = matches
 
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            return False
+
+        if isinstance(interaction.user, discord.User):
+            return False
+        
+        if interaction.guild.get_role(DragonflyConfig.security_role_id) in interaction.user.roles:
+            return True
+
+        await interaction.response.send_message("You cannot use that!", ephemeral=True)
+        return False
+
+
     @discord.ui.button(
         label="Report",
         emoji="✉️",
@@ -158,7 +172,7 @@ async def notify_malicious_package(
     embed.set_footer(text=f"DragonFly V2 | Packages Checked: {packages_checked}")
 
     view = AutoReportView(email_template=email_template, package=package, matches=matches)
-    await channel.send(embed=embed, view=view)
+    await channel.send(f"<@&{DragonflyConfig.dragonfly_alerts_role_id}>", embed=embed, view=view)
 
 
 async def send_completion_webhook(

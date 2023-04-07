@@ -42,6 +42,8 @@ DEBUG_MODE = Miscellaneous.debug
 class _DragonflyConfig(EnvConfig):
     alerts_channel_id = 1091743420487319563
     logs_channel_id = 1091743382130405396
+    dragonfly_alerts_role_id = 1091463980402356326
+    security_role_id = 1086881843636359188
     dragonfly_api_url = "https://dragonfly.letsbuilda.dev"
     interval = 60
     recipient: str = "bradley.reynolds@darbia.dev"
