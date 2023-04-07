@@ -37,6 +37,7 @@ graph_client = build_ms_graph_client()
 
 Matches = dict[str, list[str]]
 
+
 class ConfirmReportModal(discord.ui.Modal):
 
     title = "Confirm Report"
@@ -72,13 +73,18 @@ class ConfirmReportModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         content = self.email_template.render(
-            package_url = f"https://pypi.org/project/{self.package}/",
-            inspector_url = f"https://inspector.pypi.io/project/{self.package}/",
+            package_url=f"https://pypi.org/project/{self.package}/",
+            inspector_url=f"https://inspector.pypi.io/project/{self.package}/",
             matches=list(self.matches.items()),
             description=self.description.value,
         )
 
-        log.info("Sending report to with sender %s to %s with cc %s", DragonflyConfig.sender, self.recipient.value, ', '.join(DragonflyConfig.cc))
+        log.info(
+            "Sending report to with sender %s to %s with cc %s",
+            DragonflyConfig.sender,
+            self.recipient.value,
+            ", ".join(DragonflyConfig.cc),
+        )
         send_email(
             graph_client,
             sender=DragonflyConfig.sender,
@@ -90,6 +96,7 @@ class ConfirmReportModal(discord.ui.Modal):
         )
 
         await interaction.response.send_message("Successfully sent report.", ephemeral=True)
+
 
 class AutoReportView(discord.ui.View):
     def __init__(self, *, email_template: Template, package: str, matches: dict[str, list[str]]):
@@ -110,7 +117,6 @@ class AutoReportView(discord.ui.View):
 
         await interaction.response.send_message("You cannot use that!", ephemeral=True)
         return False
-
 
     @discord.ui.button(
         label="Report",
@@ -133,6 +139,7 @@ class AutoReportView(discord.ui.View):
         button.style = discord.ButtonStyle.gray
         button.disabled = True
         await interaction.edit_original_response(view=self)
+
 
 async def notify_malicious_package(
     *,
@@ -175,10 +182,7 @@ async def notify_malicious_package(
     await channel.send(f"<@&{DragonflyConfig.dragonfly_alerts_role_id}>", embed=embed, view=view)
 
 
-async def send_completion_webhook(
-    channel: discord.abc.Messageable,
-    packages: list[str]
-):
+async def send_completion_webhook(channel: discord.abc.Messageable, packages: list[str]):
     """Post the complete list of packages checked to the logs"""
     if len(packages) > 0:
         formatted_packages = "\n".join(packages)
@@ -189,11 +193,12 @@ async def send_completion_webhook(
     embed = discord.Embed(
         title="DragonFly Logs",
         description=f"Packages scanned:\n{text}",
-        color= 0xF70606,
+        color=0xF70606,
     )
     embed.set_footer(text="DragonFly V2")
 
     await channel.send(embed=embed)
+
 
 async def check_package(
     package_name,
@@ -209,6 +214,7 @@ async def check_package(
 
         json = await res.json()
         return json["matches"]
+
 
 async def run(
     bot: Bot,
@@ -230,9 +236,7 @@ async def run(
             else:
                 scanned_packages.append(package_metadata.title)
 
-        if package_metadata.author is not None and any(
-            text in package_metadata.author for text in AUTHOR_WHITELIST
-        ):
+        if package_metadata.author is not None and any(text in package_metadata.author for text in AUTHOR_WHITELIST):
             log.info(f"Skipping {package_metadata.title}")
             with open("packages_checked.txt", "a") as file:
                 file.write(f"{package_metadata.title}\n")
@@ -253,7 +257,7 @@ async def run(
                 email_template=bot.email_template,
                 channel=alerts_channel,
                 package=package_metadata.title,
-                matches=matches
+                matches=matches,
             )
         else:
             log.info(f"{package_metadata.title} is safe")
@@ -265,7 +269,6 @@ async def run(
 
 
 class Dragonfly(commands.Cog):
-
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
         super().__init__()
@@ -299,6 +302,7 @@ class Dragonfly(commands.Cog):
             await ctx.send("Stopping task...")
         else:
             await ctx.send("Task is not running.")
+
 
 async def setup(bot: Bot) -> None:
     await bot.add_cog(Dragonfly(bot))

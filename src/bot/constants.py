@@ -39,6 +39,7 @@ Miscellaneous = _Miscellaneous()
 FILE_LOGS = Miscellaneous.file_logs
 DEBUG_MODE = Miscellaneous.debug
 
+
 class _DragonflyConfig(EnvConfig):
     alerts_channel_id = 1091743420487319563
     logs_channel_id = 1091743382130405396
@@ -50,7 +51,9 @@ class _DragonflyConfig(EnvConfig):
     cc: set[str] = set()
     sender: str = "system@letsbuilda.dev"
 
+
 DragonflyConfig = _DragonflyConfig()
+
 
 class _PyPi(EnvConfig):
     """PyPi Cog Configuration"""
