@@ -146,10 +146,6 @@ async def notify_malicious_package(
     notifying us of a new malicious package
     and showing the matched rules
     """
-    # Get the number of packages checked so far
-    with open("packages_checked.txt", "r") as f:
-        packages_checked = len(f.readlines())
-
     description = "\n".join(f"{filename}: {', '.join(rules)}" for filename, rules in matches.items())
     embed = discord.Embed(
         title=f"New malicious package: {package}",
@@ -169,7 +165,7 @@ async def notify_malicious_package(
         inline=True,
     )
 
-    embed.set_footer(text=f"DragonFly V2 | Packages Checked: {packages_checked}")
+    embed.set_footer(text=f"DragonFly V2")
 
     view = AutoReportView(email_template=email_template, package=package, matches=matches)
     await channel.send(f"<@&{DragonflyConfig.dragonfly_alerts_role_id}>", embed=embed, view=view)
@@ -227,18 +223,22 @@ async def run(
                 select(PyPIPackageScan).filter_by(name=package_metadata.title)
             ).first()
             if pypi_package_scan is not None:
+                log.info("Already checked %s!" % package_metadata.title)
                 continue
             else:
                 scanned_packages.append(package_metadata.title)
                 pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
 
             matches = await check_package(package_metadata.title, http_session=bot.http_session)
+            pypi_package_scan.rule_matches = matches
+            session.add(pypi_package_scan)
+            session.commit()
+
             if matches is None:
                 log.info(f"{package_metadata.title} is a wheel, skipping")
 
             if matches:
                 log.info(f"{package_metadata.title} is malicious!")
-                pypi_package_scan.rule_matches = matches
                 await notify_malicious_package(
                     email_template=bot.templates["malicious_pypi_package_email"],
                     channel=alerts_channel,
@@ -248,9 +248,7 @@ async def run(
             else:
                 log.info(f"{package_metadata.title} is safe")
 
-            session.add(pypi_package_scan)
-            session.commit()
-
+    log.info("done!")
     await send_completion_webhook(log_channel, scanned_packages)
 
 

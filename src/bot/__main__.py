@@ -10,6 +10,7 @@ from discord.ext import commands
 
 from bot import constants
 from bot.bot import Bot
+
 from .utils.templates import JINJA_TEMPLATES
 
 dotenv.load_dotenv()

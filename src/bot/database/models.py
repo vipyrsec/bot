@@ -4,7 +4,7 @@ import uuid
 from enum import Enum
 
 from sqlalchemy import BigInteger, FetchedValue
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from bot.database.mixins.timestamp import TimestampMixin
