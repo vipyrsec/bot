@@ -76,19 +76,16 @@ class ConfirmReportModal(discord.ui.Modal):
         )
 
         log.info(
-            "Sending report to with sender %s to %s with cc %s",
+            "Sending report to with sender %s with recipients %s",
             DragonflyConfig.sender,
-            self.recipient.value,
-            ", ".join(DragonflyConfig.cc),
+            ", ".join(DragonflyConfig.recipients),
         )
         send_email(
             graph_client,
             sender=DragonflyConfig.sender,
             subject=self.subject.value,
-            to_recipients=[self.recipient.value],
             content=content,
-            cc_recipients=list(DragonflyConfig.cc),
-            bcc_recipients=[],
+            bcc_recipients=list(DragonflyConfig.recipients),
         )
 
         await interaction.response.send_message("Successfully sent report.", ephemeral=True)

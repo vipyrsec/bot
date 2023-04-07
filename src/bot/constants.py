@@ -47,9 +47,8 @@ class _DragonflyConfig(EnvConfig):
     security_role_id = 1086881843636359188
     dragonfly_api_url = "https://dragonfly.letsbuilda.dev"
     interval = 60
-    recipient: str = "bradley.reynolds@darbia.dev"
-    cc: set[str] = set()
     sender: str = "system@letsbuilda.dev"
+    recipients: set[str] = set()
 
 
 DragonflyConfig = _DragonflyConfig()

@@ -18,9 +18,9 @@ def send_email(
     sender: str,
     subject: str,
     content: str,
-    to_recipients: list[str],
-    cc_recipients: list[str] | None,
-    bcc_recipients: list[str] | None,
+    to_recipients: list[str] | None = None,
+    cc_recipients: list[str] | None = None,
+    bcc_recipients: list[str] | None = None,
 ) -> None:
     """Send an email"""
     data = {
