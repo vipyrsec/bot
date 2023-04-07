@@ -1,4 +1,4 @@
-"""Anubis, a fancy Discord bot"""
+"""Alessia, a bot for the SOC"""
 
 try:
     from dotenv import load_dotenv

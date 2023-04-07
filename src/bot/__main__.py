@@ -11,6 +11,8 @@ from discord.ext import commands
 from bot import constants
 from bot.bot import Bot
 
+from .utils.templates import JINJA_TEMPLATES
+
 dotenv.load_dotenv()
 
 roles = getenv("ALLOWED_ROLES")
@@ -28,12 +30,14 @@ def get_prefix(bot_, message_):
 
 async def main() -> None:
     """Run the bot."""
+
     bot = Bot(
         guild_id=constants.Bot.guild_id,
         http_session=aiohttp.ClientSession(),
         allowed_roles=roles,
         command_prefix=get_prefix,
         intents=intents,
+        templates=JINJA_TEMPLATES,
     )
 
     async with bot:

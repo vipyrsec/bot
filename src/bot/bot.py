@@ -5,6 +5,7 @@ from types import ModuleType
 
 import aiohttp
 from discord.ext import commands
+from jinja2 import Template
 
 from bot import exts
 from bot.utils.extensions import walk_extensions
@@ -20,6 +21,7 @@ class Bot(commands.Bot):
         *args,
         allowed_roles: list,
         http_session: aiohttp.ClientSession,
+        templates: dict[str, Template],
         **kwargs,
     ):
         """
@@ -35,6 +37,8 @@ class Bot(commands.Bot):
         )
 
         self.http_session = http_session
+
+        self.templates = templates
 
         self.all_extensions: frozenset[str] | None = None
 
