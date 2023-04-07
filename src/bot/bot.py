@@ -5,10 +5,10 @@ from types import ModuleType
 
 import aiohttp
 from discord.ext import commands
+from jinja2 import Template
 
 from bot import exts
 from bot.utils.extensions import walk_extensions
-from jinja2 import Template
 
 log = logging.getLogger(__name__)
 

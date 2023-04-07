@@ -7,10 +7,10 @@ import aiohttp
 import discord
 import dotenv
 from discord.ext import commands
+from jinja2 import Environment, PackageLoader
 
 from bot import constants
 from bot.bot import Bot
-from jinja2 import Environment, PackageLoader
 
 dotenv.load_dotenv()
 

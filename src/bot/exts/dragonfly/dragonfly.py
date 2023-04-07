@@ -16,17 +16,17 @@ from logging import getLogger
 from os import getenv
 from pathlib import Path
 from typing import Final
-import discord
-from discord.ext import commands, tasks
 
+import discord
 from aiohttp.client import ClientSession
+from discord.ext import commands, tasks
+from jinja2 import Template
+from letsbuilda.pypi import PyPIServices
 
 from bot.bot import Bot
-from letsbuilda.pypi import PyPIServices
 from bot.constants import DragonflyConfig
 from bot.utils.mailer import send_email
 from bot.utils.microsoft import build_ms_graph_client
-from jinja2 import Template
 
 AUTHOR_WHITELIST: Final[list[str]] = [".edu", ".gov", "tiger"]
 
