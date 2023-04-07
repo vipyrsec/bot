@@ -10,10 +10,7 @@ for later analysis
 """
 
 import logging
-import tarfile
-from io import BytesIO
 from logging import getLogger
-from os import getenv
 from pathlib import Path
 from typing import Final
 
