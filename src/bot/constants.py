@@ -53,7 +53,6 @@ class _DragonflyConfig(EnvConfig):
     interval = 60
     sender: str = "system@letsbuilda.dev"
     recipient = "bradley.reynolds@darbia.dev"
-    bcc: set[str] = set()
 
 
 DragonflyConfig = _DragonflyConfig()

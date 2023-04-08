@@ -7,6 +7,7 @@ from sqlalchemy import BigInteger, FetchedValue
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from bot.database import engine
 from bot.database.mixins.timestamp import TimestampMixin
 
 
@@ -53,3 +54,18 @@ class PyPIPackageScan(Base, TimestampMixin):
     name: Mapped[str]
     error: Mapped[str]
     rule_matches: Mapped[dict | None] = mapped_column(JSONB)
+
+class SubscriberEmails(Base):
+    """Emails to be BCC'd on automated reports"""
+
+    __tablename__: str = "emails"
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=FetchedValue(), default=uuid.uuid4,
+    )
+
+    address: Mapped[str]
+    discord_id: Mapped[str]
+
+
+if __name__ == "__main__":
+    Base.metadata.create_all(engine) 

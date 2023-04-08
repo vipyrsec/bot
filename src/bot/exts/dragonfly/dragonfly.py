@@ -11,7 +11,6 @@ for later analysis
 
 import logging
 from logging import getLogger
-
 import discord
 from aiohttp.client import ClientSession
 from discord.ext import commands, tasks
@@ -26,6 +25,7 @@ from bot.database import engine
 from bot.database.models import PyPIPackageScan
 from bot.utils.mailer import send_email
 from bot.utils.microsoft import build_ms_graph_client
+from . import _get_all_addresses
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -75,11 +75,13 @@ class ConfirmReportModal(discord.ui.Modal):
             description=self.description.value,
         )
 
+        addresses = _get_all_addresses()
+
         log.info(
             "Sending report to with sender %s with recipient %s with bcc %s",
             DragonflyConfig.sender,
             DragonflyConfig.recipient,
-            ", ".join(DragonflyConfig.bcc),
+            ", ".join(addresses),
         )
 
         send_email(
@@ -87,7 +89,7 @@ class ConfirmReportModal(discord.ui.Modal):
             sender=DragonflyConfig.sender,
             subject=self.subject.value,
             content=content,
-            bcc_recipients=list(DragonflyConfig.bcc),
+            bcc_recipients=addresses,
         )
 
         await interaction.response.send_message("Successfully sent report.", ephemeral=True)
@@ -221,7 +223,7 @@ async def run(
     scanned_packages: list[str] = []
     for package_metadata in new_packages_metadata:
         with Session(engine) as session:
-            pypi_package_scan: PyPIPackageScan = session.scalars(
+            pypi_package_scan: PyPIPackageScan | None = session.scalars(
                 select(PyPIPackageScan).filter_by(name=package_metadata.title)
             ).first()
             if pypi_package_scan is not None:
