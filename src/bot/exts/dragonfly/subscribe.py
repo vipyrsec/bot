@@ -4,7 +4,7 @@ from discord import app_commands, Interaction
 from sqlalchemy import delete, select
 from bot.bot import Bot
 from bot.database.models import SubscriberEmails
-from bot.database import session 
+from bot.database import session
 from . import _get_registered_addresses
 import typing as t
 
@@ -12,7 +12,7 @@ class Subscribe(commands.GroupCog, name="subscribe", description="Have the auto-
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
         super().__init__()
-    
+
 
     @app_commands.command()
     async def add(self, interaction: Interaction, address: str) -> None:

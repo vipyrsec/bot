@@ -62,7 +62,7 @@ class Bot(commands.Bot):
 
         log.debug("load_extensions")
         await self.load_extensions(exts)
-        
+
         guild = discord.Object(id=1033456860864466995)
         self.tree.copy_global_to(guild=guild)
         await self.tree.sync(guild=guild)
