@@ -55,12 +55,16 @@ class PyPIPackageScan(Base, TimestampMixin):
     error: Mapped[str]
     rule_matches: Mapped[dict | None] = mapped_column(JSONB)
 
+
 class SubscriberEmails(Base):
     """Emails to be BCC'd on automated reports"""
 
     __tablename__: str = "emails"
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=FetchedValue(), default=uuid.uuid4,
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=FetchedValue(),
+        default=uuid.uuid4,
     )
 
     address: Mapped[str]

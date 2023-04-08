@@ -8,11 +8,11 @@ from bot.database import session
 from . import _get_registered_addresses
 import typing as t
 
+
 class Subscribe(commands.GroupCog, name="subscribe", description="Have the auto-reporter BCC you"):
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
         super().__init__()
-
 
     @app_commands.command()
     async def add(self, interaction: Interaction, address: str) -> None:
@@ -52,6 +52,7 @@ class Subscribe(commands.GroupCog, name="subscribe", description="Have the auto-
             for address in addresses
             if current.lower() in address.lower()
         ]
+
 
 async def setup(bot: Bot) -> None:
     await bot.add_cog(Subscribe(bot))
