@@ -11,6 +11,7 @@ for later analysis
 
 import logging
 from logging import getLogger
+
 import discord
 from aiohttp.client import ClientSession
 from discord.ext import commands, tasks
@@ -25,6 +26,7 @@ from bot.database import engine
 from bot.database.models import PyPIPackageScan
 from bot.utils.mailer import send_email
 from bot.utils.microsoft import build_ms_graph_client
+
 from . import _get_all_addresses
 
 log = getLogger(__name__)

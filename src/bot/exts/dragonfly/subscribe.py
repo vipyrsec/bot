@@ -1,12 +1,15 @@
-from discord.ext import commands
-import discord
-from discord import app_commands, Interaction
-from sqlalchemy import delete, select
-from bot.bot import Bot
-from bot.database.models import SubscriberEmails
-from bot.database import session
-from . import _get_registered_addresses
 import typing as t
+
+import discord
+from discord import Interaction, app_commands
+from discord.ext import commands
+from sqlalchemy import delete, select
+
+from bot.bot import Bot
+from bot.database import session
+from bot.database.models import SubscriberEmails
+
+from . import _get_registered_addresses
 
 
 class Subscribe(commands.GroupCog, name="subscribe", description="Have the auto-reporter BCC you"):

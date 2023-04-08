@@ -1,4 +1,5 @@
 from sqlalchemy import select
+
 from bot.database import session
 from bot.database.models import SubscriberEmails
 
