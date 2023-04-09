@@ -85,7 +85,7 @@ class ConfirmReportModal(discord.ui.Modal):
         send_email(
             graph_client,
             sender=DragonflyConfig.sender,
-            recipient=[self.recipient.value]
+            recipient=[self.recipient.value],
             subject=self.subject.value,
             content=content,
             bcc_recipients=list(DragonflyConfig.bcc),
