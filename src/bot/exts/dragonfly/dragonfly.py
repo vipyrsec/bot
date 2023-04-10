@@ -153,7 +153,7 @@ async def notify_malicious_package(
     description = "\n".join(f"{filename}: {', '.join(rules)}" for filename, rules in matches.items())
     if len(description) >= 4000:
         log.info("Embed description is too long: %s", description)
-        rules = set(*itertools.chain(rules for rules in matches.values()))
+        rules = set(itertools.chain.from_iterable(matches.values()))
         description = "Embed too long; file breakdown is not displayed\n" + ", ".join(rules)
 
     embed = discord.Embed(
