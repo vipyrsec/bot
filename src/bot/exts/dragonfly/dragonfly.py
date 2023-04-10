@@ -9,6 +9,7 @@ Finally write all malicious packages to a file
 for later analysis
 """
 
+import itertools
 import logging
 from logging import getLogger
 
@@ -150,6 +151,11 @@ async def notify_malicious_package(
     and showing the matched rules
     """
     description = "\n".join(f"{filename}: {', '.join(rules)}" for filename, rules in matches.items())
+    if len(description) >= 4000:
+        log.info("Embed description is too long: %s", description)
+        rules = set(*itertools.chain(rules for rules in matches.values()))
+        description = "Embed too long; file breakdown is not displayed\n" + ", ".join(rules)
+
     embed = discord.Embed(
         title=f"New malicious package: {package}",
         description=f"```{description}```",
