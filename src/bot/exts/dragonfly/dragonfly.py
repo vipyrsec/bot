@@ -26,6 +26,7 @@ from bot.database import engine
 from bot.database.models import PyPIPackageScan
 from bot.utils.mailer import send_email
 from bot.utils.microsoft import build_ms_graph_client
+import itertools
 
 from . import _get_all_addresses
 
@@ -153,6 +154,10 @@ async def notify_malicious_package(
     and showing the matched rules
     """
     description = "\n".join(f"{filename}: {', '.join(rules)}" for filename, rules in matches.items())
+    if len(description) >= 4000:
+        log.info("Embed description is too long: %s", description)
+        description = "Embed too long; file breakdown is not displayed\n" + ', '.join(*itertools.chain(rules for rules in matches.values()))
+
     embed = discord.Embed(
         title=f"New malicious package: {package}",
         description=f"```{description}```",
