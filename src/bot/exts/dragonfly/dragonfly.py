@@ -9,6 +9,7 @@ Finally write all malicious packages to a file
 for later analysis
 """
 
+import itertools
 import logging
 from logging import getLogger
 
@@ -26,7 +27,6 @@ from bot.database import engine
 from bot.database.models import PyPIPackageScan
 from bot.utils.mailer import send_email
 from bot.utils.microsoft import build_ms_graph_client
-import itertools
 
 from . import _get_all_addresses
 
@@ -157,7 +157,7 @@ async def notify_malicious_package(
     if len(description) >= 4000:
         log.info("Embed description is too long: %s", description)
         rules = set(*itertools.chain(rules for rules in matches.values()))
-        description = "Embed too long; file breakdown is not displayed\n" + ', '.join(rules)
+        description = "Embed too long; file breakdown is not displayed\n" + ", ".join(rules)
 
     embed = discord.Embed(
         title=f"New malicious package: {package}",
