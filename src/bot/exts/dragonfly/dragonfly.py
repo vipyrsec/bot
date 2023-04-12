@@ -9,6 +9,7 @@ Finally write all malicious packages to a file
 for later analysis
 """
 
+import itertools
 import logging
 from dataclasses import dataclass
 from logging import getLogger
@@ -155,6 +156,7 @@ async def notify_malicious_package(
     notifying us of a new malicious package
     and showing the matched rules
     """
+
     embed = discord.Embed(
         title=f"New malicious package: {package.name}",
         description=f"```YARA rules matched: {', '.join(package.matches)}```",

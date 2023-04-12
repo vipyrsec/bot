@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`1.2.0 <9th April 2023>`
+- :feature:`21` Too many rules hits embed max length
+
 - :release:`1.1.0 <25th March 2023>`
 - :feature:`6` Add ability to view recently update PyPI packages
 
