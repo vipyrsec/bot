@@ -10,6 +10,7 @@ for later analysis
 """
 
 import logging
+from dataclasses import dataclass
 from logging import getLogger
 
 import discord
@@ -32,7 +33,21 @@ log.setLevel(logging.INFO)
 
 graph_client = build_ms_graph_client()
 
+from typing import Optional
+
 Matches = dict[str, list[str]]
+
+
+@dataclass
+class PackageScanResult:
+    """Package scan result from the API"""
+
+    name: str
+    most_malicious_file: str
+    matches: list[str]
+    pypi_link: str
+    inspector_link: str
+    score: int
 
 
 class ConfirmReportModal(discord.ui.Modal):
@@ -61,19 +76,13 @@ class ConfirmReportModal(discord.ui.Modal):
         style=discord.TextStyle.long,
     )
 
-    def __init__(self, *, email_template: Template, package: str, matches: Matches) -> None:
+    def __init__(self, *, email_template: Template, package: PackageScanResult) -> None:
         super().__init__()
         self.email_template = email_template
         self.package = package
-        self.matches = matches
 
     async def on_submit(self, interaction: discord.Interaction):
-        content = self.email_template.render(
-            package_url=f"https://pypi.org/project/{self.package}/",
-            inspector_url=f"https://inspector.pypi.io/project/{self.package}/",
-            matches=list(self.matches.items()),
-            description=self.description.value,
-        )
+        content = self.email_template.render(package=self.package, description=self.description.value)
 
         log.info(
             "Sending report to with sender %s with recipient %s with bcc %s",
@@ -95,11 +104,10 @@ class ConfirmReportModal(discord.ui.Modal):
 
 
 class AutoReportView(discord.ui.View):
-    def __init__(self, *, email_template: Template, package: str, matches: dict[str, list[str]]):
+    def __init__(self, *, email_template: Template, package: PackageScanResult):
         super().__init__(timeout=None)
         self.email_template = email_template
         self.package = package
-        self.matches = matches
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
@@ -128,7 +136,6 @@ class AutoReportView(discord.ui.View):
         modal = ConfirmReportModal(
             email_template=self.email_template,
             package=self.package,
-            matches=self.matches,
         )
         await interaction.response.send_modal(modal)
 
@@ -141,36 +148,34 @@ async def notify_malicious_package(
     *,
     email_template: Template,
     channel: discord.abc.Messageable,
-    package: str,
-    matches: dict[str, list[str]],
+    package: PackageScanResult,
 ) -> None:
     """
     Sends a message to our Discord server,
     notifying us of a new malicious package
     and showing the matched rules
     """
-    description = "\n".join(f"{filename}: {', '.join(rules)}" for filename, rules in matches.items())
     embed = discord.Embed(
-        title=f"New malicious package: {package}",
-        description=f"```{description}```",
+        title=f"New malicious package: {package.name}",
+        description=f"```YARA rules matched: {', '.join(package.matches)}```",
         color=0xF70606,
     )
 
     embed.add_field(
         name="\u200B",
-        value=f"[Inspector](https://inspector.pypi.io/project/{package}/)",
+        value=f"[Inspector]({package.inspector_link})",
         inline=True,
     )
 
     embed.add_field(
         name="\u200B",
-        value=f"[PyPI](https://pypi.org/project/{package})",
+        value=f"[PyPI]({package.pypi_link})",
         inline=True,
     )
 
     embed.set_footer(text=f"DragonFly V2")
 
-    view = AutoReportView(email_template=email_template, package=package, matches=matches)
+    view = AutoReportView(email_template=email_template, package=package)
     await channel.send(f"<@&{DragonflyConfig.dragonfly_alerts_role_id}>", embed=embed, view=view)
 
 
@@ -196,7 +201,7 @@ async def check_package(
     package_name,
     *,
     http_session: ClientSession,
-) -> dict[str, list[str]] | None:
+) -> PackageScanResult | None:
     async with http_session.post(
         DragonflyConfig.dragonfly_api_url + "/check/",
         json={"package_name": package_name},
@@ -205,7 +210,7 @@ async def check_package(
             return None
 
         json = await res.json()
-        return json["matches"]
+        return PackageScanResult(**json)
 
 
 async def run(
@@ -222,7 +227,7 @@ async def run(
     scanned_packages: list[str] = []
     for package_metadata in new_packages_metadata:
         with Session(engine) as session:
-            pypi_package_scan: PyPIPackageScan = session.scalars(
+            pypi_package_scan: PyPIPackageScan | None = session.scalars(
                 select(PyPIPackageScan).filter_by(name=package_metadata.title)
             ).first()
             if pypi_package_scan is not None:
@@ -232,21 +237,24 @@ async def run(
                 scanned_packages.append(package_metadata.title)
                 pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
 
-            matches = await check_package(package_metadata.title, http_session=bot.http_session)
-            pypi_package_scan.rule_matches = matches
+            result = await check_package(package_metadata.title, http_session=bot.http_session)
+            if result is None:
+                log.info("%s: Dragonfly API returned non-200 response", package_metadata.title)
+                pypi_package_scan.error = "Dragonfly API returned non-200 response"
+                session.add(pypi_package_scan)
+                session.commit()
+                continue
+
+            pypi_package_scan.rule_matches = result.matches
             session.add(pypi_package_scan)
             session.commit()
 
-            if matches is None:
-                log.info(f"{package_metadata.title} is a wheel, skipping")
-
-            if matches:
+            if result.matches:
                 log.info(f"{package_metadata.title} is malicious!")
                 await notify_malicious_package(
                     email_template=bot.templates["malicious_pypi_package_email"],
                     channel=alerts_channel,
-                    package=package_metadata.title,
-                    matches=matches,
+                    package=result,
                 )
             else:
                 log.info(f"{package_metadata.title} is safe")

@@ -1,20 +1,8 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <style>
-        table {
-            border-collapse: collapse;
-        }
-
-        td, th {
-            border: 1px solid black;
-            padding: 10px;
-        }
-        </style>
-    </head>
     <body>
-        <h1>Package: {{ package_url }}</h1>
-        <h1>Inspector: {{ inspector_url }}</h1>
+        <h1>Package: {{ package.pypi_link }}</h1>
+        <h1>Inspector: {{ package.inspector_link }}</h1>
 
         <h1>Description:</h1>
         {% if description %}
@@ -23,21 +11,7 @@
             <p><em>No user description provided</em></p>
         {% endif %}
 
-        <h1>Details</h1>
-        <table>
-            <tr>
-                <th>Filename</th>
-                <th>YARA Rules</th>
-            </tr>
-
-            {% for file, rules in matches %}
-                <tr>
-                    <td>{{ file }}</td>
-                    <td>{{ rules|join(', ') }}</td>
-                </tr>
-            {% endfor %}
-        </table>
-
+        <h1>Details</h1
         <p>NOTE: Although this email is automated, this package was manually confirmed to be malicious.</p>
         <p>NOTE: This is an automated email, replies will not be monitored.</p>
         <p>Please contact bradley.reynolds@darbia.dev with questions, comments, or concerns</p>

@@ -3,11 +3,13 @@
 import uuid
 from enum import Enum
 
-from sqlalchemy import BigInteger, FetchedValue
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import BigInteger, FetchedValue, String
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from bot.database.mixins.timestamp import TimestampMixin
+
+from . import engine
 
 
 class Base(DeclarativeBase):
@@ -47,9 +49,17 @@ class PyPIPackageScan(Base, TimestampMixin):
     __tablename__: str = "pypi_package_scans"
 
     pypi_package_scan_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=FetchedValue()
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=FetchedValue(),
+        default=uuid.uuid4,
     )
     """Object ID"""
     name: Mapped[str]
     error: Mapped[str]
-    rule_matches: Mapped[dict | None] = mapped_column(JSONB)
+    rule_matches: Mapped[list[str]] = mapped_column(ARRAY(String))
+
+
+if __name__ == "__main__":
+    print("Emitting DDL...")
+    Base.metadata.create_all(engine)
