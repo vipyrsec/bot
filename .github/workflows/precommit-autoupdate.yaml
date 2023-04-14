@@ -1,4 +1,4 @@
-name: "Pre-Commit autoupdate"
+name: "pre-commit autoupdate"
 
 on:
   schedule:
@@ -6,4 +6,4 @@ on:
 
 jobs:
   pre-commit-autoupdate:
-    uses: darbiadev/.github/.github/workflows/generic-precommit-autoupdate.yaml@570079218747889f03eafe6ef14f855635ecbdee
+    uses: darbiadev/.github/.github/workflows/generic-precommit-autoupdate.yaml@a191041c5139218df2feb95690ac747c41113052
