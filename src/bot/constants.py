@@ -49,7 +49,7 @@ class _DragonflyConfig(EnvConfig):
     logs_channel_id = 1091743382130405396
     dragonfly_alerts_role_id = 1091463980402356326
     security_role_id = 1086881843636359188
-    dragonfly_api_url = "https://dragonfly.letsbuilda.dev"
+    dragonfly_api_url = "https://dragonfly.mantissecurity.org"
     interval = 60
     sender: str = "system@letsbuilda.dev"
     recipient = "bradley.reynolds@darbia.dev"
