@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`1.3.0 <13th April 2023>`
+- :feature:`24` Update to Dragonfly 2.0
+
 - :release:`1.2.0 <9th April 2023>`
 - :feature:`21` Too many rules hits embed max length
 
