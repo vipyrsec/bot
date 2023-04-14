@@ -1,15 +1,5 @@
-"""
-Download the most recent packages
-from PyPI and filter them for WASP malware
+"""Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
 
-Also writes the packages checked to a file
-so that they can be skipped in the future
-
-Finally write all malicious packages to a file
-for later analysis
-"""
-
-import itertools
 import logging
 from dataclasses import dataclass
 from logging import getLogger
@@ -33,8 +23,6 @@ log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
 graph_client = build_ms_graph_client()
-
-from typing import Optional
 
 Matches = dict[str, list[str]]
 
@@ -65,7 +53,7 @@ class ConfirmReportModal(discord.ui.Modal):
     subject = discord.ui.TextInput(
         label="Subject",
         placeholder="Subject",
-        default=f"Automated PyPi Malware Report",
+        default="Automated PyPi Malware Report",
         required=True,
         style=discord.TextStyle.short,
     )
@@ -175,7 +163,7 @@ async def notify_malicious_package(
         inline=True,
     )
 
-    embed.set_footer(text=f"DragonFly V2")
+    embed.set_footer(text="DragonFly V2")
 
     view = AutoReportView(email_template=email_template, package=package)
     await channel.send(f"<@&{DragonflyConfig.dragonfly_alerts_role_id}>", embed=embed, view=view)
