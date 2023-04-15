@@ -1,6 +1,6 @@
 [project]
 name = "alessia"
-version = "1.3.0"
+version = "1.4.0"
 dependencies = [
     "python-dotenv==1.0.0",
     "discord.py==2.2.2",
@@ -14,7 +14,7 @@ dependencies = [
     "msgraph-core==0.2.2",
     "azure-identity==1.12.0",
     "Jinja2==3.1.2",
-    "letsbuilda-pypi==1.0.0",
+    "letsbuilda-pypi==2.0.0",
 ]
 
 [project.urls]
@@ -25,7 +25,7 @@ documentation = "https://docs.letsbuilda.dev/alessia/"
 dev = [
     "black",
     "isort",
-    "pylint",
+    "ruff",
 ]
 tests = [
     "pytest",
@@ -42,23 +42,15 @@ docs = [
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.isort]
+profile = "black"
+
 [tool.black]
 target-version = ["py310"]
 line-length = 120
 
-[tool.isort]
-profile = "black"
+[tool.ruff]
+line-length = 120
 
-[tool.pylint.format]
-max-line-length = 120
-good-names=["it"]
-
-[tool.pylint.messages_control]
-disable = "W1203,C0116,R0903,R0911"
-# justifications:
-# W1203 (logging-fstring-interpolation) - developer UX
-# R0903 (too-few-public-methods) - Models
-# R0911: (too-many-return-statements) - refactor me plz
-# C0114: (missing-module-docstring) - refactor me plz
-# C0115: (missing-class-docstring) - refactor me plz
-# C0116: (missing-function-docstring) - refactor me plz
+[tool.pytest.ini_options]
+addopts = "tests -r a -v --doctest-modules src"

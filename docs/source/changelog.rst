@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`1.4.0 <14th April 2023>`
+- :feature:`25` Scan updated PyPI releases in addition to just new releases
+
 - :release:`1.3.0 <13th April 2023>`
 - :feature:`24` Update to Dragonfly 2.0
 
