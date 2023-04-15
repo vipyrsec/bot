@@ -54,6 +54,7 @@ class _DragonflyConfig(EnvConfig):
     sender: str = "system@letsbuilda.dev"
     recipient = "bradley.reynolds@darbia.dev"
     bcc: set[str] = set()
+    threshold: int = 5
 
 
 DragonflyConfig = _DragonflyConfig()

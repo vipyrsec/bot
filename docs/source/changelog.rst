@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`1.4.1 <14th April 2023>`
+- :feature:`28` Add filtering 
+
 - :release:`1.4.0 <14th April 2023>`
 - :feature:`25` Scan updated PyPI releases in addition to just new releases
 
