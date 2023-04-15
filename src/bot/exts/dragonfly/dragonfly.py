@@ -240,9 +240,10 @@ async def run(
             pypi_package_scan.rule_matches = result.matches
             session.add(pypi_package_scan)
             session.commit()
-
-            if result.matches:
-                log.info(f"{package_metadata.title} is malicious!")
+            
+            threshold = DragonflyConfig.threshold
+            if result.score > threshold:
+                log.info(f"{package_metadata.title} had a score of {result.score} which exceeded the threshold of {threshold}")
                 await notify_malicious_package(
                     email_template=bot.templates["malicious_pypi_package_email"],
                     channel=alerts_channel,
