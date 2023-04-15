@@ -8,7 +8,7 @@ import discord
 from aiohttp.client import ClientSession
 from discord.ext import commands, tasks
 from jinja2 import Template
-from letsbuilda.pypi import PyPIServices
+from letsbuilda.pypi import PackageMetadata, PyPIServices
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -210,12 +210,14 @@ async def run(
     alerts_channel: discord.abc.Messageable,
 ) -> None:
     """Script entrypoint"""
+    packages_to_check: list[PackageMetadata] = []
     client = PyPIServices(http_session=bot.http_session)
-    new_packages_metadata = await client.get_new_packages_feed()
-    log.info("Fetched %d new packages" % len(new_packages_metadata))
+    packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
+    packages_to_check.extend(await client.get_rss_feed(client.PACKAGE_UPDATES_FEED_URL))
+    log.info("Fetched %d packages" % len(packages_to_check))
 
     scanned_packages: list[str] = []
-    for package_metadata in new_packages_metadata:
+    for package_metadata in packages_to_check:
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
                 select(PyPIPackageScan).filter_by(name=package_metadata.title)
