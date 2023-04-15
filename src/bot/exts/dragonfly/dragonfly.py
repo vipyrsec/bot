@@ -242,7 +242,7 @@ async def run(
             session.commit()
 
             threshold = DragonflyConfig.threshold
-            if result.score > threshold:
+            if result.score >= threshold:
                 log.info(f"{package_metadata.title} had a score of {result.score} which exceeded the threshold of {threshold}")
                 await notify_malicious_package(
                     email_template=bot.templates["malicious_pypi_package_email"],
