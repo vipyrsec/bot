@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`1.6.0 <17th April 2023>`
+- :feature:`37` Add support for setting "reply to" in mailer
+
 - :release:`1.5.1 <17th April 2023>`
 - :feature:`30` Replace PyPI parser with letsbuilda-pypi
 
