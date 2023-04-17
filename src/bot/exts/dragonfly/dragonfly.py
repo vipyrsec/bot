@@ -201,7 +201,6 @@ async def check_package(
             return None
 
         json = await res.json()
-        print(json)
         return PackageScanResult(**json)
 
 
