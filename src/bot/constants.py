@@ -51,7 +51,7 @@ class _DragonflyConfig(EnvConfig):
     security_role_id = 1086881843636359188
     dragonfly_api_url = "https://dragonfly.mantissecurity.org"
     interval = 60
-    sender: str = "system@letsbuilda.dev"
+    sender: str = "system@mantissecurity.org"
     recipient = "bradley.reynolds@darbia.dev"
     bcc: set[str] = set()
     threshold: int = 5
