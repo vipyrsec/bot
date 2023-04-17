@@ -28,7 +28,6 @@ def send_email(
         "message": {
             "subject": subject,
             "body": {"contentType": "HTML", "content": content},
-
         },
     }
 
