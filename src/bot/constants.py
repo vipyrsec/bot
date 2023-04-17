@@ -52,6 +52,7 @@ class _DragonflyConfig(EnvConfig):
     dragonfly_api_url = "https://dragonfly.mantissecurity.org"
     interval = 60
     sender: str = "system@mantissecurity.org"
+    reply_to: str = "support@mantissecurity.org"
     recipient = "bradley.reynolds@darbia.dev"
     bcc: set[str] = set()
     threshold: int = 5

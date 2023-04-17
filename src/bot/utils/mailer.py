@@ -18,6 +18,7 @@ def send_email(
     sender: str,
     subject: str,
     content: str,
+    reply_to_recipients: list[str] | None = None,
     to_recipients: list[str] | None = None,
     cc_recipients: list[str] | None = None,
     bcc_recipients: list[str] | None = None,
@@ -27,10 +28,18 @@ def send_email(
         "message": {
             "subject": subject,
             "body": {"contentType": "HTML", "content": content},
-            "toRecipients": _build_recipients_list_ms(to_recipients),
-            "ccRecipients": _build_recipients_list_ms(cc_recipients),
-            "bccRecipients": _build_recipients_list_ms(bcc_recipients),
+
         },
     }
+
+    recipients_groups = [
+        ("replyTo", reply_to_recipients),
+        ("toRecipients", to_recipients),
+        ("ccRecipients", cc_recipients),
+        ("bccRecipients", bcc_recipients),
+    ]
+    for recipients_type, recipients_list in recipients_groups:
+        if recipients_list is not None:
+            data[recipients_type] = _build_recipients_list_ms(recipients_list)
 
     graph_client.post(url=f"/users/{sender}/sendMail", json=data)
