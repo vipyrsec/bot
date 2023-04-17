@@ -3,7 +3,7 @@
 from msgraph.core import GraphClient
 
 
-def _build_recipients_list_ms(
+def _build_formatted_recipients_list(
     recipient_addresses: list[str] | None,
 ) -> list[dict[str, dict[str, str]]]:
     """Build a list of recipient addresses"""
@@ -39,6 +39,6 @@ def send_email(
     ]
     for recipients_type, recipients_list in recipients_groups:
         if recipients_list is not None:
-            data[recipients_type] = _build_recipients_list_ms(recipients_list)
+            data[recipients_type] = _build_formatted_recipients_list(recipients_list)
 
     graph_client.post(url=f"/users/{sender}/sendMail", json=data)
