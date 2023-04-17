@@ -1,19 +1,25 @@
 <!DOCTYPE html>
 <html>
     <body>
-        <h1>Package: {{ package.pypi_link }}</h1>
-        <h1>Inspector: {{ package.inspector_link }}</h1>
+        <p>PyPI Malicious Package Report</p>
+        <p>-</p>
+        <p>Package Name: {{ package.name }}</p>
+        <p>Version: {{ package.version }}</p>
+        <p>File path: {{ package.most_malicious_file }}</p>
+        <p>Inspector URL: <a>{{ package.inspector_link }}</a></p>
+        <br>
+        <p>Additional Information: </p>
 
-        <h1>Description:</h1>
         {% if description %}
             <p>{{ description }}</p>
         {% else %}
             <p><em>No user description provided</em></p>
         {% endif %}
 
-        <h1>Details</h1
-        <p>NOTE: Although this email is automated, this package was manually confirmed to be malicious.</p>
-        <p>NOTE: This is an automated email, replies will not be monitored.</p>
-        <p>Please contact bradley.reynolds@darbia.dev with questions, comments, or concerns</p>
+        <br>
+
+        <p>Although this email is automated, this package was manually confirmed to be malicious.</p>
+        <p>This is an automated email, replies will not be monitored.</p>
+        <p>Please contact support@mantissecurity.org with questions, comments, or concerns</p>
     </body>
 </html>
