@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`1.4.3 <16th April 2023>`
+- :feature:`31` Update PyPI package report email to match Inspector's new template
+
 - :release:`1.4.2 <15th April 2023>`
 - :feature:`29` Flag on results that hit the threshold exactly too
 
