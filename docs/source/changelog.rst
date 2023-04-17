@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`1.5.1 <17th April 2023>`
+- :feature:`30` Replace PyPI parser with letsbuilda-pypi
+
 - :release:`1.5.0 <16th April 2023>`
 - :feature:`31` Update PyPI package report email to match Inspector's new template
 

@@ -6,23 +6,22 @@ from typing import Generator
 
 import discord
 from discord.ext import commands
+from letsbuilda.pypi import PackageMetadata, PyPIServices
 
 from bot.bot import Bot
 from bot.constants import PyPiConfigs
-from bot.pypi import get_packages
-from bot.pypi.pypi import Package
 
 
 class EmbedPaginator:
     """Paginate embeds"""
 
-    def __init__(self, packages: list[Package], per_page: int) -> None:
+    def __init__(self, packages: list[PackageMetadata], per_page: int) -> None:
         self.idx = 0
         self.per_page = per_page
         self.packages = packages
         self.embeds = self._build_embeds()
 
-    def _batched(self) -> Generator[list[Package], None, None]:
+    def _batched(self) -> Generator[list[PackageMetadata], None, None]:
         it = iter(self.packages)
         while True:
             batch = list(islice(it, self.per_page))
@@ -48,13 +47,13 @@ class EmbedPaginator:
                             "",
                             discord.utils.format_dt(package.publication_date),
                             f"[Package Link]({package.package_link})",
-                            f"[Inspector Link]({package.inspector_link})",
+                            f"[Inspector Link](https://inspector.pypi.io/project/{package.title})",
                             package.author if PyPiConfigs.show_author_in_embed and package.author else "",
                         )
                     ),
                 )
 
-            embed.set_footer(text=f"Page {page_number+1}/{ceil(len(self.packages) / self.per_page)}")
+            embed.set_footer(text=f"Page {page_number + 1}/{ceil(len(self.packages) / self.per_page)}")
 
             embeds.append(embed)
 
@@ -90,7 +89,7 @@ class EmbedPaginator:
 class PackageViewer(discord.ui.View):
     """Package viewer"""
 
-    def __init__(self, *, packages: list[Package], author: discord.User | discord.Member) -> None:
+    def __init__(self, *, packages: list[PackageMetadata], author: discord.User | discord.Member) -> None:
         self.paginator = EmbedPaginator(packages, per_page=3)
         self.author = author
         self.message: discord.Message | None = None
@@ -140,7 +139,8 @@ class Pypi(commands.Cog):
 
     @commands.command()
     async def pypi(self, ctx: commands.Context) -> None:
-        packages = await get_packages(self.bot.http_session)
+        client = PyPIServices(http_session=self.bot.http_session)
+        packages = await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL)
         view = PackageViewer(packages=packages, author=ctx.author)
         message = await ctx.send(embed=view.paginator.current, view=view)
         view.message = message

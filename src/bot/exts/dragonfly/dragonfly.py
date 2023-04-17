@@ -72,7 +72,9 @@ class ConfirmReportModal(discord.ui.Modal):
         self.package = package
 
     async def on_submit(self, interaction: discord.Interaction):
-        content = self.email_template.render(package=self.package, description=self.description.value, rules=", ".join(self.package.matches))
+        content = self.email_template.render(
+            package=self.package, description=self.description.value, rules=", ".join(self.package.matches)
+        )
 
         log.info(
             "Sending report to with sender %s with recipient %s with bcc %s",

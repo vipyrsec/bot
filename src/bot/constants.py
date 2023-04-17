@@ -65,7 +65,6 @@ class _PyPi(EnvConfig):
 
     EnvConfig.Config.env_prefix = "pypi_"
 
-    rss_feed_url = "https://pypi.org/rss/packages.xml"
     show_author_in_embed = False
 
 
