@@ -37,6 +37,7 @@ class PackageScanResult:
     pypi_link: str
     inspector_link: str
     score: int
+    version: str
 
 
 class ConfirmReportModal(discord.ui.Modal):
@@ -71,7 +72,7 @@ class ConfirmReportModal(discord.ui.Modal):
         self.package = package
 
     async def on_submit(self, interaction: discord.Interaction):
-        content = self.email_template.render(package=self.package, description=self.description.value)
+        content = self.email_template.render(package=self.package, description=self.description.value, rules=", ".join(self.package.matches))
 
         log.info(
             "Sending report to with sender %s with recipient %s with bcc %s",
@@ -243,7 +244,9 @@ async def run(
 
             threshold = DragonflyConfig.threshold
             if result.score >= threshold:
-                log.info(f"{package_metadata.title} had a score of {result.score} which exceeded the threshold of {threshold}")
+                log.info(
+                    f"{package_metadata.title} had a score of {result.score} which exceeded the threshold of {threshold}"
+                )
                 await notify_malicious_package(
                     email_template=bot.templates["malicious_pypi_package_email"],
                     channel=alerts_channel,
