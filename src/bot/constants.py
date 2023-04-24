@@ -53,7 +53,7 @@ class _DragonflyConfig(EnvConfig):
     interval = 60
     sender: str = "system@mantissecurity.org"
     reply_to: str = "support@mantissecurity.org"
-    recipient = "bradley.reynolds@darbia.dev"
+    recipient = "security@pypi.org"
     bcc: set[str] = set()
     threshold: int = 5
 
