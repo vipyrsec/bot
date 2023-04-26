@@ -17,7 +17,7 @@ from bot.database.models import PyPIPackageScan
 from bot.utils.mailer import send_email
 from bot.utils.microsoft import build_ms_graph_client
 
-from ._api import check_package, PackageScanResult, DragonflyAPIException
+from ._api import DragonflyAPIException, PackageScanResult, check_package
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -25,6 +25,7 @@ log.setLevel(logging.INFO)
 graph_client = build_ms_graph_client()
 
 Matches = dict[str, list[str]]
+
 
 class ConfirmReportModal(discord.ui.Modal):
     title = "Confirm Report"
@@ -59,9 +60,9 @@ class ConfirmReportModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         content = self.email_template.render(
-            package=self.package, 
-            description=self.description.value, 
-            rules=", ".join(self.package.highest_score_distribution.matches)
+            package=self.package,
+            description=self.description.value,
+            rules=", ".join(self.package.highest_score_distribution.matches),
         )
 
         log.info(
@@ -82,7 +83,6 @@ class ConfirmReportModal(discord.ui.Modal):
             content=content,
             bcc_recipients=list(DragonflyConfig.bcc),
         )
-
 
 
 class AutoReportView(discord.ui.View):
@@ -180,8 +180,6 @@ async def send_completion_webhook(channel: discord.abc.Messageable, packages: li
     await channel.send(embed=embed)
 
 
-
-
 async def run(
     bot: Bot,
     *,
@@ -207,26 +205,29 @@ async def run(
             else:
                 scanned_packages.append(package_metadata.title)
                 pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
-            
+
             try:
                 result = await check_package(package_metadata.title, http_session=bot.http_session)
             except DragonflyAPIException as e:
-                pypi_package_scan.error = str(e) 
+                pypi_package_scan.error = str(e)
                 session.add(pypi_package_scan)
                 session.commit()
 
                 log.warn("Dragonfly API Error: %s", str(e))
                 continue
-            
+
             # Package is safe
             if result is None:
-                log.info("Package %s has no distribution with the highest score (all are 0), it is not malicious", package_metadata.title)
+                log.info(
+                    "Package %s has no distribution with the highest score (all are 0), it is not malicious",
+                    package_metadata.title,
+                )
                 continue
-            
+
             distribution = result.highest_score_distribution
             if distribution is None:
                 log.info("Package %s has no files with score greater than 0", result.name)
-                continue 
+                continue
 
             pypi_package_scan.rule_matches = distribution.matches
             session.add(pypi_package_scan)
@@ -243,7 +244,12 @@ async def run(
                     package=result,
                 )
             else:
-                log.info("%s had a score of %s which does not meet the threshold of %s", result.name, distribution.score, threshold)
+                log.info(
+                    "%s had a score of %s which does not meet the threshold of %s",
+                    result.name,
+                    distribution.score,
+                    threshold,
+                )
 
     log.info("done!")
     await send_completion_webhook(log_channel, scanned_packages)

@@ -1,17 +1,23 @@
 from dataclasses import dataclass
 from logging import getLogger
-from aiohttp import ClientSession
-from bot.constants import DragonflyConfig
 from typing import Self
+
+from aiohttp import ClientSession
+
+from bot.constants import DragonflyConfig
 
 log = getLogger(__name__)
 
-class DragonflyAPIException(Exception): pass
+
+class DragonflyAPIException(Exception):
+    pass
+
 
 @dataclass
 class MaliciousFile:
     file_name: str
     rules: dict[str, int]
+
 
 @dataclass
 class PackageAnalysisResults:
@@ -20,6 +26,7 @@ class PackageAnalysisResults:
     @classmethod
     def from_dict(cls, d: dict) -> Self:
         return cls(malicious_files=d["malicious_files"])
+
 
 @dataclass
 class HighestScoreDistribution:
@@ -37,6 +44,7 @@ class HighestScoreDistribution:
             inspector_link=d["inspector_link"],
         )
 
+
 @dataclass
 class PackageDistributionScanResults:
     file_name: str
@@ -48,13 +56,14 @@ class PackageDistributionScanResults:
         return cls(
             file_name=d["file_name"],
             inspector_url=d["inspector_url"],
-            analysis=PackageAnalysisResults.from_dict(d["analysis"])
+            analysis=PackageAnalysisResults.from_dict(d["analysis"]),
         )
+
 
 @dataclass
 class PackageScanResult:
     """Package scan result from the API"""
-    
+
     name: str
     version: str
     pypi_link: str
@@ -67,9 +76,12 @@ class PackageScanResult:
             name=d["name"],
             version=d["version"],
             pypi_link=d["pypi_link"],
-            distributions=[PackageDistributionScanResults.from_dict(distribution) for distribution in d["distributions"]],
+            distributions=[
+                PackageDistributionScanResults.from_dict(distribution) for distribution in d["distributions"]
+            ],
             highest_score_distribution=HighestScoreDistribution.from_dict(d["highest_score_distribution"]),
         )
+
 
 async def check_package(
     package_name: str,
@@ -85,7 +97,9 @@ async def check_package(
         json = await res.json()
 
         if res.status != 200:
-            raise DragonflyAPIException(f"Error from upstream Dragonfly API while scanning package '{package_name}': {json}")
+            raise DragonflyAPIException(
+                f"Error from upstream Dragonfly API while scanning package '{package_name}': {json}"
+            )
 
         if json["highest_score_distribution"] is None:
             return None
