@@ -218,6 +218,8 @@ async def run(
 
             # Package is safe
             if result is None:
+                session.add(pypi_package_scan)
+                session.commit()
                 log.info(
                     "Package %s has no distribution with the highest score (all are 0), it is not malicious",
                     package_metadata.title,
@@ -226,6 +228,8 @@ async def run(
 
             distribution = result.highest_score_distribution
             if distribution is None:
+                session.add(pypi_package_scan)
+                session.commit()
                 log.info("Package %s has no files with score greater than 0", result.name)
                 continue
 
