@@ -195,7 +195,6 @@ async def run(
 
     scanned_packages: list[str] = []
     for package_metadata in packages_to_check:
-        log.info("Starting scan of package %s", package_metadata.title)
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
                 select(PyPIPackageScan).filter_by(name=package_metadata.title)
