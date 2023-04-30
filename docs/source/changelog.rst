@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`2.6.0 <25th April 2023>`
+  :feature:`48` Conform to API rewrite
+
 - :release:`1.6.0 <17th April 2023>`
 - :feature:`37` Add support for setting "reply to" in mailer
 

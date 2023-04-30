@@ -1,11 +1,9 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
 
 import logging
-from dataclasses import dataclass
 from logging import getLogger
 
 import discord
-from aiohttp.client import ClientSession
 from discord.ext import commands, tasks
 from jinja2 import Template
 from letsbuilda.pypi import PackageMetadata, PyPIServices
@@ -19,25 +17,14 @@ from bot.database.models import PyPIPackageScan
 from bot.utils.mailer import send_email
 from bot.utils.microsoft import build_ms_graph_client
 
+from ._api import DragonflyAPIException, PackageScanResult, check_package
+
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
 graph_client = build_ms_graph_client()
 
 Matches = dict[str, list[str]]
-
-
-@dataclass
-class PackageScanResult:
-    """Package scan result from the API"""
-
-    name: str
-    most_malicious_file: str
-    matches: list[str]
-    pypi_link: str
-    inspector_link: str
-    score: int
-    version: str
 
 
 class ConfirmReportModal(discord.ui.Modal):
@@ -73,7 +60,9 @@ class ConfirmReportModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         content = self.email_template.render(
-            package=self.package, description=self.description.value, rules=", ".join(self.package.matches)
+            package=self.package,
+            description=self.description.value,
+            rules=", ".join(self.package.highest_score_distribution.matches),
         )
 
         log.info(
@@ -82,6 +71,8 @@ class ConfirmReportModal(discord.ui.Modal):
             DragonflyConfig.recipient,
             ", ".join(DragonflyConfig.bcc),
         )
+
+        await interaction.response.send_message("Successfully sent report.", ephemeral=True)
 
         send_email(
             graph_client,
@@ -92,8 +83,6 @@ class ConfirmReportModal(discord.ui.Modal):
             content=content,
             bcc_recipients=list(DragonflyConfig.bcc),
         )
-
-        await interaction.response.send_message("Successfully sent report.", ephemeral=True)
 
 
 class AutoReportView(discord.ui.View):
@@ -151,13 +140,13 @@ async def notify_malicious_package(
 
     embed = discord.Embed(
         title=f"New malicious package: {package.name}",
-        description=f"```YARA rules matched: {', '.join(package.matches)}```",
+        description=f"```YARA rules matched: {', '.join(package.highest_score_distribution.matches)}```",
         color=0xF70606,
     )
 
     embed.add_field(
         name="\u200B",
-        value=f"[Inspector]({package.inspector_link})",
+        value=f"[Inspector]({package.highest_score_distribution.inspector_link})",
         inline=True,
     )
 
@@ -191,22 +180,6 @@ async def send_completion_webhook(channel: discord.abc.Messageable, packages: li
     await channel.send(embed=embed)
 
 
-async def check_package(
-    package_name,
-    *,
-    http_session: ClientSession,
-) -> PackageScanResult | None:
-    async with http_session.post(
-        DragonflyConfig.dragonfly_api_url + "/check/",
-        json={"package_name": package_name},
-    ) as res:
-        if res.status != 200:
-            return None
-
-        json = await res.json()
-        return PackageScanResult(**json)
-
-
 async def run(
     bot: Bot,
     *,
@@ -233,22 +206,37 @@ async def run(
                 scanned_packages.append(package_metadata.title)
                 pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
 
-            result = await check_package(package_metadata.title, http_session=bot.http_session)
-            if result is None:
-                log.info("%s: Dragonfly API returned non-200 response", package_metadata.title)
-                pypi_package_scan.error = "Dragonfly API returned non-200 response"
+            try:
+                result = await check_package(package_metadata.title, http_session=bot.http_session)
+            except DragonflyAPIException as e:
+                pypi_package_scan.error = str(e)
                 session.add(pypi_package_scan)
                 session.commit()
+
+                log.warn("Dragonfly API Error: %s", str(e))
                 continue
 
-            pypi_package_scan.rule_matches = result.matches
+            # Package is safe
+            if result is None:
+                log.info(
+                    "Package %s has no distribution with the highest score (all are 0), it is not malicious",
+                    package_metadata.title,
+                )
+                continue
+
+            distribution = result.highest_score_distribution
+            if distribution is None:
+                log.info("Package %s has no files with score greater than 0", result.name)
+                continue
+
+            pypi_package_scan.rule_matches = distribution.matches
             session.add(pypi_package_scan)
             session.commit()
 
             threshold = DragonflyConfig.threshold
-            if result.score >= threshold:
+            if distribution.score >= threshold:
                 log.info(
-                    f"{package_metadata.title} had a score of {result.score} which exceeded the threshold of {threshold}"
+                    f"{package_metadata.title} had a score of {distribution.score} which exceeded the threshold of {threshold}"
                 )
                 await notify_malicious_package(
                     email_template=bot.templates["malicious_pypi_package_email"],
@@ -256,7 +244,12 @@ async def run(
                     package=result,
                 )
             else:
-                log.info(f"{package_metadata.title} is safe")
+                log.info(
+                    "%s had a score of %s which does not meet the threshold of %s",
+                    result.name,
+                    distribution.score,
+                    threshold,
+                )
 
     log.info("done!")
     await send_completion_webhook(log_channel, scanned_packages)
