@@ -259,6 +259,7 @@ async def run(
     log.info("done!")
     await send_completion_webhook(log_channel, scanned_packages)
 
+
 class Dragonfly(commands.Cog):
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
