@@ -68,10 +68,15 @@ class PackageScanResult:
     version: str
     pypi_link: str
     distributions: list[PackageDistributionScanResults]
-    highest_score_distribution: HighestScoreDistribution
+    highest_score_distribution: HighestScoreDistribution | None
 
     @classmethod
     def from_dict(cls, d: dict):
+        if d["highest_score_distribution"] is not None:
+            highest_score_distribution = HighestScoreDistribution.from_dict(d["highest_score_distribution"])
+        else:
+            highest_score_distribution = None
+
         return cls(
             name=d["name"],
             version=d["version"],
@@ -79,7 +84,7 @@ class PackageScanResult:
             distributions=[
                 PackageDistributionScanResults.from_dict(distribution) for distribution in d["distributions"]
             ],
-            highest_score_distribution=HighestScoreDistribution.from_dict(d["highest_score_distribution"]),
+            highest_score_distribution=highest_score_distribution,
         )
 
 
@@ -100,8 +105,5 @@ async def check_package(
             raise DragonflyAPIException(
                 f"Error from upstream Dragonfly API while scanning package '{package_name}': {json}"
             )
-
-        if json["highest_score_distribution"] is None:
-            return None
 
         return PackageScanResult.from_dict(json)

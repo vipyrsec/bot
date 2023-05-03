@@ -56,6 +56,7 @@ class PyPIPackageScan(Base, TimestampMixin):
     )
     """Object ID"""
     name: Mapped[str]
+    version: Mapped[str]
     error: Mapped[str]
     rule_matches: Mapped[list[str]] = mapped_column(ARRAY(String))
 
