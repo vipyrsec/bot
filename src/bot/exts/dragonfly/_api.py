@@ -93,8 +93,12 @@ async def check_package(
     version: str | None = None,
     *,
     http_session: ClientSession,
-) -> PackageScanResult | None:
-    data = dict(package_name=package_name, version=version) if version is not None else dict(package_name=package_name)
+) -> PackageScanResult:
+    data = (
+        dict(package_name=package_name, package_version=version)
+        if version is not None
+        else dict(package_name=package_name)
+    )
     async with http_session.post(
         DragonflyConfig.dragonfly_api_url + "/check/",
         json=data,

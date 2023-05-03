@@ -4,6 +4,7 @@ import logging
 from types import ModuleType
 
 import aiohttp
+import discord
 from discord.ext import commands
 from jinja2 import Template
 
@@ -11,6 +12,34 @@ from bot import exts
 from bot.utils.extensions import walk_extensions
 
 log = logging.getLogger(__name__)
+
+
+class CommandTree(discord.app_commands.CommandTree):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(bot)
+
+    async def on_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
+        if isinstance(error, discord.app_commands.MissingRole):
+            log.warn(
+                "User '%s' attempted to run command '%s', which requires the '%s' role which the user is missing.",
+                interaction.user,
+                interaction.command.name if interaction.command else "None",
+                error.missing_role,
+            )
+
+            await interaction.response.send_message(
+                f"The '{error.missing_role}' role is required to run this command.", ephemeral=True
+            )
+        elif isinstance(error, discord.app_commands.NoPrivateMessage):
+            log.warn(
+                "User '%s' attempted to run command '%s', which cannot be invoked from DMs",
+                interaction.user,
+                interaction.command,
+            )
+
+            await interaction.response.send_message("This command cannot be used in DMs.", ephemeral=True)
+        else:
+            raise error
 
 
 class Bot(commands.Bot):
@@ -33,6 +62,7 @@ class Bot(commands.Bot):
         super().__init__(
             *args,
             allowed_roles=allowed_roles,
+            tree_cls=CommandTree,
             **kwargs,
         )
 
