@@ -4,7 +4,7 @@
 Changelog
 =========
 
-- :release:`2.1.0` <3rd May 2023>
+- :release:`2.1.0 <3rd May 2023>`
 - :feature:`59` Add slash command to bring up package modal on demand
 
 - :release:`2.0.0 <25th April 2023>`
