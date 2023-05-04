@@ -8,6 +8,7 @@ from discord.app_commands import AppCommand
 from discord.ext import commands
 
 from bot.bot import Bot
+from bot import constants
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -22,7 +23,7 @@ class Sync(commands.Cog):
     async def _sync_commands(self) -> list[AppCommand]:
         """App command syncing logic. Returns a list of app commands that were synced."""
         tree = self.bot.tree
-        guild = discord.Object(id=1033456860864466995)
+        guild = discord.Object(id=constants.Bot.guild_id)
 
         log.debug("Syncing tree...")
         tree.copy_global_to(guild=guild)
