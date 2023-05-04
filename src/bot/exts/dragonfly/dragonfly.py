@@ -55,10 +55,11 @@ class ConfirmReportModal(discord.ui.Modal):
 
     def __init__(self, *, email_template: Template, package: PackageScanResult) -> None:
         super().__init__()
-        self.email_template = email_template
         self.package = package
+        self.email_template = email_template
 
     async def on_submit(self, interaction: discord.Interaction):
+        assert self.package.highest_score_distribution is not None  # for typechecker
         content = self.email_template.render(
             package=self.package,
             description=self.description.value,
@@ -126,17 +127,9 @@ class AutoReportView(discord.ui.View):
         await interaction.edit_original_response(view=self)
 
 
-async def notify_malicious_package(
-    *,
-    email_template: Template,
-    channel: discord.abc.Messageable,
-    package: PackageScanResult,
-) -> None:
-    """
-    Sends a message to our Discord server,
-    notifying us of a new malicious package
-    and showing the matched rules
-    """
+def _build_package_scan_result_embed(package: PackageScanResult) -> discord.Embed:
+    assert package.highest_score_distribution is not None
+    """Build the embed that shows the results of a package scan"""
 
     embed = discord.Embed(
         title=f"New malicious package: {package.name}",
@@ -157,6 +150,23 @@ async def notify_malicious_package(
     )
 
     embed.set_footer(text="DragonFly V2")
+
+    return embed
+
+
+async def notify_malicious_package(
+    *,
+    email_template: Template,
+    channel: discord.abc.Messageable,
+    package: PackageScanResult,
+) -> None:
+    """
+    Sends a message to our Discord server,
+    notifying us of a new malicious package
+    and showing the matched rules
+    """
+
+    embed = _build_package_scan_result_embed(package)
 
     view = AutoReportView(email_template=email_template, package=package)
     await channel.send(f"<@&{DragonflyConfig.dragonfly_alerts_role_id}>", embed=embed, view=view)
@@ -235,6 +245,8 @@ async def run(
                 )
                 continue
 
+            result.highest_score_distribution
+
             distribution = result.highest_score_distribution
             if distribution is None:
                 session.add(pypi_package_scan)
@@ -249,7 +261,8 @@ async def run(
             threshold = DragonflyConfig.threshold
             if distribution.score >= threshold:
                 log.info(
-                    f"{package_metadata.title} had a score of {distribution.score} which exceeded the threshold of {threshold}"
+                    f"{package_metadata.title} had a score of {distribution.score} "
+                    f"which exceeded the threshold of {threshold}"
                 )
                 await notify_malicious_package(
                     email_template=bot.templates["malicious_pypi_package_email"],
@@ -302,6 +315,28 @@ class Dragonfly(commands.Cog):
             await ctx.send("Stopping task...")
         else:
             await ctx.send("Task is not running.")
+
+    @discord.app_commands.checks.has_role("Security")
+    @discord.app_commands.command(name="scan", description="Scans a package")
+    async def scan(self, interaction: discord.Interaction, package: str, version: str | None = None) -> None:
+        try:
+            results = await check_package(package, version, http_session=self.bot.http_session)
+        except DragonflyAPIException as e:
+            log.error(
+                "Dragonfly API Exception when user '%s' tried to scan package '%s' with version '%s'. "
+                "Upstream error: %s",
+                str(interaction.user),
+                package,
+                version,
+                str(e),
+            )
+
+            await interaction.response.send_message(str(e), ephemeral=True)
+            return None
+
+        embed = _build_package_scan_result_embed(results)
+        view = AutoReportView(email_template=self.bot.templates["malicious_pypi_package_email"], package=results)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
 async def setup(bot: Bot) -> None:

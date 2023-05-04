@@ -77,7 +77,7 @@ class _Bot(EnvConfig):
 
     EnvConfig.Config.env_prefix = "bot_"
 
-    guild_id = "1033456860864466995"
+    guild_id = 1033456860864466995
     prefix = "!"
     sentry_dsn = ""
     token = ""
