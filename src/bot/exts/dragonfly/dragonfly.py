@@ -319,6 +319,7 @@ class Dragonfly(commands.Cog):
     @discord.app_commands.checks.has_role("Security")
     @discord.app_commands.command(name="scan", description="Scans a package")
     async def scan(self, interaction: discord.Interaction, package: str, version: str | None = None) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
         try:
             results = await check_package(package, version, http_session=self.bot.http_session)
         except DragonflyAPIException as e:
@@ -331,12 +332,15 @@ class Dragonfly(commands.Cog):
                 str(e),
             )
 
-            await interaction.response.send_message(str(e), ephemeral=True)
+            await interaction.followup.send(str(e))
             return None
-
-        embed = _build_package_scan_result_embed(results)
-        view = AutoReportView(email_template=self.bot.templates["malicious_pypi_package_email"], package=results)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        if results.highest_score_distribution is None:
+            await interaction.followup.send(f"Package `{package}` did not match any rules.")
+        else:
+            embed = _build_package_scan_result_embed(results)
+            view = AutoReportView(email_template=self.bot.templates["malicious_pypi_package_email"], package=results)
+            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
 
 async def setup(bot: Bot) -> None:
