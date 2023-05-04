@@ -199,7 +199,7 @@ async def run(
     """Script entrypoint"""
     packages_to_check: list[RSSPackageMetadata] = []
     client = PyPIServices(http_session=bot.http_session)
-    # packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
+    packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
     packages_to_check.extend(await client.get_rss_feed(client.PACKAGE_UPDATES_FEED_URL))
     log.info("Fetched %d packages" % len(packages_to_check))
 
@@ -208,25 +208,17 @@ async def run(
         log.info("Starting scan of package '%s'", package_metadata.title)
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
-                select(PyPIPackageScan).filter_by(name=package_metadata.title, version=package_metadata.version)
+                select(PyPIPackageScan).filter_by(name=package_metadata.title)
             ).first()
             if pypi_package_scan is not None:
-                log.info("Already checked %s @ %s!" % (package_metadata.title, package_metadata.version))
+                log.info("Already checked %s!" % package_metadata.title)
                 continue
             else:
                 scanned_packages.append(package_metadata.title)
-                pypi_package_scan = PyPIPackageScan(
-                    name=package_metadata.title,
-                    version=package_metadata.version,
-                    error=None,
-                )
+                pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
 
             try:
-                result = await check_package(
-                    package_metadata.title,
-                    package_metadata.version,
-                    http_session=bot.http_session,
-                )
+                result = await check_package(package_metadata.title, http_session=bot.http_session)
             except DragonflyAPIException as e:
                 pypi_package_scan.error = str(e)
                 session.add(pypi_package_scan)
@@ -240,12 +232,10 @@ async def run(
                 session.add(pypi_package_scan)
                 session.commit()
                 log.info(
-                    "Package %s @ %s has no distribution with the highest score (all are 0), it is not malicious"
-                    % (package_metadata.title, package_metadata.version)
+                    "Package %s has no distribution with the highest score (all are 0), it is not malicious",
+                    package_metadata.title,
                 )
                 continue
-
-            result.highest_score_distribution
 
             distribution = result.highest_score_distribution
             if distribution is None:
@@ -334,7 +324,7 @@ class Dragonfly(commands.Cog):
 
             await interaction.followup.send(str(e))
             return None
-        
+
         if results.highest_score_distribution is None:
             await interaction.followup.send(f"Package `{package}` did not match any rules.")
         else:

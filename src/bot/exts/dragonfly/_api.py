@@ -72,11 +72,6 @@ class PackageScanResult:
 
     @classmethod
     def from_dict(cls, d: dict):
-        if d["highest_score_distribution"] is not None:
-            highest_score_distribution = HighestScoreDistribution.from_dict(d["highest_score_distribution"])
-        else:
-            highest_score_distribution = None
-
         return cls(
             name=d["name"],
             version=d["version"],
@@ -84,7 +79,9 @@ class PackageScanResult:
             distributions=[
                 PackageDistributionScanResults.from_dict(distribution) for distribution in d["distributions"]
             ],
-            highest_score_distribution=highest_score_distribution,
+            highest_score_distribution=HighestScoreDistribution.from_dict(data)
+            if (data := d["highest_score_distribution"])
+            else None,
         )
 
 
@@ -94,11 +91,7 @@ async def check_package(
     *,
     http_session: ClientSession,
 ) -> PackageScanResult:
-    data = (
-        dict(package_name=package_name, package_version=version)
-        if version is not None
-        else dict(package_name=package_name)
-    )
+    data = dict(package_name=package_name, package_version=version)
     async with http_session.post(
         DragonflyConfig.dragonfly_api_url + "/check/",
         json=data,
