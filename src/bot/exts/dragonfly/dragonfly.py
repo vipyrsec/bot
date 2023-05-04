@@ -6,7 +6,7 @@ from logging import getLogger
 import discord
 from discord.ext import commands, tasks
 from jinja2 import Template
-from letsbuilda.pypi import PyPIServices, RSSPackageMetadata
+from letsbuilda.pypi import PackageMetadata, PyPIServices
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -197,7 +197,7 @@ async def run(
     alerts_channel: discord.abc.Messageable,
 ) -> None:
     """Script entrypoint"""
-    packages_to_check: list[RSSPackageMetadata] = []
+    packages_to_check: list[PackageMetadata] = []
     client = PyPIServices(http_session=bot.http_session)
     packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
     packages_to_check.extend(await client.get_rss_feed(client.PACKAGE_UPDATES_FEED_URL))
@@ -228,7 +228,7 @@ async def run(
                 continue
 
             # Package is safe
-            if result.highest_score_distribution is None:
+            if result is None:
                 session.add(pypi_package_scan)
                 session.commit()
                 log.info(
@@ -236,6 +236,8 @@ async def run(
                     package_metadata.title,
                 )
                 continue
+
+            result.highest_score_distribution
 
             distribution = result.highest_score_distribution
             if distribution is None:
@@ -331,7 +333,6 @@ class Dragonfly(commands.Cog):
             embed = _build_package_scan_result_embed(results)
             view = AutoReportView(email_template=self.bot.templates["malicious_pypi_package_email"], package=results)
             await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-
 
 async def setup(bot: Bot) -> None:
     await bot.add_cog(Dragonfly(bot))
