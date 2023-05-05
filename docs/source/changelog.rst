@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`2.2.0 <5th May 2023>`
+- :feature:`57` Add force option to Dragonfly stop command
+
 - :release:`2.1.0 <3rd May 2023>`
 - :feature:`59` Add slash command to bring up package modal on demand
 

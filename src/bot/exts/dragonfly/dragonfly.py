@@ -301,10 +301,14 @@ class Dragonfly(commands.Cog):
             await ctx.send("Started task...")
 
     @commands.command()
-    async def stop(self, ctx: commands.Context) -> None:
+    async def stop(self, ctx: commands.Context, force: bool = False) -> None:
         if self.scan_loop.is_running():
-            self.scan_loop.stop()
-            await ctx.send("Stopping task...")
+            if force:
+                self.scan_loop.cancel()
+                await ctx.send("Forcing shutdown...")
+            else:
+                self.scan_loop.stop()
+                await ctx.send("Executing graceful shutdown...")
         else:
             await ctx.send("Task is not running.")
 
