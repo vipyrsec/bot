@@ -7,8 +7,8 @@ import discord
 from discord.app_commands import AppCommand
 from discord.ext import commands
 
-from bot.bot import Bot
 from bot import constants
+from bot.bot import Bot
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
