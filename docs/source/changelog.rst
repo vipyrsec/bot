@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`2.3.0 <5th May 2023>`
+- :feature:`18` Log auto-reports 
+
 - :release:`2.2.0 <5th May 2023>`
 - :feature:`57` Add force option to Dragonfly stop command
 

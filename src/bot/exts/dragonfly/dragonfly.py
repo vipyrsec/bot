@@ -73,6 +73,21 @@ class ConfirmReportModal(discord.ui.Modal):
             ", ".join(DragonflyConfig.bcc),
         )
 
+        log.info(
+            "User %s reported package %s with description %s",
+             interaction.user,
+             self.package.name,
+             self.description,
+        )
+
+        log_channel = interaction.client.get_channel(DragonflyConfig.logs_channel_id)
+        if isinstance(log_channel, discord.abc.MessageableChannel):
+            await log_channel.send(
+                f"User {interaction.user.mention} "
+                f"reported package `{self.package.name}` "
+                f"with description `{self.description}`"
+            )
+
         await interaction.response.send_message("Successfully sent report.", ephemeral=True)
 
         send_email(
