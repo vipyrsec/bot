@@ -81,7 +81,7 @@ class ConfirmReportModal(discord.ui.Modal):
         )
 
         log_channel = interaction.client.get_channel(DragonflyConfig.logs_channel_id)
-        if isinstance(log_channel, discord.abc.MessageableChannel):
+        if isinstance(log_channel, discord.abc.Messageable):
             await log_channel.send(
                 f"User {interaction.user.mention} "
                 f"reported package `{self.package.name}` "
