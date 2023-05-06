@@ -75,9 +75,9 @@ class ConfirmReportModal(discord.ui.Modal):
 
         log.info(
             "User %s reported package %s with description %s",
-             interaction.user,
-             self.package.name,
-             self.description,
+            interaction.user,
+            self.package.name,
+            self.description,
         )
 
         log_channel = interaction.client.get_channel(DragonflyConfig.logs_channel_id)
