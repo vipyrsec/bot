@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`2.3.1 <6th May 2023>`
+- :bug:`66` Fix invalid import breaking email reporting
+
 - :release:`2.3.0 <5th May 2023>`
 - :feature:`18` Log auto-reports 
 
