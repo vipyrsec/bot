@@ -10,6 +10,7 @@ from discord.ext import commands
 
 from bot import constants
 from bot.bot import Bot
+from bot.utils.microsoft import build_ms_graph_client
 
 from .utils.templates import JINJA_TEMPLATES
 
@@ -34,6 +35,7 @@ async def main() -> None:
     bot = Bot(
         guild_id=constants.Bot.guild_id,
         http_session=aiohttp.ClientSession(),
+        graph_client=build_ms_graph_client(),
         allowed_roles=roles,
         command_prefix=get_prefix,
         intents=intents,

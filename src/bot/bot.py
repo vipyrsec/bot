@@ -7,6 +7,7 @@ import aiohttp
 import discord
 from discord.ext import commands
 from jinja2 import Template
+from msgraph.core import GraphClient
 
 from bot import exts
 from bot.utils.extensions import walk_extensions
@@ -50,6 +51,7 @@ class Bot(commands.Bot):
         *args,
         allowed_roles: list,
         http_session: aiohttp.ClientSession,
+        graph_client: GraphClient,
         templates: dict[str, Template],
         **kwargs,
     ):
@@ -67,6 +69,8 @@ class Bot(commands.Bot):
         )
 
         self.http_session = http_session
+
+        self.graph_client = graph_client
 
         self.templates = templates
 
