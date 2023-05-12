@@ -264,7 +264,6 @@ async def run(
             malicious_package = MaliciousPiPIPackage(name=pypi_package_scan.name)
             pypi_package_scan.rule_matches = distribution.matches
             session.add(pypi_package_scan)
-            session.commit()
             session.add(malicious_package)
             session.commit()
 
