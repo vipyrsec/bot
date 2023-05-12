@@ -60,6 +60,21 @@ class PyPIPackageScan(Base, TimestampMixin):
     rule_matches: Mapped[list[str]] = mapped_column(ARRAY(String))
 
 
+class MaliciousPyPIPackage(Base, TimestampMixin):
+    """Scan results for packages we flagged"""
+
+    __tablename__: str = "pypi_package_scans"
+
+    pypi_package_scan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=FetchedValue(),
+        default=uuid.uuid4,
+    )
+    """Object ID"""
+    name: Mapped[str]
+
+
 if __name__ == "__main__":
     print("Emitting DDL...")
     Base.metadata.create_all(engine)

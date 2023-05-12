@@ -222,11 +222,11 @@ async def run(
     for package_metadata in packages_to_check:
         log.info("Starting scan of package '%s'", package_metadata.title)
         with Session(engine) as session:
-            pypi_package_scan: PyPIPackageScan | None = session.scalars(
-                select(PyPIPackageScan).filter_by(name=package_metadata.title)
+            malicious_package_scan: MaliciousPyPIPackage | None = session.scalars(
+                select(MaliciousPyPIPackage).filter_by(name=package_metadata.title)
             ).first()
-            if pypi_package_scan is not None:
-                log.info("Already checked %s!" % package_metadata.title)
+            if malicious_package_scan is not None:
+                log.info("Already flagged %s!" % package_metadata.title)
                 continue
             else:
                 scanned_packages.append(package_metadata.title)
@@ -261,8 +261,11 @@ async def run(
                 log.info("Package %s has no files with score greater than 0", result.name)
                 continue
 
+            malicious_package = MaliciousPiPIPackage(name=pypi_package_scan.name)
             pypi_package_scan.rule_matches = distribution.matches
             session.add(pypi_package_scan)
+            session.commit()
+            session.add(malicious_package)
             session.commit()
 
             threshold = DragonflyConfig.threshold
