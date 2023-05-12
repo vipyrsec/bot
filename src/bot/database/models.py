@@ -63,7 +63,7 @@ class PyPIPackageScan(Base, TimestampMixin):
 class MaliciousPyPIPackage(Base, TimestampMixin):
     """Scan results for packages we flagged"""
 
-    __tablename__: str = "malicious_package"
+    __tablename__: str = "malicious_packages"
 
     pypi_package_scan_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
