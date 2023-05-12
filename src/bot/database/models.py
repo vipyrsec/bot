@@ -58,21 +58,7 @@ class PyPIPackageScan(Base, TimestampMixin):
     name: Mapped[str]
     error: Mapped[str]
     rule_matches: Mapped[list[str]] = mapped_column(ARRAY(String))
-
-
-class MaliciousPyPIPackage(Base, TimestampMixin):
-    """Scan results for packages we flagged"""
-
-    __tablename__: str = "malicious_packages"
-
-    pypi_package_scan_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        server_default=FetchedValue(),
-        default=uuid.uuid4,
-    )
-    """Object ID"""
-    name: Mapped[str]
+    flagged: mapped_column(bool, default=False)
 
 
 if __name__ == "__main__":
