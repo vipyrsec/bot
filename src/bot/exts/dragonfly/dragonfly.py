@@ -223,10 +223,12 @@ async def run(
         log.info("Starting scan of package '%s'", package_metadata.title)
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
-                select(PyPIPackageScan).filter_by(name=package_metadata.title)
+                select(PyPIPackageScan)
+                .where(PyPIPackageScan.name == package_metadata.title)
+                .where(PyPIPackageScan.flagged)
             ).first()
             if pypi_package_scan is not None:
-                log.info("Already checked %s!" % package_metadata.title)
+                log.info("Already flagged %s!" % package_metadata.title)
                 continue
             else:
                 scanned_packages.append(package_metadata.title)
@@ -262,6 +264,7 @@ async def run(
                 continue
 
             pypi_package_scan.rule_matches = distribution.matches
+            pypi_package_scan.flagged = True
             session.add(pypi_package_scan)
             session.commit()
 
