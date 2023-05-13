@@ -224,8 +224,8 @@ async def run(
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
                 select(PyPIPackageScan).where(
-                    PyPIPackageScan.name=package_metadata.title,
-                    PyPIPackageScan.flagged=True,
+                    name=package_metadata.title,
+                    flagged=True,
                 )
             ).first()
             if pypi_package_scan is not None:
