@@ -225,7 +225,7 @@ async def run(
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
                 select(PyPIPackageScan)
-                .where(PyPIPackageScan.name=package_metadata.title)
+                .where(PyPIPackageScan.name == package_metadata.title)
                 .order_by(PyPIPackageScan.published_date.desc())
             ).fist()
 
