@@ -1,7 +1,6 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
 
 import logging
-from datetime import datetime
 from logging import getLogger
 
 import discord
@@ -229,13 +228,11 @@ async def run(
                 .order_by(PyPIPackageScan.published_date.desc())
             ).fist()
 
-            pub_date = datetime.strptime(package_metadata.pubDate, "%a, %d %b %Y %H:%M:%S %Z")
-
             if pypi_package_scan is not None:
                 if pypi_package_scan.flagged is True:
                     log.info("Already flagged %s!" % package_metadata.title)
                     continue
-                if pypi_package_scan.published_date == pub_date:
+                if pypi_package_scan.published_date == package_metadata.publication_date:
                     log.info("Already scanned %s!" % package_metadata.title)
                     continue
 
