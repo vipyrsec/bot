@@ -3,7 +3,7 @@
 import uuid
 from enum import Enum
 
-from sqlalchemy import BigInteger, FetchedValue, String
+from sqlalchemy import BigInteger, Boolean, FetchedValue, String
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -58,7 +58,7 @@ class PyPIPackageScan(Base, TimestampMixin):
     name: Mapped[str]
     error: Mapped[str]
     rule_matches: Mapped[list[str]] = mapped_column(ARRAY(String))
-    flagged: Mapped[bool | None] = mapped_column(bool, default=False)
+    flagged: Mapped[bool | None] = mapped_column(Boolean, default=False)
 
 
 if __name__ == "__main__":
