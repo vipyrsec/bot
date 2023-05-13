@@ -223,7 +223,10 @@ async def run(
         log.info("Starting scan of package '%s'", package_metadata.title)
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
-                select(PyPIPackageScan).filter_by(name=package_metadata.title, flagged == True)
+                select(PyPIPackageScan).where(
+                    PyPIPackageScan.name=package_metadata.title,
+                    PyPIPackageScan.flagged=True,
+                )
             ).first()
             if pypi_package_scan is not None:
                 log.info("Already flagged %s!" % package_metadata.title)
