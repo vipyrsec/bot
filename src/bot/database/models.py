@@ -58,7 +58,7 @@ class PyPIPackageScan(Base, TimestampMixin):
     name: Mapped[str]
     error: Mapped[str]
     rule_matches: Mapped[list[str]] = mapped_column(ARRAY(String))
-    flagged: mapped_column(bool, default=False)
+    flagged: Mapped[bool|None] =  mapped_column(bool, default=False)
 
 
 if __name__ == "__main__":
