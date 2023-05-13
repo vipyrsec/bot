@@ -1,6 +1,7 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
 
 import logging
+from datetime import datetime
 from logging import getLogger
 
 import discord
@@ -223,14 +224,23 @@ async def run(
         log.info("Starting scan of package '%s'", package_metadata.title)
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
-                select(PyPIPackageScan).filter_by(name=package_metadata.title).where(flagged == True)
-            ).first()
+                select(PyPIPackageScan)
+                .where(PyPIPackageScan.name=package_metadata.title)
+                .order_by(PyPIPackageScan.published_date.desc())
+            ).fist()
+
+            pub_date = datetime.strptime(package_metadata.pubDate, "%a, %d %b %Y %H:%M:%S %Z")
+
             if pypi_package_scan is not None:
-                log.info("Already flagged %s!" % package_metadata.title)
+                if pypi_package_scan.flagged is True:
+                    log.info("Already flagged %s!" % package_metadata.title)
                 continue
-            else:
-                scanned_packages.append(package_metadata.title)
-                pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
+                if pypi_package_scan.published_date == pub_date:
+                    log.info("Already scanned %s!" % package_metadata.title)
+                continue
+
+            scanned_packages.append(package_metadata.title)
+            pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None, published_date=pub_date)
 
             try:
                 result = await check_package(package_metadata.title, http_session=bot.http_session)
