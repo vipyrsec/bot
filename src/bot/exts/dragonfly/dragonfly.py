@@ -242,7 +242,6 @@ async def run(
             scanned_packages.append(package_metadata.title)
             pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None, published_date=pub_date)
 
-
             try:
                 result = await check_package(package_metadata.title, http_session=bot.http_session)
             except DragonflyAPIException as e:

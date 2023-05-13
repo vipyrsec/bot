@@ -64,7 +64,6 @@ class PyPIPackageScan(Base, TimestampMixin):
     flagged: Mapped[bool | None] = mapped_column(Boolean, default=False)
 
 
-
 if __name__ == "__main__":
     print("Emitting DDL...")
     Base.metadata.create_all(engine)
