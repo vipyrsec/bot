@@ -262,7 +262,7 @@ async def run(
                 continue
 
             pypi_package_scan.rule_matches = distribution.matches
-            pypi.package_scan.flagged = True
+            pypi_package_scan.flagged = True
             session.add(pypi_package_scan)
             session.commit()
 
