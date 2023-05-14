@@ -233,6 +233,7 @@ async def run(
                 if pypi_package_scan.flagged is True:
                     log.info("Already flagged %s!" % package_metadata.title)
                     continue
+
                 if pypi_package_scan.published_date == package_metadata.publication_date:
                     log.info("Already scanned %s!" % package_metadata.title)
                     continue
