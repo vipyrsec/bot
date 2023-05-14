@@ -225,14 +225,21 @@ async def run(
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
                 select(PyPIPackageScan)
                 .where(PyPIPackageScan.name == package_metadata.title)
-                .where(PyPIPackageScan.flagged)
-            ).first()
+                .order_by(PyPIPackageScan.published_date.desc())
+            ).fist()
+
             if pypi_package_scan is not None:
-                log.info("Already flagged %s!" % package_metadata.title)
-                continue
-            else:
-                scanned_packages.append(package_metadata.title)
-                pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
+                if pypi_package_scan.flagged is True:
+                    log.info("Already flagged %s!" % package_metadata.title)
+                    continue
+                if pypi_package_scan.published_date == package_metadata.publication_date:
+                    log.info("Already scanned %s!" % package_metadata.title)
+                    continue
+
+            scanned_packages.append(package_metadata.title)
+            pypi_package_scan = PyPIPackageScan(
+                name=package_metadata.title, error=None, published_date=package_metadata.publication_date
+            )
 
             try:
                 result = await check_package(package_metadata.title, http_session=bot.http_session)

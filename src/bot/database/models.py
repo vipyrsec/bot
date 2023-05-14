@@ -1,6 +1,7 @@
 """Database models"""
 
 import uuid
+from datetime import datetime
 from enum import Enum
 
 from sqlalchemy import BigInteger, Boolean, FetchedValue, String
@@ -57,7 +58,9 @@ class PyPIPackageScan(Base, TimestampMixin):
     """Object ID"""
     name: Mapped[str]
     error: Mapped[str]
+    published_date: Mapped[datetime | None]
     rule_matches: Mapped[list[str]] = mapped_column(ARRAY(String))
+
     flagged: Mapped[bool | None] = mapped_column(Boolean, default=False)
 
 
