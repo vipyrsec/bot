@@ -226,7 +226,7 @@ async def run(
                 select(PyPIPackageScan)
                 .where(PyPIPackageScan.name == package_metadata.title)
                 .order_by(PyPIPackageScan.published_date.desc())
-            ).fist()
+            ).first()
 
             if pypi_package_scan is not None:
                 if pypi_package_scan.flagged is True:
