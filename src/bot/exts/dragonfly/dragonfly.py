@@ -225,8 +225,9 @@ async def run(
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
                 select(PyPIPackageScan)
                 .where(PyPIPackageScan.name == package_metadata.title)
+                .where(PyPIPackageScan.published_date != None)
                 .order_by(PyPIPackageScan.published_date.desc())
-            ).fist()
+            ).first()
 
             if pypi_package_scan is not None:
                 if pypi_package_scan.flagged is True:
