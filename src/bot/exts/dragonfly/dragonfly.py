@@ -191,7 +191,7 @@ async def send_completion_webhook(channel: discord.abc.Messageable, packages: li
     """Post the complete list of packages checked to the logs"""
     if len(packages) > 0:
         formatted_packages = "\n".join(packages)
-        text = f"```{formatted_packages}\n```"
+        text = f"```\n{formatted_packages}\n```"
     else:
         text = "_no new packages since last scan_"
 
