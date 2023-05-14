@@ -214,7 +214,7 @@ async def run(
     """Script entrypoint"""
     packages_to_check: list[PackageMetadata] = []
     client = PyPIServices(http_session=bot.http_session)
-    packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
+    # packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
     packages_to_check.extend(await client.get_rss_feed(client.PACKAGE_UPDATES_FEED_URL))
     log.info("Fetched %d packages" % len(packages_to_check))
 
