@@ -79,7 +79,9 @@ class PackageScanResult:
             distributions=[
                 PackageDistributionScanResults.from_dict(distribution) for distribution in d["distributions"]
             ],
-            highest_score_distribution=HighestScoreDistribution.from_dict(d["highest_score_distribution"]),
+            highest_score_distribution=HighestScoreDistribution.from_dict(data)
+            if (data := d["highest_score_distribution"])
+            else None,
         )
 
 

@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`2.3.2 <15th May 2023>`
+- :feature:`62` Add slash command to bring up package modal on demand
+
 - :release:`2.3.1 <6th May 2023>`
 - :bug:`66` Fix invalid import breaking email reporting
 
@@ -17,7 +20,7 @@ Changelog
 - :feature:`59` Add slash command to bring up package modal on demand
 
 - :release:`2.0.0 <25th April 2023>`
-  :feature:`48` Conform to API rewrite
+- :feature:`48` Conform to API rewrite
 
 - :release:`1.6.0 <17th April 2023>`
 - :feature:`37` Add support for setting "reply to" in mailer
