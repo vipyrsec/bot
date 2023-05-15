@@ -4,8 +4,17 @@
 Changelog
 =========
 
-- :release:`2.1.1 <3rd May 2023>`
+- :release:`2.3.2 <15th May 2023>`
 - :feature:`62` Add slash command to bring up package modal on demand
+
+- :release:`2.3.1 <6th May 2023>`
+- :bug:`66` Fix invalid import breaking email reporting
+
+- :release:`2.3.0 <5th May 2023>`
+- :feature:`18` Log auto-reports
+
+- :release:`2.2.0 <5th May 2023>`
+- :feature:`57` Add force option to Dragonfly stop command
 
 - :release:`2.1.0 <3rd May 2023>`
 - :feature:`59` Add slash command to bring up package modal on demand

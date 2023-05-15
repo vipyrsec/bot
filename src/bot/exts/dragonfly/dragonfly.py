@@ -73,6 +73,21 @@ class ConfirmReportModal(discord.ui.Modal):
             ", ".join(DragonflyConfig.bcc),
         )
 
+        log.info(
+            "User %s reported package %s with description %s",
+            interaction.user,
+            self.package.name,
+            self.description,
+        )
+
+        log_channel = interaction.client.get_channel(DragonflyConfig.logs_channel_id)
+        if isinstance(log_channel, discord.abc.Messageable):
+            await log_channel.send(
+                f"User {interaction.user.mention} "
+                f"reported package `{self.package.name}` "
+                f"with description `{self.description}`"
+            )
+
         await interaction.response.send_message("Successfully sent report.", ephemeral=True)
 
         send_email(
@@ -176,7 +191,7 @@ async def send_completion_webhook(channel: discord.abc.Messageable, packages: li
     """Post the complete list of packages checked to the logs"""
     if len(packages) > 0:
         formatted_packages = "\n".join(packages)
-        text = f"```{formatted_packages}\n```"
+        text = f"```\n{formatted_packages}\n```"
     else:
         text = "_no new packages since last scan_"
 
@@ -199,7 +214,7 @@ async def run(
     """Script entrypoint"""
     packages_to_check: list[PackageMetadata] = []
     client = PyPIServices(http_session=bot.http_session)
-    packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
+    # packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
     packages_to_check.extend(await client.get_rss_feed(client.PACKAGE_UPDATES_FEED_URL))
     log.info("Fetched %d packages" % len(packages_to_check))
 
@@ -208,14 +223,25 @@ async def run(
         log.info("Starting scan of package '%s'", package_metadata.title)
         with Session(engine) as session:
             pypi_package_scan: PyPIPackageScan | None = session.scalars(
-                select(PyPIPackageScan).filter_by(name=package_metadata.title)
+                select(PyPIPackageScan)
+                .where(PyPIPackageScan.name == package_metadata.title)
+                .where(PyPIPackageScan.published_date != None)
+                .order_by(PyPIPackageScan.published_date.desc())
             ).first()
+
             if pypi_package_scan is not None:
-                log.info("Already checked %s!" % package_metadata.title)
-                continue
-            else:
-                scanned_packages.append(package_metadata.title)
-                pypi_package_scan = PyPIPackageScan(name=package_metadata.title, error=None)
+                if pypi_package_scan.flagged is True:
+                    log.info("Already flagged %s!" % package_metadata.title)
+                    continue
+
+                if pypi_package_scan.published_date == package_metadata.publication_date:
+                    log.info("Already scanned %s!" % package_metadata.title)
+                    continue
+
+            scanned_packages.append(package_metadata.title)
+            pypi_package_scan = PyPIPackageScan(
+                name=package_metadata.title, error=None, published_date=package_metadata.publication_date
+            )
 
             try:
                 result = await check_package(package_metadata.title, http_session=bot.http_session)
@@ -247,6 +273,7 @@ async def run(
                 continue
 
             pypi_package_scan.rule_matches = distribution.matches
+            pypi_package_scan.flagged = True
             session.add(pypi_package_scan)
             session.commit()
 
@@ -301,10 +328,14 @@ class Dragonfly(commands.Cog):
             await ctx.send("Started task...")
 
     @commands.command()
-    async def stop(self, ctx: commands.Context) -> None:
+    async def stop(self, ctx: commands.Context, force: bool = False) -> None:
         if self.scan_loop.is_running():
-            self.scan_loop.stop()
-            await ctx.send("Stopping task...")
+            if force:
+                self.scan_loop.cancel()
+                await ctx.send("Forcing shutdown...")
+            else:
+                self.scan_loop.stop()
+                await ctx.send("Executing graceful shutdown...")
         else:
             await ctx.send("Task is not running.")
 
