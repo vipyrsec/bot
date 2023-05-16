@@ -6,7 +6,7 @@ from logging import getLogger
 import discord
 from discord.ext import commands, tasks
 from jinja2 import Template
-from letsbuilda.pypi import PackageMetadata, PyPIServices, RSSPackageMetadata
+from letsbuilda.pypi import PyPIServices, RSSPackageMetadata
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
