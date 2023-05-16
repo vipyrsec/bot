@@ -247,13 +247,26 @@ async def run(
             )
 
             try:
-                result = await check_package(package_metadata.title, http_session=bot.http_session)
+                result = await check_package(package_metadata.title, http_session=bot.http_session, timeout=DragonflyConfig.timeout)
             except DragonflyAPIException as e:
                 pypi_package_scan.error = str(e)
                 session.add(pypi_package_scan)
                 session.commit()
 
                 log.warn("Dragonfly API Error: %s", str(e))
+                continue
+            except TimeoutError:
+                pypi_package_scan.error = "Timed out" 
+                session.add(pypi_package_scan)
+                session.commit()
+
+                log.warn(
+                    "Scanning package %s@%s timed out (timeout %s)", 
+                    package_metadata.title, 
+                    package_metadata.version, 
+                    DragonflyConfig.timeout
+                )
+
                 continue
 
             # Package is safe
@@ -345,7 +358,7 @@ class Dragonfly(commands.Cog):
     async def scan(self, interaction: discord.Interaction, package: str, version: str | None = None) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
-            results = await check_package(package, version, http_session=self.bot.http_session)
+            results = await check_package(package, version, http_session=self.bot.http_session, timeout=DragonflyConfig.timeout)
         except DragonflyAPIException as e:
             log.error(
                 "Dragonfly API Exception when user '%s' tried to scan package '%s' with version '%s'. "
@@ -357,6 +370,17 @@ class Dragonfly(commands.Cog):
             )
 
             await interaction.followup.send(str(e))
+            return None
+        except TimeoutError:
+            log.warn(
+                "User '%s' tried to scan package '%s' with version '%s' which took longer than %s seconds",
+                str(interaction.user),
+                package,
+                version,
+                DragonflyConfig.timeout,
+            )
+
+            await interaction.followup.send("Scan timed-out.")
             return None
 
         if results.highest_score_distribution is None:

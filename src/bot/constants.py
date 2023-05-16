@@ -56,6 +56,7 @@ class _DragonflyConfig(EnvConfig):
     recipient = "security@pypi.org"
     bcc: set[str] = set()
     threshold: int = 5
+    timeout: int = 25
 
 
 DragonflyConfig = _DragonflyConfig()
