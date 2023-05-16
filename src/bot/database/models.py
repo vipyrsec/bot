@@ -3,12 +3,11 @@
 import uuid
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 from sqlalchemy import BigInteger, Boolean, FetchedValue, String
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-from bot.database.mixins.timestamp import TimestampMixin
 
 from . import engine
 
@@ -44,7 +43,7 @@ class RolesPermissions(Base):
     permission: Mapped[str]
 
 
-class PyPIPackageScan(Base, TimestampMixin):
+class PyPIPackageScan(Base):
     """Scan results for PyPI packages"""
 
     __tablename__: str = "pypi_package_scans"
@@ -57,7 +56,7 @@ class PyPIPackageScan(Base, TimestampMixin):
     )
     """Object ID"""
     name: Mapped[str]
-    error: Mapped[str]
+    error: Mapped[Optional[str]]
     published_date: Mapped[datetime | None]
     rule_matches: Mapped[list[str]] = mapped_column(ARRAY(String))
 

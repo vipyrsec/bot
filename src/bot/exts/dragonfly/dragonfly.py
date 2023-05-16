@@ -6,7 +6,7 @@ from logging import getLogger
 import discord
 from discord.ext import commands, tasks
 from jinja2 import Template
-from letsbuilda.pypi import PackageMetadata, PyPIServices
+from letsbuilda.pypi import PyPIServices, RSSPackageMetadata
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -212,7 +212,7 @@ async def run(
     alerts_channel: discord.abc.Messageable,
 ) -> None:
     """Script entrypoint"""
-    packages_to_check: list[PackageMetadata] = []
+    packages_to_check: list[RSSPackageMetadata] = []
     client = PyPIServices(http_session=bot.http_session)
     # packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
     packages_to_check.extend(await client.get_rss_feed(client.PACKAGE_UPDATES_FEED_URL))
@@ -222,25 +222,28 @@ async def run(
     for package_metadata in packages_to_check:
         log.info("Starting scan of package '%s'", package_metadata.title)
         with Session(engine) as session:
-            pypi_package_scan: PyPIPackageScan | None = session.scalars(
+            pypi_package_scan = session.scalar(
                 select(PyPIPackageScan)
                 .where(PyPIPackageScan.name == package_metadata.title)
-                .where(PyPIPackageScan.published_date != None)
-                .order_by(PyPIPackageScan.published_date.desc())
-            ).first()
+                .where(PyPIPackageScan.published_date == package_metadata.publication_date)
+            )
 
-            if pypi_package_scan is not None:
+            if pypi_package_scan:
                 if pypi_package_scan.flagged is True:
                     log.info("Already flagged %s!" % package_metadata.title)
                     continue
 
+                print(f"{pypi_package_scan.published_date} | {package_metadata.publication_date}")
                 if pypi_package_scan.published_date == package_metadata.publication_date:
                     log.info("Already scanned %s!" % package_metadata.title)
                     continue
 
-            scanned_packages.append(package_metadata.title)
+            scanned_packages.append(f"{package_metadata.title}@{package_metadata.version}")
             pypi_package_scan = PyPIPackageScan(
-                name=package_metadata.title, error=None, published_date=package_metadata.publication_date
+                name=package_metadata.title,
+                error=None,
+                published_date=package_metadata.publication_date,
+                rule_matches=[],
             )
 
             try:
@@ -262,8 +265,6 @@ async def run(
                     package_metadata.title,
                 )
                 continue
-
-            result.highest_score_distribution
 
             distribution = result.highest_score_distribution
             if distribution is None:
