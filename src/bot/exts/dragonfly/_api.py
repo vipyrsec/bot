@@ -3,6 +3,7 @@ from logging import getLogger
 from typing import Self
 
 from aiohttp import ClientSession
+import aiohttp
 
 from bot.constants import DragonflyConfig
 
@@ -90,11 +91,13 @@ async def check_package(
     version: str | None = None,
     *,
     http_session: ClientSession,
+    timeout: int = 25,
 ) -> PackageScanResult | None:
     data = dict(package_name=package_name, package_version=version)
     async with http_session.post(
         DragonflyConfig.dragonfly_api_url + "/check/",
         json=data,
+        timeout=aiohttp.ClientTimeout(total=timeout),
     ) as res:
         json = await res.json()
 
