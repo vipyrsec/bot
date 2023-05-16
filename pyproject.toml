@@ -5,7 +5,7 @@ dependencies = [
     "python-dotenv==1.0.0",
     "discord.py==2.2.3",
     "aiohttp==3.8.4",
-    "sentry-sdk==1.22.2",
+    "sentry-sdk==1.23.0",
     "rapidfuzz==3.0.0",
     "coloredlogs==15.0.1",
     "psycopg[binary]==3.1.9",
