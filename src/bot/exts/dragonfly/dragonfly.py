@@ -9,6 +9,7 @@ from jinja2 import Template
 from letsbuilda.pypi import PyPIServices, RSSPackageMetadata
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from bot.constants import Roles
 
 from bot.bot import Bot
 from bot.constants import DragonflyConfig
@@ -353,7 +354,7 @@ class Dragonfly(commands.Cog):
         else:
             await ctx.send("Task is not running.")
 
-    @discord.app_commands.checks.has_role("Security")
+    @discord.app_commands.checks.has_role(Roles.vipyr_security)
     @discord.app_commands.command(name="scan", description="Scans a package")
     async def scan(self, interaction: discord.Interaction, package: str, version: str | None = None) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
