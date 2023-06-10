@@ -9,7 +9,8 @@ import dotenv
 from discord.ext import commands
 
 from bot.bot import Bot
-from bot.constants import DragonflyConfig, Bot as BotSettings
+from bot.constants import Bot as BotSettings
+from bot.constants import DragonflyConfig
 from bot.utils.microsoft import build_ms_graph_client
 
 from .utils.templates import JINJA_TEMPLATES
