@@ -8,7 +8,7 @@ import discord
 from discord.ext import commands, tasks
 from bot.constants import Roles, DragonflyConfig
 from bot.bot import Bot
-from ._api import lookup_package_info, PackageScanResult 
+from ._api import lookup_package_info, PackageScanResult
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -45,7 +45,7 @@ async def run(
 ) -> None:
     """Script entrypoint"""
     since = datetime.utcnow() - timedelta(days=10)
-    scan_results = await lookup_package_info(bot.http_session, since=since) 
+    scan_results = await lookup_package_info(bot.http_session, since=since)
     embeds = list(map(_build_package_scan_result_embed, scan_results))
     chunked = [embeds[i:i+10] for i in range(0, len(embeds), 10)]
 
@@ -66,7 +66,7 @@ class Dragonfly(commands.Cog):
             self.bot,
             log_channel=logs_channel,
         )
-    
+
     @commands.command()
     async def start(self, ctx: commands.Context) -> None:
         if self.scan_loop.is_running():

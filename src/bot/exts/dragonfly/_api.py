@@ -15,9 +15,9 @@ class ScanStatus(Enum):
 
 @dataclass
 class PackageScanResult:
-    status: ScanStatus 
+    status: ScanStatus
     inspector_url: str
-    queued_at: datetime 
+    queued_at: datetime
     pending_at: datetime | None
     finished_at: datetime | None
     reported_at: datetime | None
@@ -44,10 +44,10 @@ class PackageScanResult:
         )
 
 async def lookup_package_info(
-    http_session: ClientSession, 
-    *, 
-    name: str | None = None, 
-    version: str | None = None, 
+    http_session: ClientSession,
+    *,
+    name: str | None = None,
+    version: str | None = None,
     since: datetime | None = None,
 ) -> list[PackageScanResult]:
     url = f"{DragonflyConfig.api_url}/package"
