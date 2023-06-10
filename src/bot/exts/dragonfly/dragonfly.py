@@ -50,7 +50,7 @@ async def run(
     chunked = [embeds[i:i+10] for i in range(0, len(embeds), 10)]
 
     for chunk in chunked:
-        await log_channel.send(f"<@&{DragonflyConfig.dragonfly_alerts_role_id}>", embeds=chunk)
+        await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embeds=chunk)
 
 class Dragonfly(commands.Cog):
     def __init__(self, bot: Bot) -> None:
@@ -89,40 +89,13 @@ class Dragonfly(commands.Cog):
 
     @discord.app_commands.checks.has_role(Roles.vipyr_security)
     @discord.app_commands.command(name="scan", description="Scans a package")
-    async def scan(self, interaction: discord.Interaction, package: str, version: str | None = None) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        try:
-            results = await check_package(package, version, http_session=self.bot.http_session, timeout=DragonflyConfig.timeout)
-        except DragonflyAPIException as e:
-            log.error(
-                "Dragonfly API Exception when user '%s' tried to scan package '%s' with version '%s'. "
-                "Upstream error: %s",
-                str(interaction.user),
-                package,
-                version,
-                str(e),
-            )
-
-            await interaction.followup.send(str(e))
-            return None
-        except TimeoutError:
-            log.warn(
-                "User '%s' tried to scan package '%s' with version '%s' which took longer than %s seconds",
-                str(interaction.user),
-                package,
-                version,
-                DragonflyConfig.timeout,
-            )
-
-            await interaction.followup.send("Scan timed-out.")
-            return None
-
-        if results.highest_score_distribution is None:
-            await interaction.followup.send(f"Package `{package}` did not match any rules.")
+    async def lookup(self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
+        scan_results = await lookup_package_info(self.bot.http_session, name=name, version=version)
+        if scan_results:
+            embed = _build_package_scan_result_embed(scan_results[0])
+            await interaction.response.send_message(embed=embed)
         else:
-            embed = _build_package_scan_result_embed(results)
-            view = AutoReportView(email_template=self.bot.templates["malicious_pypi_package_email"], package=results)
-            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            await interaction.response.send_message("No entries were found with the specified filters.")
 
 async def setup(bot: Bot) -> None:
     await bot.add_cog(Dragonfly(bot))
