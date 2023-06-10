@@ -1,167 +1,39 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
 
 import logging
+from datetime import datetime, timedelta
 from logging import getLogger
 
 import discord
 from discord.ext import commands, tasks
-from jinja2 import Template
-from letsbuilda.pypi import PyPIServices, RSSPackageMetadata
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from bot.constants import Roles
 
 from bot.bot import Bot
-from bot.constants import DragonflyConfig
-from bot.database import engine
-from bot.database.models import PyPIPackageScan
-from bot.utils.mailer import send_email
-from bot.utils.microsoft import build_ms_graph_client
+from bot.constants import DragonflyConfig, Roles
 
-from ._api import DragonflyAPIException, PackageScanResult, check_package
+from ._api import PackageScanResult, lookup_package_info
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
-graph_client = build_ms_graph_client()
 
-Matches = dict[str, list[str]]
-
-
-class ConfirmReportModal(discord.ui.Modal):
-    title = "Confirm Report"
-
-    recipient = discord.ui.TextInput(
-        label="To",
-        placeholder="To",
-        default=str(DragonflyConfig.recipient),
-        required=True,
-        style=discord.TextStyle.short,
-    )
-
-    subject = discord.ui.TextInput(
-        label="Subject",
-        placeholder="Subject",
-        default="Automated PyPi Malware Report",
-        required=True,
-        style=discord.TextStyle.short,
-    )
-
-    description = discord.ui.TextInput(
-        label="Description",
-        placeholder="Optional long description...",
-        required=False,
-        style=discord.TextStyle.long,
-    )
-
-    def __init__(self, *, email_template: Template, package: PackageScanResult) -> None:
-        super().__init__()
-        self.package = package
-        self.email_template = email_template
-
-    async def on_submit(self, interaction: discord.Interaction):
-        assert self.package.highest_score_distribution is not None  # for typechecker
-        content = self.email_template.render(
-            package=self.package,
-            description=self.description.value,
-            rules=", ".join(self.package.highest_score_distribution.matches),
-        )
-
-        log.info(
-            "Sending report to with sender %s with recipient %s with bcc %s",
-            DragonflyConfig.sender,
-            DragonflyConfig.recipient,
-            ", ".join(DragonflyConfig.bcc),
-        )
-
-        log.info(
-            "User %s reported package %s with description %s",
-            interaction.user,
-            self.package.name,
-            self.description,
-        )
-
-        log_channel = interaction.client.get_channel(DragonflyConfig.logs_channel_id)
-        if isinstance(log_channel, discord.abc.Messageable):
-            await log_channel.send(
-                f"User {interaction.user.mention} "
-                f"reported package `{self.package.name}` "
-                f"with description `{self.description}`"
-            )
-
-        await interaction.response.send_message("Successfully sent report.", ephemeral=True)
-
-        send_email(
-            graph_client,
-            sender=DragonflyConfig.sender,
-            reply_to_recipients=[DragonflyConfig.reply_to],
-            to_recipients=[self.recipient.value],
-            subject=self.subject.value,
-            content=content,
-            bcc_recipients=list(DragonflyConfig.bcc),
-        )
-
-
-class AutoReportView(discord.ui.View):
-    def __init__(self, *, email_template: Template, package: PackageScanResult):
-        super().__init__(timeout=None)
-        self.email_template = email_template
-        self.package = package
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.guild is None:
-            return False
-
-        if isinstance(interaction.user, discord.User):
-            return False
-
-        if interaction.guild.get_role(DragonflyConfig.security_role_id) in interaction.user.roles:
-            return True
-
-        await interaction.response.send_message("You cannot use that!", ephemeral=True)
-        return False
-
-    @discord.ui.button(
-        label="Report",
-        emoji="✉️",
-        custom_id="REPORT_BTN",
-        style=discord.ButtonStyle.red,
-    )
-    async def report_button(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button,
-    ) -> None:
-        modal = ConfirmReportModal(
-            email_template=self.email_template,
-            package=self.package,
-        )
-        await interaction.response.send_modal(modal)
-
-        button.style = discord.ButtonStyle.gray
-        button.disabled = True
-        await interaction.edit_original_response(view=self)
-
-
-def _build_package_scan_result_embed(package: PackageScanResult) -> discord.Embed:
-    assert package.highest_score_distribution is not None
+def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
     """Build the embed that shows the results of a package scan"""
 
     embed = discord.Embed(
-        title=f"New malicious package: {package.name}",
-        description=f"```YARA rules matched: {', '.join(package.highest_score_distribution.matches)}```",
+        title=f"New Scan Result: {scan_result.name} v{scan_result.version}",
+        description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
         color=0xF70606,
     )
 
     embed.add_field(
         name="\u200B",
-        value=f"[Inspector]({package.highest_score_distribution.inspector_link})",
+        value=f"[Inspector]({scan_result.inspector_url})",
         inline=True,
     )
 
     embed.add_field(
         name="\u200B",
-        value=f"[PyPI]({package.pypi_link})",
+        value=f"[PyPI](https://pypi.org/project/{scan_result.name}/{scan_result.version})",
         inline=True,
     )
 
@@ -170,149 +42,19 @@ def _build_package_scan_result_embed(package: PackageScanResult) -> discord.Embe
     return embed
 
 
-async def notify_malicious_package(
-    *,
-    email_template: Template,
-    channel: discord.abc.Messageable,
-    package: PackageScanResult,
-) -> None:
-    """
-    Sends a message to our Discord server,
-    notifying us of a new malicious package
-    and showing the matched rules
-    """
-
-    embed = _build_package_scan_result_embed(package)
-
-    view = AutoReportView(email_template=email_template, package=package)
-    await channel.send(f"<@&{DragonflyConfig.dragonfly_alerts_role_id}>", embed=embed, view=view)
-
-
-async def send_completion_webhook(channel: discord.abc.Messageable, packages: list[str]):
-    """Post the complete list of packages checked to the logs"""
-    if len(packages) > 0:
-        formatted_packages = "\n".join(packages)
-        text = f"```\n{formatted_packages}\n```"
-    else:
-        text = "_no new packages since last scan_"
-
-    embed = discord.Embed(
-        title="DragonFly Logs",
-        description=f"Packages scanned:\n{text}",
-        color=0xF70606,
-    )
-    embed.set_footer(text="DragonFly V2")
-
-    await channel.send(embed=embed)
-
-
 async def run(
     bot: Bot,
     *,
     log_channel: discord.abc.Messageable,
-    alerts_channel: discord.abc.Messageable,
 ) -> None:
     """Script entrypoint"""
-    packages_to_check: list[RSSPackageMetadata] = []
-    client = PyPIServices(http_session=bot.http_session)
-    # packages_to_check.extend(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL))
-    packages_to_check.extend(await client.get_rss_feed(client.PACKAGE_UPDATES_FEED_URL))
-    log.info("Fetched %d packages" % len(packages_to_check))
+    since = datetime.utcnow() - timedelta(days=10)
+    scan_results = await lookup_package_info(bot.http_session, since=since)
+    embeds = list(map(_build_package_scan_result_embed, scan_results))
+    chunked = [embeds[i : i + 10] for i in range(0, len(embeds), 10)]
 
-    scanned_packages: list[str] = []
-    for package_metadata in packages_to_check:
-        log.info("Starting scan of package '%s'", package_metadata.title)
-        with Session(engine) as session:
-            pypi_package_scan = session.scalar(
-                select(PyPIPackageScan)
-                .where(PyPIPackageScan.name == package_metadata.title)
-                .where(PyPIPackageScan.published_date == package_metadata.publication_date)
-            )
-
-            if pypi_package_scan:
-                if pypi_package_scan.flagged is True:
-                    log.info("Already flagged %s!" % package_metadata.title)
-                    continue
-
-                print(f"{pypi_package_scan.published_date} | {package_metadata.publication_date}")
-                if pypi_package_scan.published_date == package_metadata.publication_date:
-                    log.info("Already scanned %s!" % package_metadata.title)
-                    continue
-
-            scanned_packages.append(f"{package_metadata.title}@{package_metadata.version}")
-            pypi_package_scan = PyPIPackageScan(
-                name=package_metadata.title,
-                error=None,
-                published_date=package_metadata.publication_date,
-                rule_matches=[],
-            )
-
-            try:
-                result = await check_package(package_metadata.title, http_session=bot.http_session, timeout=DragonflyConfig.timeout)
-            except DragonflyAPIException as e:
-                pypi_package_scan.error = str(e)
-                session.add(pypi_package_scan)
-                session.commit()
-
-                log.warn("Dragonfly API Error: %s", str(e))
-                continue
-            except TimeoutError:
-                pypi_package_scan.error = "Timed out" 
-                session.add(pypi_package_scan)
-                session.commit()
-
-                log.warn(
-                    "Scanning package %s@%s timed out (timeout %s)", 
-                    package_metadata.title, 
-                    package_metadata.version, 
-                    DragonflyConfig.timeout
-                )
-
-                continue
-
-            # Package is safe
-            if result is None:
-                session.add(pypi_package_scan)
-                session.commit()
-                log.info(
-                    "Package %s has no distribution with the highest score (all are 0), it is not malicious",
-                    package_metadata.title,
-                )
-                continue
-
-            distribution = result.highest_score_distribution
-            if distribution is None:
-                session.add(pypi_package_scan)
-                session.commit()
-                log.info("Package %s has no files with score greater than 0", result.name)
-                continue
-
-            pypi_package_scan.rule_matches = distribution.matches
-            pypi_package_scan.flagged = True
-            session.add(pypi_package_scan)
-            session.commit()
-
-            threshold = DragonflyConfig.threshold
-            if distribution.score >= threshold:
-                log.info(
-                    f"{package_metadata.title} had a score of {distribution.score} "
-                    f"which exceeded the threshold of {threshold}"
-                )
-                await notify_malicious_package(
-                    email_template=bot.templates["malicious_pypi_package_email"],
-                    channel=alerts_channel,
-                    package=result,
-                )
-            else:
-                log.info(
-                    "%s had a score of %s which does not meet the threshold of %s",
-                    result.name,
-                    distribution.score,
-                    threshold,
-                )
-
-    log.info("done!")
-    await send_completion_webhook(log_channel, scanned_packages)
+    for chunk in chunked:
+        await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embeds=chunk)
 
 
 class Dragonfly(commands.Cog):
@@ -325,12 +67,8 @@ class Dragonfly(commands.Cog):
         logs_channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
         assert isinstance(logs_channel, discord.abc.Messageable)
 
-        alerts_channel = self.bot.get_channel(DragonflyConfig.alerts_channel_id)
-        assert isinstance(alerts_channel, discord.abc.Messageable)
-
         await run(
             self.bot,
-            alerts_channel=alerts_channel,
             log_channel=logs_channel,
         )
 
@@ -340,7 +78,7 @@ class Dragonfly(commands.Cog):
             await ctx.send("Task is already running.")
         else:
             self.scan_loop.start()
-            await ctx.send("Started task...")
+            await ctx.send("Started task 2...")
 
     @commands.command()
     async def stop(self, ctx: commands.Context, force: bool = False) -> None:
@@ -355,41 +93,15 @@ class Dragonfly(commands.Cog):
             await ctx.send("Task is not running.")
 
     @discord.app_commands.checks.has_role(Roles.vipyr_security)
-    @discord.app_commands.command(name="scan", description="Scans a package")
-    async def scan(self, interaction: discord.Interaction, package: str, version: str | None = None) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        try:
-            results = await check_package(package, version, http_session=self.bot.http_session, timeout=DragonflyConfig.timeout)
-        except DragonflyAPIException as e:
-            log.error(
-                "Dragonfly API Exception when user '%s' tried to scan package '%s' with version '%s'. "
-                "Upstream error: %s",
-                str(interaction.user),
-                package,
-                version,
-                str(e),
-            )
-
-            await interaction.followup.send(str(e))
-            return None
-        except TimeoutError:
-            log.warn(
-                "User '%s' tried to scan package '%s' with version '%s' which took longer than %s seconds",
-                str(interaction.user),
-                package,
-                version,
-                DragonflyConfig.timeout,
-            )
-
-            await interaction.followup.send("Scan timed-out.")
-            return None
-
-        if results.highest_score_distribution is None:
-            await interaction.followup.send(f"Package `{package}` did not match any rules.")
+    @discord.app_commands.command(name="lookup", description="Scans a package")
+    async def lookup(self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
+        scan_results = await lookup_package_info(self.bot.http_session, name=name, version=version)
+        if scan_results:
+            embed = _build_package_scan_result_embed(scan_results[0])
+            await interaction.response.send_message(embed=embed)
         else:
-            embed = _build_package_scan_result_embed(results)
-            view = AutoReportView(email_template=self.bot.templates["malicious_pypi_package_email"], package=results)
-            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            await interaction.response.send_message("No entries were found with the specified filters.")
+
 
 async def setup(bot: Bot) -> None:
     await bot.add_cog(Dragonfly(bot))

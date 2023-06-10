@@ -1,112 +1,66 @@
 from dataclasses import dataclass
-from logging import getLogger
-from typing import Self
+from datetime import datetime
+from enum import Enum
 
 from aiohttp import ClientSession
-import aiohttp
-
-from bot.constants import DragonflyConfig
-
-log = getLogger(__name__)
 
 
-class DragonflyAPIException(Exception):
-    pass
-
-
-@dataclass
-class MaliciousFile:
-    file_name: str
-    rules: dict[str, int]
-
-
-@dataclass
-class PackageAnalysisResults:
-    malicious_files: list[MaliciousFile]
-
-    @classmethod
-    def from_dict(cls, d: dict) -> Self:
-        return cls(malicious_files=d["malicious_files"])
-
-
-@dataclass
-class HighestScoreDistribution:
-    score: int
-    matches: list[str]
-    most_malicious_file: str
-    inspector_link: str
-
-    @classmethod
-    def from_dict(cls, d: dict) -> Self:
-        return cls(
-            score=d["score"],
-            matches=d["matches"],
-            most_malicious_file=d["most_malicious_file"],
-            inspector_link=d["inspector_link"],
-        )
-
-
-@dataclass
-class PackageDistributionScanResults:
-    file_name: str
-    inspector_url: str
-    analysis: PackageAnalysisResults
-
-    @classmethod
-    def from_dict(cls, d: dict) -> Self:
-        return cls(
-            file_name=d["file_name"],
-            inspector_url=d["inspector_url"],
-            analysis=PackageAnalysisResults.from_dict(d["analysis"]),
-        )
+class ScanStatus(Enum):
+    QUEUED = "queued"
+    PENDING = "pending"
+    FINISHED = "finished"
+    FAILED = "failed"
 
 
 @dataclass
 class PackageScanResult:
-    """Package scan result from the API"""
-
-    name: str
+    status: ScanStatus
+    inspector_url: str
+    queued_at: datetime
+    pending_at: datetime | None
+    finished_at: datetime | None
+    reported_at: datetime | None
     version: str
-    pypi_link: str
-    distributions: list[PackageDistributionScanResults]
-    highest_score_distribution: HighestScoreDistribution
+    name: str
+    package_id: str
+    rules: list[str]
+    client_id: str | None
 
     @classmethod
-    def from_dict(cls, d: dict):
+    def from_dict(cls, data: dict):
         return cls(
-            name=d["name"],
-            version=d["version"],
-            pypi_link=d["pypi_link"],
-            distributions=[
-                PackageDistributionScanResults.from_dict(distribution) for distribution in d["distributions"]
-            ],
-            highest_score_distribution=HighestScoreDistribution.from_dict(data)
-            if (data := d["highest_score_distribution"])
-            else None,
+            status=ScanStatus(data["status"]),
+            inspector_url=data["inspector_url"],
+            queued_at=datetime.fromisoformat(data["queued_at"]),
+            pending_at=datetime.fromisoformat(p) if (p := data["pending_at"]) else None,
+            finished_at=datetime.fromisoformat(p) if (p := data["finished_at"]) else None,
+            reported_at=datetime.fromisoformat(p) if (p := data["reported_at"]) else None,
+            version=data["version"],
+            name=data["name"],
+            package_id=data["package_id"],
+            rules=[d["name"] for d in data["rules"]],
+            client_id=data["client_id"],
         )
 
 
-async def check_package(
-    package_name: str,
-    version: str | None = None,
-    *,
+async def lookup_package_info(
     http_session: ClientSession,
-    timeout: int = 25,
-) -> PackageScanResult | None:
-    data = dict(package_name=package_name, package_version=version)
-    async with http_session.post(
-        DragonflyConfig.dragonfly_api_url + "/check/",
-        json=data,
-        timeout=aiohttp.ClientTimeout(total=timeout),
-    ) as res:
-        json = await res.json()
+    *,
+    name: str | None = None,
+    version: str | None = None,
+    since: datetime | None = None,
+) -> list[PackageScanResult]:
+    params = {}
+    if name:
+        params["name"] = name
 
-        if res.status != 200:
-            raise DragonflyAPIException(
-                f"Error from upstream Dragonfly API while scanning package '{package_name}': {json}"
-            )
+    if version:
+        params["version"] = version
 
-        if json["highest_score_distribution"] is None:
-            return None
+    if since:
+        params["since"] = int(since.timestamp())
 
-        return PackageScanResult.from_dict(json)
+    async with http_session.get("/package", params=params) as res:
+        res.raise_for_status()
+        data = await res.json()
+        return [PackageScanResult.from_dict(d) for d in data]

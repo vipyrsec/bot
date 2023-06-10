@@ -47,14 +47,10 @@ class _DragonflyConfig(EnvConfig):
 
     alerts_channel_id = 1091743420487319563
     logs_channel_id = 1091743382130405396
-    dragonfly_alerts_role_id = 1091463980402356326
+    alerts_role_id = 1091463980402356326
     security_role_id = 1086881843636359188
-    dragonfly_api_url = "https://dragonfly.mantissecurity.org"
+    api_url = "https://dragonfly.vipyrsec.com"
     interval = 60
-    sender: str = "system@mantissecurity.org"
-    reply_to: str = "support@mantissecurity.org"
-    recipient = "security@pypi.org"
-    bcc: set[str] = set()
     threshold: int = 5
     timeout: int = 25
 

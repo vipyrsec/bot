@@ -8,8 +8,9 @@ import discord
 import dotenv
 from discord.ext import commands
 
-from bot import constants
 from bot.bot import Bot
+from bot.constants import Bot as BotSettings
+from bot.constants import DragonflyConfig
 from bot.utils.microsoft import build_ms_graph_client
 
 from .utils.templates import JINJA_TEMPLATES
@@ -33,8 +34,8 @@ async def main() -> None:
     """Run the bot."""
 
     bot = Bot(
-        guild_id=constants.Bot.guild_id,
-        http_session=aiohttp.ClientSession(),
+        guild_id=BotSettings.guild_id,
+        http_session=aiohttp.ClientSession(DragonflyConfig.api_url),
         graph_client=build_ms_graph_client(),
         allowed_roles=roles,
         command_prefix=get_prefix,
