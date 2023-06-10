@@ -88,7 +88,7 @@ class Dragonfly(commands.Cog):
             await ctx.send("Task is not running.")
 
     @discord.app_commands.checks.has_role(Roles.vipyr_security)
-    @discord.app_commands.command(name="scan", description="Scans a package")
+    @discord.app_commands.command(name="lookup", description="Scans a package")
     async def lookup(self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
         scan_results = await lookup_package_info(self.bot.http_session, name=name, version=version)
         if scan_results:
