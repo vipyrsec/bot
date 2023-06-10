@@ -5,7 +5,6 @@ from typing import Self
 
 from aiohttp import ClientSession
 
-from bot.constants import DragonflyConfig
 
 class ScanStatus(Enum):
     QUEUED   = "queued"
@@ -50,7 +49,6 @@ async def lookup_package_info(
     version: str | None = None,
     since: datetime | None = None,
 ) -> list[PackageScanResult]:
-    url = f"{DragonflyConfig.api_url}/package"
     params = {}
     if name:
         params["name"] = name
@@ -61,7 +59,7 @@ async def lookup_package_info(
     if since:
         params["since"] = int(since.timestamp())
 
-    async with http_session.get(url, params=params) as res:
+    async with http_session.get("/package", params=params) as res:
         res.raise_for_status()
         data = await res.json()
         return [PackageScanResult.from_dict(d) for d in data]

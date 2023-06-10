@@ -1,14 +1,16 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
 
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
 from logging import getLogger
 
 import discord
 from discord.ext import commands, tasks
-from bot.constants import Roles, DragonflyConfig
+
 from bot.bot import Bot
-from ._api import lookup_package_info, PackageScanResult
+from bot.constants import DragonflyConfig, Roles
+
+from ._api import PackageScanResult, lookup_package_info
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
