@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Self
 
 from aiohttp import ClientSession
 
@@ -28,7 +27,7 @@ class PackageScanResult:
     client_id: str | None
 
     @classmethod
-    def from_dict(cls, data: dict) -> Self:
+    def from_dict(cls, data: dict):
         return cls(
             status=ScanStatus(data["status"]),
             inspector_url=data["inspector_url"],
