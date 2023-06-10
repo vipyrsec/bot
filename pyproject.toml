@@ -6,7 +6,7 @@ dependencies = [
     "discord.py==2.2.3",
     "aiohttp==3.8.4",
     "sentry-sdk==1.25.1",
-    "rapidfuzz==3.0.0",
+    "rapidfuzz==3.1.1",
     "coloredlogs==15.0.1",
     "psycopg[binary]==3.1.9",
     "SQLAlchemy==2.0.13",
