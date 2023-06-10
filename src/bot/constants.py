@@ -51,10 +51,6 @@ class _DragonflyConfig(EnvConfig):
     security_role_id = 1086881843636359188
     api_url = "https://dragonfly.vipyrsec.com"
     interval = 60
-    sender: str = "system@vipyrsec.com"
-    reply_to: str = "support@vipyrsec.com"
-    recipient = "security@pypi.org"
-    bcc: set[str] = set()
     threshold: int = 5
     timeout: int = 25
 
