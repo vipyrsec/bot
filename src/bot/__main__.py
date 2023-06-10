@@ -9,7 +9,7 @@ import dotenv
 from discord.ext import commands
 
 from bot.bot import Bot
-from bot.constants import DragonflyConfig
+from bot.constants import DragonflyConfig, Bot as BotSettings
 from bot.utils.microsoft import build_ms_graph_client
 
 from .utils.templates import JINJA_TEMPLATES
@@ -33,7 +33,7 @@ async def main() -> None:
     """Run the bot."""
 
     bot = Bot(
-        guild_id=constants.Bot.guild_id,
+        guild_id=BotSettings.guild_id,
         http_session=aiohttp.ClientSession(DragonflyConfig.api_url),
         graph_client=build_ms_graph_client(),
         allowed_roles=roles,
