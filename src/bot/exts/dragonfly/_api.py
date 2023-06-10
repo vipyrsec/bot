@@ -50,7 +50,7 @@ async def lookup_package_info(
     version: str | None = None, 
     since: datetime | None = None,
 ) -> list[PackageScanResult]:
-    url = f"{DragonflyConfig.dragonfly_api_url}/package"
+    url = f"{DragonflyConfig.api_url}/package"
     params = {}
     if name:
         params["name"] = name
