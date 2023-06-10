@@ -15,6 +15,7 @@ from ._api import PackageScanResult, lookup_package_info
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
+
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
     """Build the embed that shows the results of a package scan"""
 
@@ -40,6 +41,7 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
 
     return embed
 
+
 async def run(
     bot: Bot,
     *,
@@ -49,10 +51,11 @@ async def run(
     since = datetime.utcnow() - timedelta(days=10)
     scan_results = await lookup_package_info(bot.http_session, since=since)
     embeds = list(map(_build_package_scan_result_embed, scan_results))
-    chunked = [embeds[i:i+10] for i in range(0, len(embeds), 10)]
+    chunked = [embeds[i : i + 10] for i in range(0, len(embeds), 10)]
 
     for chunk in chunked:
         await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embeds=chunk)
+
 
 class Dragonfly(commands.Cog):
     def __init__(self, bot: Bot) -> None:
@@ -98,6 +101,7 @@ class Dragonfly(commands.Cog):
             await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message("No entries were found with the specified filters.")
+
 
 async def setup(bot: Bot) -> None:
     await bot.add_cog(Dragonfly(bot))

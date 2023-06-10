@@ -7,10 +7,11 @@ from aiohttp import ClientSession
 
 
 class ScanStatus(Enum):
-    QUEUED   = "queued"
-    PENDING  = "pending"
+    QUEUED = "queued"
+    PENDING = "pending"
     FINISHED = "finished"
-    FAILED   = "failed"
+    FAILED = "failed"
+
 
 @dataclass
 class PackageScanResult:
@@ -41,6 +42,7 @@ class PackageScanResult:
             rules=[d["name"] for d in data["rules"]],
             client_id=data["client_id"],
         )
+
 
 async def lookup_package_info(
     http_session: ClientSession,
