@@ -11,6 +11,9 @@ from msgraph.core import GraphClient
 
 from bot import exts
 from bot.utils.extensions import walk_extensions
+from bot.exts import pypi
+
+from letsbuilda.pypi import PyPIServices
 
 log = logging.getLogger(__name__)
 
@@ -76,6 +79,8 @@ class Bot(commands.Bot):
 
         self.all_extensions: frozenset[str] | None = None
 
+        
+
     async def load_extensions(self, module: ModuleType) -> None:
         """
         Load all the extensions within the given module and save them to ``self.all_extensions``.
@@ -95,3 +100,6 @@ class Bot(commands.Bot):
 
         log.debug("load_extensions")
         await self.load_extensions(exts)
+        client = PyPIServices(self.http_session)
+        self.package_view = pypi.PackageViewer(packages=(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL)))
+        self.add_view(self.package_view)
