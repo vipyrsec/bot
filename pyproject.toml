@@ -9,7 +9,7 @@ dependencies = [
     "rapidfuzz==3.1.1",
     "coloredlogs==15.0.1",
     "psycopg[binary]==3.1.9",
-    "SQLAlchemy==2.0.15",
+    "SQLAlchemy==2.0.16",
     "pydantic==1.10.9",
     "msgraph-core==0.2.2",
     "azure-identity==1.13.0",
