@@ -6,7 +6,7 @@ from typing import Generator
 
 import discord
 from discord.ext import commands
-from letsbuilda.pypi import PackageMetadata, PyPIServices
+from letsbuilda.pypi import PackageMetadata
 
 from bot.constants import PyPiConfigs
 

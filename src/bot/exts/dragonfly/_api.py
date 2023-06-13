@@ -4,7 +4,6 @@ from enum import Enum
 
 from aiohttp import ClientSession
 
-from bot.constants import DragonflyConfig
 
 
 class ScanStatus(Enum):
