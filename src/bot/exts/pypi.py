@@ -100,22 +100,22 @@ class PackageViewer(discord.ui.View):
 
         await self.message.edit(view=self)
 
-    @discord.ui.button(label="First", custom_id='first', style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="First", custom_id="first", style=discord.ButtonStyle.blurple)
     async def first(self, interaction: discord.Interaction, _) -> None:
         self.paginator.first()
         await interaction.response.edit_message(embed=self.paginator.current)
 
-    @discord.ui.button(label="Previous", custom_id='previous', style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Previous", custom_id="previous", style=discord.ButtonStyle.blurple)
     async def prev(self, interaction: discord.Interaction, _) -> None:
         self.paginator.prev()
         await interaction.response.edit_message(embed=self.paginator.current)
 
-    @discord.ui.button(label="Next", custom_id='next', style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Next", custom_id="next", style=discord.ButtonStyle.blurple)
     async def next(self, interaction: discord.Interaction, _) -> None:
         self.paginator.next()
         await interaction.response.edit_message(embed=self.paginator.current)
 
-    @discord.ui.button(label="Last", custom_id='last', style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Last", custom_id="last", style=discord.ButtonStyle.blurple)
     async def last(self, interaction: discord.Interaction, _) -> None:
         self.paginator.last()
         await interaction.response.edit_message(embed=self.paginator.current)

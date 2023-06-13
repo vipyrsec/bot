@@ -7,13 +7,12 @@ import aiohttp
 import discord
 from discord.ext import commands
 from jinja2 import Template
+from letsbuilda.pypi import PyPIServices
 from msgraph.core import GraphClient
 
 from bot import exts
-from bot.utils.extensions import walk_extensions
 from bot.exts import pypi
-
-from letsbuilda.pypi import PyPIServices
+from bot.utils.extensions import walk_extensions
 
 log = logging.getLogger(__name__)
 
@@ -78,8 +77,6 @@ class Bot(commands.Bot):
         self.templates = templates
 
         self.all_extensions: frozenset[str] | None = None
-
-
 
     async def load_extensions(self, module: ModuleType) -> None:
         """
