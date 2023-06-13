@@ -8,7 +8,6 @@ import discord
 from discord.ext import commands
 from letsbuilda.pypi import PackageMetadata, PyPIServices
 
-# from bot.bot import Bot - Small price to pay for salvation, what the fuck?
 from bot.constants import PyPiConfigs
 
 
@@ -95,9 +94,6 @@ class PackageViewer(discord.ui.View):
 
         super().__init__(timeout=None)
 
-
-    #
-
     async def on_timeout(self) -> None:
         for child in self.children:
             child.disabled = True
@@ -133,8 +129,7 @@ class Pypi(commands.Cog):
 
     @commands.command()
     async def pypi(self, ctx: commands.Context) -> None:
-        
-        message = await ctx.send(embed=self.bot.package_view.paginator.current, view=self.bot.package_view)
+        await ctx.send(embed=self.bot.package_view.paginator.current, view=self.bot.package_view)
         
 
 async def setup(bot) -> None:
