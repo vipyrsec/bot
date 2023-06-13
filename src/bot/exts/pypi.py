@@ -130,7 +130,7 @@ class Pypi(commands.Cog):
     @commands.command()
     async def pypi(self, ctx: commands.Context) -> None:
         await ctx.send(embed=self.bot.package_view.paginator.current, view=self.bot.package_view)
-        
+
 
 async def setup(bot) -> None:
     """Setup the cog on the bot"""

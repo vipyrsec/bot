@@ -79,7 +79,7 @@ class Bot(commands.Bot):
 
         self.all_extensions: frozenset[str] | None = None
 
-        
+
 
     async def load_extensions(self, module: ModuleType) -> None:
         """
