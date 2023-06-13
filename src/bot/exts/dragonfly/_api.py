@@ -5,7 +5,6 @@ from enum import Enum
 from aiohttp import ClientSession
 
 
-
 class ScanStatus(Enum):
     QUEUED = "queued"
     PENDING = "pending"
