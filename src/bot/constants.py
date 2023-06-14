@@ -45,10 +45,10 @@ class _DragonflyAuthentication(EnvConfig):
 
     EnvConfig.Config.env_prefix = "auth0_"
 
-    client_id: str
-    client_secret: str
-    username: str
-    password: str
+    client_id: str = ""
+    client_secret: str = ""
+    username: str = ""
+    password: str = ""
 
     domain: str = "vipyrsec.us.auth0.com"
     audience: str = "https://dragonfly.vipyrsec.com"
