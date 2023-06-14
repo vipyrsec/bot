@@ -40,6 +40,23 @@ FILE_LOGS = Miscellaneous.file_logs
 DEBUG_MODE = Miscellaneous.debug
 
 
+class _DragonflyAuthentication(EnvConfig):
+    """Settings related to authenticating with Dragonfly API"""
+
+    EnvConfig.Config.env_prefix = "auth0_"
+
+    client_id: str
+    client_secret: str
+    username: str
+    password: str
+
+    domain: str = "vipyrsec.us.auth0.com"
+    audience: str = "https://dragonfly.vipyrsec.com"
+
+
+DragonflyAuthentication = _DragonflyAuthentication()
+
+
 class _DragonflyConfig(EnvConfig):
     """Dragonfly Cog Configuration"""
 
