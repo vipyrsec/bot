@@ -7,9 +7,11 @@ import aiohttp
 import discord
 from discord.ext import commands
 from jinja2 import Template
+from letsbuilda.pypi import PyPIServices
 from msgraph.core import GraphClient
 
 from bot import exts
+from bot.exts import pypi
 from bot.utils.extensions import walk_extensions
 
 log = logging.getLogger(__name__)
@@ -95,3 +97,6 @@ class Bot(commands.Bot):
 
         log.debug("load_extensions")
         await self.load_extensions(exts)
+        client = PyPIServices(self.http_session)
+        self.package_view = pypi.PackageViewer(packages=(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL)))
+        self.add_view(self.package_view)

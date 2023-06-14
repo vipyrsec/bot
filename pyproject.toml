@@ -23,6 +23,7 @@ documentation = "https://docs.letsbuilda.dev/alessia/"
 
 [project.optional-dependencies]
 dev = [
+    "pre-commit",
     "black",
     "isort",
     "ruff",

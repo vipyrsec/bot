@@ -6,9 +6,8 @@ from typing import Generator
 
 import discord
 from discord.ext import commands
-from letsbuilda.pypi import PackageMetadata, PyPIServices
+from letsbuilda.pypi import PackageMetadata
 
-from bot.bot import Bot
 from bot.constants import PyPiConfigs
 
 
@@ -89,20 +88,11 @@ class EmbedPaginator:
 class PackageViewer(discord.ui.View):
     """Package viewer"""
 
-    def __init__(self, *, packages: list[PackageMetadata], author: discord.User | discord.Member) -> None:
+    def __init__(self, *, packages: list[PackageMetadata]) -> None:
         self.paginator = EmbedPaginator(packages, per_page=3)
-        self.author = author
         self.message: discord.Message | None = None
 
-        super().__init__()
-
-    # pylint: disable-next=arguments-differ
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.author:
-            await interaction.response.send_message("This paginator is not for you!", ephemeral=True)
-            return False
-
-        return True
+        super().__init__(timeout=None)
 
     async def on_timeout(self) -> None:
         for child in self.children:
@@ -110,22 +100,22 @@ class PackageViewer(discord.ui.View):
 
         await self.message.edit(view=self)
 
-    @discord.ui.button(label="First", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="First", custom_id="first", style=discord.ButtonStyle.blurple)
     async def first(self, interaction: discord.Interaction, _) -> None:
         self.paginator.first()
         await interaction.response.edit_message(embed=self.paginator.current)
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Previous", custom_id="previous", style=discord.ButtonStyle.blurple)
     async def prev(self, interaction: discord.Interaction, _) -> None:
         self.paginator.prev()
         await interaction.response.edit_message(embed=self.paginator.current)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Next", custom_id="next", style=discord.ButtonStyle.blurple)
     async def next(self, interaction: discord.Interaction, _) -> None:
         self.paginator.next()
         await interaction.response.edit_message(embed=self.paginator.current)
 
-    @discord.ui.button(label="Last", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Last", custom_id="last", style=discord.ButtonStyle.blurple)
     async def last(self, interaction: discord.Interaction, _) -> None:
         self.paginator.last()
         await interaction.response.edit_message(embed=self.paginator.current)
@@ -134,18 +124,14 @@ class PackageViewer(discord.ui.View):
 class Pypi(commands.Cog):
     """Cog for interacting with PyPI"""
 
-    def __init__(self, bot: Bot):
+    def __init__(self, bot):
         self.bot = bot
 
     @commands.command()
     async def pypi(self, ctx: commands.Context) -> None:
-        client = PyPIServices(http_session=self.bot.http_session)
-        packages = await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL)
-        view = PackageViewer(packages=packages, author=ctx.author)
-        message = await ctx.send(embed=view.paginator.current, view=view)
-        view.message = message
+        await ctx.send(embed=self.bot.package_view.paginator.current, view=self.bot.package_view)
 
 
-async def setup(bot: Bot) -> None:
+async def setup(bot) -> None:
     """Setup the cog on the bot"""
     await bot.add_cog(Pypi(bot))
