@@ -1,7 +1,7 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from logging import getLogger
 
 import discord
@@ -48,13 +48,17 @@ async def run(
     log_channel: discord.abc.Messageable,
 ) -> None:
     """Script entrypoint"""
-    since = datetime.utcnow() - timedelta(days=10)
-    scan_results = await lookup_package_info(bot.http_session, since=since)
-    embeds = list(map(_build_package_scan_result_embed, scan_results))
-    chunked = [embeds[i : i + 10] for i in range(0, len(embeds), 10)]
+    since = datetime.now(tz=timezone.utc) - timedelta(seconds=DragonflyConfig.interval)
+    scan_results = await lookup_package_info(bot, since=since)
+    if scan_results:
+        embeds = list(map(_build_package_scan_result_embed, scan_results))
+        chunked = [embeds[i : i + 10] for i in range(0, len(embeds), 10)]
 
-    for chunk in chunked:
-        await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embeds=chunk)
+        for chunk in chunked:
+            await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embeds=chunk)
+    else:
+        embed = discord.Embed(description="No packages scanned", color=discord.Color.red())
+        await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed)
 
 
 class Dragonfly(commands.Cog):
@@ -95,7 +99,7 @@ class Dragonfly(commands.Cog):
     @discord.app_commands.checks.has_role(Roles.vipyr_security)
     @discord.app_commands.command(name="lookup", description="Scans a package")
     async def lookup(self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
-        scan_results = await lookup_package_info(self.bot.http_session, name=name, version=version)
+        scan_results = await lookup_package_info(self.bot, name=name, version=version)
         if scan_results:
             embed = _build_package_scan_result_embed(scan_results[0])
             await interaction.response.send_message(embed=embed)

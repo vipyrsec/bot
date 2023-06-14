@@ -10,7 +10,6 @@ from discord.ext import commands
 
 from bot.bot import Bot
 from bot.constants import Bot as BotSettings
-from bot.constants import DragonflyConfig
 from bot.utils.microsoft import build_ms_graph_client
 
 from .utils.templates import JINJA_TEMPLATES
@@ -35,7 +34,7 @@ async def main() -> None:
 
     bot = Bot(
         guild_id=BotSettings.guild_id,
-        http_session=aiohttp.ClientSession(DragonflyConfig.api_url),
+        http_session=aiohttp.ClientSession(),
         graph_client=build_ms_graph_client(),
         allowed_roles=roles,
         command_prefix=get_prefix,

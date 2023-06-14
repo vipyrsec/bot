@@ -11,6 +11,7 @@ from letsbuilda.pypi import PyPIServices
 from msgraph.core import GraphClient
 
 from bot import exts
+from bot.constants import DragonflyAuthentication
 from bot.exts import pypi
 from bot.utils.extensions import walk_extensions
 
@@ -90,10 +91,28 @@ class Bot(commands.Bot):
             log.debug(f"loading {extension=}")
             await self.load_extension(extension)
 
+    async def authorize(self) -> None:
+        log.info("Authenticating")
+        url = f"https://{DragonflyAuthentication.domain}/oauth/token"
+        json = dict(
+            client_id=DragonflyAuthentication.client_id,
+            client_secret=DragonflyAuthentication.client_secret,
+            username=DragonflyAuthentication.username,
+            password=DragonflyAuthentication.password,
+            grant_type="password",
+        )
+        async with self.http_session.post(url, json=json) as res:
+            res.raise_for_status()
+            json = await res.json()
+            self.access_token: str = json["access_token"]
+
     async def setup_hook(self) -> None:
         """Default async initialisation method for discord.py."""
         log.debug("setup_hook")
         await super().setup_hook()
+
+        log.info("Performing initial authentication")
+        await self.authorize()
 
         log.debug("load_extensions")
         await self.load_extensions(exts)

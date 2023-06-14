@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
-from aiohttp import ClientSession
+from bot.bot import Bot
+from bot.constants import DragonflyConfig
 
 
 class ScanStatus(Enum):
@@ -24,7 +25,6 @@ class PackageScanResult:
     name: str
     package_id: str
     rules: list[str]
-    client_id: str | None
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -39,12 +39,11 @@ class PackageScanResult:
             name=data["name"],
             package_id=data["package_id"],
             rules=[d["name"] for d in data["rules"]],
-            client_id=data["client_id"],
         )
 
 
 async def lookup_package_info(
-    http_session: ClientSession,
+    bot: Bot,
     *,
     name: str | None = None,
     version: str | None = None,
@@ -60,7 +59,14 @@ async def lookup_package_info(
     if since:
         params["since"] = int(since.timestamp())
 
-    async with http_session.get("/package", params=params) as res:
-        res.raise_for_status()
-        data = await res.json()
-        return [PackageScanResult.from_dict(d) for d in data]
+    headers = {"Authorization": f"Bearer {bot.access_token}"}
+
+    req = bot.http_session.get(f"{DragonflyConfig.api_url}/package", params=params, headers=headers)
+    res = await req
+    if res.status == 401:
+        await bot.authorize()
+        res = await req
+        res.raise_for_status()  # We should throw an error if something goes wrong the second time
+
+    data = await res.json()
+    return [PackageScanResult.from_dict(d) for d in data]
