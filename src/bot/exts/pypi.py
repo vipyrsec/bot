@@ -94,7 +94,6 @@ class PackageViewer(discord.ui.View):
 
         super().__init__(timeout=None)
 
-
     @discord.ui.button(label="First", custom_id="first", style=discord.ButtonStyle.blurple)
     async def first(self, interaction: discord.Interaction, _) -> None:
         self.paginator.first()
