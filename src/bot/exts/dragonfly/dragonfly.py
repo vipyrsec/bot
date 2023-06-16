@@ -8,7 +8,7 @@ import discord
 from discord.ext import commands, tasks
 
 from bot.bot import Bot
-from bot.constants import DragonflyConfig, Roles, DragonflyAuthentication
+from bot.constants import DragonflyConfig, Roles
 
 from ._api import PackageScanResult, lookup_package_info
 
@@ -32,8 +32,8 @@ class ReportView(discord.ui.View):
             if response.status == 200:
                 await interaction.response.send_message('Reported!', ephemeral=True)
             else:
-                await interaction.response.send_message('Something went wrong lmao', ephemeral=True)
-
+                await interaction.response.send_message(f'Something went wrong!{response.status}', ephemeral=True)
+                # Just for debugging
 
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
     """Build the embed that shows the results of a package scan"""
