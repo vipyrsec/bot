@@ -94,11 +94,6 @@ class PackageViewer(discord.ui.View):
 
         super().__init__(timeout=None)
 
-    async def on_timeout(self) -> None:
-        for child in self.children:
-            child.disabled = True
-
-        await self.message.edit(view=self)
 
     @discord.ui.button(label="First", custom_id="first", style=discord.ButtonStyle.blurple)
     async def first(self, interaction: discord.Interaction, _) -> None:
