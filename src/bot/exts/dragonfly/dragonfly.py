@@ -8,7 +8,7 @@ import discord
 from discord.ext import commands, tasks
 
 from bot.bot import Bot
-from bot.constants import DragonflyConfig, Roles, DragonflyAuthentication
+from bot.constants import DragonflyConfig, Roles
 
 from ._api import PackageScanResult, lookup_package_info
 
@@ -16,23 +16,72 @@ log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+class ConfirmReportModal(discord.ui.Modal):
+    title = "Confirm Report"
+
+    additional_information = discord.ui.TextInput(
+        label="Additional information",
+        placeholder="Additional information",
+        required=False,
+        style=discord.TextStyle.long,
+    )
+
+    inspector_url = discord.ui.TextInput(
+        label="Inspector URL",
+        placeholder="Inspector URL",
+        required=False,
+        style=discord.TextStyle.short,
+    )
+
+    def __init__(self, *, package: PackageScanResult, bot: Bot) -> None:
+        super().__init__()
+        self.package = package
+        self.bot = bot
+
+    async def on_submit(self, interaction: discord.Interaction):
+        log.info(
+            "User %s reported package %s@%s with additional_information '%s' and inspector_url '%s'",
+            interaction.user,
+            self.package.name,
+            self.package.version,
+            self.additional_information.value,
+            self.inspector_url.value,
+        )
+
+        log_channel = interaction.client.get_channel(DragonflyConfig.logs_channel_id)
+        if isinstance(log_channel, discord.abc.Messageable):
+            await log_channel.send(
+                f"User {interaction.user.mention} "
+                f"reported package `{self.package.name}` "
+                f"with additional_description `{self.additional_information.value}`"
+                f"with inspector_url `{self.inspector_url.value}`"
+            )
+
+        url = f"{DragonflyConfig.api_url}/report"
+        json = dict(
+            name=self.package.name,
+            version=self.package.version,
+            inspector_url=self.inspector_url.value,
+            additional_information=self.additional_information.value,
+        )
+        async with self.bot.http_session.post(url=url, json=json) as response:
+            if response.status == 200:
+                await interaction.response.send_message("Reported!", ephemeral=True)
+            else:
+                await interaction.response.send_message(f"Error from upstream: {response.status}", ephemeral=True)
+
+
 class ReportView(discord.ui.View):
     """Report view"""
-    def __init__(self,
-                bot: Bot,
-                payload: PackageScanResult
-                ) -> None:
+
+    def __init__(self, bot: Bot, payload: PackageScanResult) -> None:
         self.bot = bot
         self.payload = payload
         super().__init__(timeout=None)
-    
-    @discord.ui.button(label='Report', style=discord.ButtonStyle.red)
+
+    @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
     async def report(self, interaction: discord.Interaction, _) -> None:
-        async with self.bot.http_session.post(url=f'{DragonflyConfig.api_url}/report', json=self.payload) as response:
-            if response.status == 200:
-                await interaction.response.send_message('Reported!', ephemeral=True)
-            else:
-                await interaction.response.send_message('Something went wrong lmao', ephemeral=True)
+        await interaction.response.send_modal(ConfirmReportModal(package=self.payload, bot=self.bot))
 
 
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
@@ -72,10 +121,11 @@ async def run(
     if scan_results:
         for result in scan_results:
             embed = _build_package_scan_result_embed(result)
-            await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}"embed=embed, view=ReportView(bot, result))
+            await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}", embed=embed, view=ReportView(bot, result))
     else:
         embed = discord.Embed(description="No packages scanned", color=discord.Colour.red())
         await log_channel.send(embed=embed)
+
 
 class Dragonfly(commands.Cog):
     def __init__(self, bot: Bot) -> None:
