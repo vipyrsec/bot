@@ -16,6 +16,24 @@ log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+class ReportView(discord.ui.View):
+    """Report view"""
+
+    def __init__(self, bot: Bot, payload: PackageScanResult) -> None:
+        self.bot = bot
+        self.payload = payload
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
+    async def report(self, interaction: discord.Interaction, _) -> None:
+        async with self.bot.http_session.post(url=f"{DragonflyConfig.api_url}/report", json=self.payload) as response:
+            if response.status == 200:
+                await interaction.response.send_message("Reported!", ephemeral=True)
+            else:
+                await interaction.response.send_message(f"Something went wrong!{response.status}", ephemeral=True)
+                # Just for debugging
+
+
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
     """Build the embed that shows the results of a package scan"""
 
@@ -51,14 +69,12 @@ async def run(
     since = datetime.now(tz=timezone.utc) - timedelta(seconds=DragonflyConfig.interval)
     scan_results = await lookup_package_info(bot, since=since)
     if scan_results:
-        embeds = list(map(_build_package_scan_result_embed, scan_results))
-        chunked = [embeds[i : i + 10] for i in range(0, len(embeds), 10)]
-
-        for chunk in chunked:
-            await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embeds=chunk)
+        for result in scan_results:
+            embed = _build_package_scan_result_embed(result)
+            await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result))
     else:
-        embed = discord.Embed(description="No packages scanned", color=discord.Color.red())
-        await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed)
+        embed = discord.Embed(description="No packages scanned", color=discord.Colour.red())
+        await log_channel.send(embed=embed)
 
 
 class Dragonfly(commands.Cog):
