@@ -121,7 +121,7 @@ async def run(
     if scan_results:
         for result in scan_results:
             embed = _build_package_scan_result_embed(result)
-            await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}", embed=embed, view=ReportView(bot, result))
+            await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result))
     else:
         embed = discord.Embed(description="No packages scanned", color=discord.Colour.red())
         await log_channel.send(embed=embed)
