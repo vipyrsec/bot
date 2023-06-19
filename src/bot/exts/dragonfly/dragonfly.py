@@ -110,21 +110,39 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
     return embed
 
 
+def _build_all_packages_scanned_embed(scan_results: list[PackageScanResult]) -> discord.Embed:
+    """Build the embed that shows a list of all packages scanned"""
+
+    desc = "\n".join(map(str, scan_results))
+    embed = discord.Embed(title="Dragonfly Scan Logs", description=f"```{desc}```")
+
+    embed.set_footer(text="Dragonfly V3")
+
+    return embed
+
+
 async def run(
     bot: Bot,
     *,
-    log_channel: discord.abc.Messageable,
+    alerts_channel: discord.abc.Messageable,
+    logs_channel: discord.abc.Messageable,
 ) -> None:
     """Script entrypoint"""
     since = datetime.now(tz=timezone.utc) - timedelta(seconds=DragonflyConfig.interval)
     scan_results = await lookup_package_info(bot, since=since)
-    if scan_results:
-        for result in scan_results:
+    for result in scan_results:
+        if result.score > DragonflyConfig.threshold:
             embed = _build_package_scan_result_embed(result)
-            await log_channel.send(f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result))
+            await alerts_channel.send(
+                f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result)
+            )
+
+    if scan_results:
+        log_embed = _build_all_packages_scanned_embed(scan_results)
+        await logs_channel.send(embed=log_embed)
     else:
         embed = discord.Embed(description="No packages scanned", color=discord.Colour.red())
-        await log_channel.send(embed=embed)
+        await logs_channel.send(embed=embed)
 
 
 class Dragonfly(commands.Cog):
@@ -137,9 +155,13 @@ class Dragonfly(commands.Cog):
         logs_channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
         assert isinstance(logs_channel, discord.abc.Messageable)
 
+        alerts_channel = self.bot.get_channel(DragonflyConfig.alerts_channel_id)
+        assert isinstance(alerts_channel, discord.abc.Messageable)
+
         await run(
             self.bot,
-            log_channel=logs_channel,
+            logs_channel=logs_channel,
+            alerts_channel=alerts_channel,
         )
 
     @commands.command()
