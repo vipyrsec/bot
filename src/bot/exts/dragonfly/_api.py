@@ -40,7 +40,11 @@ class PackageScanResult:
             name=data["name"],
             package_id=data["package_id"],
             rules=[d["name"] for d in data["rules"]],
+            score=int(data["score"]),
         )
+
+    def __str__(self) -> str:
+        return f"{self.name} {self.version}"
 
 
 async def lookup_package_info(
