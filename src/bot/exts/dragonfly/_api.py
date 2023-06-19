@@ -25,6 +25,7 @@ class PackageScanResult:
     name: str
     package_id: str
     rules: list[str]
+    score: int
 
     @classmethod
     def from_dict(cls, data: dict):
