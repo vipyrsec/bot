@@ -1,7 +1,7 @@
-alessia
-=======
+Dragonfly bot
+=============
 
-A Discord bot
+A Discord bot for interacting with the Dragonfly ecosystem.
 
 Module Index
 ------------

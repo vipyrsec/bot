@@ -1,4 +1,4 @@
-"""Alessia, a bot for the SOC"""
+"""Dragonfly bot"""
 
 try:
     from dotenv import load_dotenv
@@ -23,7 +23,7 @@ sentry_sdk.init(
     integrations=[
         sentry_logging,
     ],
-    release=f"alessia@{getenv('GIT_SHA', 'development')}",
+    release=f"dragonfly@{getenv('GIT_SHA', 'development')}",
     traces_sample_rate=0.5,
     profiles_sample_rate=0.5,
 )

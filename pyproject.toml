@@ -1,5 +1,5 @@
 [project]
-name = "alessia"
+name = "dragonfly-bot"
 version = "2.3.2"
 dependencies = [
     "python-dotenv==1.0.0",
@@ -18,8 +18,8 @@ dependencies = [
 ]
 
 [project.urls]
-repository = "https://github.com/letsbuilda/alessia"
-documentation = "https://docs.letsbuilda.dev/alessia/"
+repository = "https://github.com/letsbuilda/dragonfly-bot"
+documentation = "https://docs.letsbuilda.dev/dragonfly-bot/"
 
 [project.optional-dependencies]
 dev = [

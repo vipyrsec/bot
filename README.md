@@ -1,3 +1,3 @@
-# alessia
+# Dragonfly Bot
 
-Anti-malware toolkit in a Discord bot
+A Discord bot for interacting with the Dragonfly ecosystem.
