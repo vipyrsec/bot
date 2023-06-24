@@ -1,0 +1,11 @@
+discord.py
+aiohttp
+sentry-sdk
+rapidfuzz
+coloredlogs
+SQLAlchemy
+pydantic
+msgraph-core
+azure-identity
+Jinja2
+letsbuilda-pypi
