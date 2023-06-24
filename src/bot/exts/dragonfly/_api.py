@@ -38,7 +38,7 @@ class PackageScanResult:
             reported_at=datetime.fromisoformat(p) if (p := data["reported_at"]) else None,
             version=data["version"],
             name=data["name"],
-            package_id=data["package_id"],
+            package_id=data["scan_id"],
             rules=[d["name"] for d in data["rules"]],
             score=int(data["score"]),
         )
