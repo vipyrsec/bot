@@ -6,8 +6,9 @@ By default, the values defined in the classes are used, these can be overridden 
 `.env` and `.env.server` files are used to populate env vars, if present.
 """
 
-from pydantic import BaseSettings, root_validator
 from os import getenv
+
+from pydantic import BaseSettings, root_validator
 
 # Git SHA for Sentry
 GIT_SHA = getenv("GIT_SHA", "development")
@@ -91,7 +92,6 @@ class _Bot(EnvConfig):
     EnvConfig.Config.env_prefix = "bot_"
 
     guild_id = 1033456860864466995
-    prefix = "!"
     sentry_dsn = ""
     token = ""
     trace_loggers = "*"
