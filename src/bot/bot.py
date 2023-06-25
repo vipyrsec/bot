@@ -2,12 +2,9 @@
 
 import logging
 
-import aiohttp
 import discord
 from discord.ext import commands
-from jinja2 import Template
 from letsbuilda.pypi import PyPIServices
-from msgraph.core import GraphClient
 from pydis_core import BotBase
 from pydis_core.utils import scheduling
 from sentry_sdk import push_scope
@@ -53,7 +50,6 @@ class Bot(BotBase):
     def __init__(
         self,
         *args,
-        http_session: aiohttp.ClientSession,
         **kwargs,
     ):
         """
@@ -67,8 +63,6 @@ class Bot(BotBase):
             tree_cls=CommandTree,
             **kwargs,
         )
-
-        self.http_session = http_session
 
         self.all_extensions: frozenset[str] | None = None
 

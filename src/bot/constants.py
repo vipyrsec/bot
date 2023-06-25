@@ -141,6 +141,17 @@ class _Roles(EnvConfig):
 Roles = _Roles()
 
 
+class _Guild(EnvConfig):
+    EnvConfig.Config.env_prefix = "guild_"
+
+    id = 1033456860864466995
+
+    moderation_roles = [Roles.moderators]
+
+
+Guild = _Guild()
+
+
 class _Tokens(EnvConfig):
     """Authentication tokens for external services"""
 
@@ -375,3 +386,6 @@ ERROR_REPLIES = [
     "Noooooo!!",
     "I can't believe you've done this",
 ]
+
+# Default role combinations
+MODERATION_ROLES = Guild.moderation_roles

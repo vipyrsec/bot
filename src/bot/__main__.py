@@ -22,6 +22,7 @@ async def main() -> None:
     bot = Bot(
         guild_id=constants.Bot.guild_id,
         http_session=aiohttp.ClientSession(),
+        allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),
         command_prefix=commands.when_mentioned,
         intents=intents,
     )
