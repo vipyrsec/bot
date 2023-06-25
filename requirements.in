@@ -5,7 +5,9 @@ sentry-sdk
 rapidfuzz
 coloredlogs
 pydantic
+aiohttp
+arrow
 
 # Dragonfly
 letsbuilda-pypi
-aiohttp
+
