@@ -13,6 +13,7 @@ from pydantic import BaseSettings, root_validator
 # Git SHA for Sentry
 GIT_SHA = getenv("GIT_SHA", "development")
 
+
 class EnvConfig(BaseSettings):
     """EnvConfig"""
 
