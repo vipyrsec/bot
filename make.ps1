@@ -52,6 +52,7 @@ function Invoke-Upgrade-Deps
 
 function Invoke-Lint
 {
+    pre-commit run --all-files
     python -m isort src/
     python -m black src/
 }

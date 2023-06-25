@@ -1,7 +1,6 @@
 """Main runner"""
 
 import asyncio
-from os import getenv
 
 import aiohttp
 import discord

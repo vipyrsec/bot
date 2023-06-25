@@ -37,7 +37,6 @@ file = ["requirements.txt"]
 profile = "black"
 
 [tool.black]
-target-version = ["py310"]
 line-length = 120
 
 [tool.ruff]
