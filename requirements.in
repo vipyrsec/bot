@@ -7,6 +7,9 @@ coloredlogs
 pydantic
 aiohttp
 arrow
+tldextract
+regex
+wonderwords
 
 # Dragonfly
 letsbuilda-pypi
