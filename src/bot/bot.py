@@ -1,19 +1,17 @@
 """Bot subclass"""
 
 import logging
-from types import ModuleType
 
-import aiohttp
 import discord
 from discord.ext import commands
-from jinja2 import Template
 from letsbuilda.pypi import PyPIServices
-from msgraph.core import GraphClient
+from pydis_core import BotBase
+from pydis_core.utils import scheduling
+from sentry_sdk import push_scope
 
 from bot import exts
 from bot.constants import DragonflyAuthentication
 from bot.exts import pypi
-from bot.utils.extensions import walk_extensions
 
 log = logging.getLogger(__name__)
 
@@ -46,16 +44,12 @@ class CommandTree(discord.app_commands.CommandTree):
             raise error
 
 
-class Bot(commands.Bot):
+class Bot(BotBase):
     """Bot implementation."""
 
     def __init__(
         self,
         *args,
-        allowed_roles: list,
-        http_session: aiohttp.ClientSession,
-        graph_client: GraphClient,
-        templates: dict[str, Template],
         **kwargs,
     ):
         """
@@ -66,30 +60,11 @@ class Bot(commands.Bot):
         """
         super().__init__(
             *args,
-            allowed_roles=allowed_roles,
             tree_cls=CommandTree,
             **kwargs,
         )
 
-        self.http_session = http_session
-
-        self.graph_client = graph_client
-
-        self.templates = templates
-
         self.all_extensions: frozenset[str] | None = None
-
-    async def load_extensions(self, module: ModuleType) -> None:
-        """
-        Load all the extensions within the given module and save them to ``self.all_extensions``.
-        This should be ran in a task on the event loop to avoid deadlocks caused by ``wait_for`` calls.
-        """
-        self.all_extensions = walk_extensions(module)
-        log.debug(f"{self.all_extensions=}")
-
-        for extension in self.all_extensions:
-            log.debug(f"loading {extension=}")
-            await self.load_extension(extension)
 
     async def authorize(self) -> None:
         log.info("Authenticating")
@@ -114,8 +89,20 @@ class Bot(commands.Bot):
         log.info("Performing initial authentication")
         await self.authorize()
 
+        # This is not awaited to avoid a deadlock with any cogs that have
+        # wait_until_guild_available in their cog_load method.
         log.debug("load_extensions")
-        await self.load_extensions(exts)
+        scheduling.create_task(self.load_extensions(exts))
+
         client = PyPIServices(self.http_session)
         self.package_view = pypi.PackageViewer(packages=(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL)))
         self.add_view(self.package_view)
+
+    async def on_error(self, event: str, *args, **kwargs) -> None:
+        """Log errors raised in event listeners rather than printing them to stderr."""
+        with push_scope() as scope:
+            scope.set_tag("event", event)
+            scope.set_extra("args", args)
+            scope.set_extra("kwargs", kwargs)
+
+            log.exception(f"Unhandled exception in {event}.")

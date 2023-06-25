@@ -1,3 +1,3 @@
-# alessia
+# Vipyr Bot
 
-Anti-malware toolkit in a Discord bot
+A Discord bot for Vipyr

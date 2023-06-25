@@ -1,7 +1,7 @@
-alessia
-=======
+Vipyr bot
+=========
 
-A Discord bot
+A Discord bot for Vipyr
 
 Module Index
 ------------

@@ -1,49 +1,34 @@
 """Main runner"""
 
 import asyncio
-from os import getenv
 
 import aiohttp
 import discord
-import dotenv
 from discord.ext import commands
 
+from bot import constants
 from bot.bot import Bot
-from bot.constants import Bot as BotSettings
-from bot.utils.microsoft import build_ms_graph_client
+from bot.log import setup_sentry
 
-from .utils.templates import JINJA_TEMPLATES
-
-dotenv.load_dotenv()
-
-roles = getenv("ALLOWED_ROLES")
-roles = [int(role) for role in roles.split(",")] if roles else []
+setup_sentry()
 
 intents = discord.Intents.default()
 intents.message_content = True
-
-
-def get_prefix(bot_, message_):
-    """Get bot command prefixes"""
-    extras = getenv("PREFIXES", ".").split(",")
-    return commands.when_mentioned_or(*extras)(bot_, message_)
 
 
 async def main() -> None:
     """Run the bot."""
 
     bot = Bot(
-        guild_id=BotSettings.guild_id,
+        guild_id=constants.Guild.id,
         http_session=aiohttp.ClientSession(),
-        graph_client=build_ms_graph_client(),
-        allowed_roles=roles,
-        command_prefix=get_prefix,
+        allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),
+        command_prefix=commands.when_mentioned,
         intents=intents,
-        templates=JINJA_TEMPLATES,
     )
 
     async with bot:
-        await bot.start(getenv("BOT_TOKEN"))
+        await bot.start(constants.Bot.token)
 
 
 if __name__ == "__main__":
