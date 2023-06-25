@@ -5,16 +5,18 @@ from os import getenv
 
 import aiohttp
 import discord
-import dotenv
 from discord.ext import commands
+from bot import constants
 
 from bot.bot import Bot
-from bot.constants import Bot as BotSettings
+
 from bot.utils.microsoft import build_ms_graph_client
 
 from .utils.templates import JINJA_TEMPLATES
 
-dotenv.load_dotenv()
+from bot.log import setup_sentry
+
+setup_sentry()
 
 roles = getenv("ALLOWED_ROLES")
 roles = [int(role) for role in roles.split(",")] if roles else []
@@ -33,7 +35,7 @@ async def main() -> None:
     """Run the bot."""
 
     bot = Bot(
-        guild_id=BotSettings.guild_id,
+        guild_id=constants.Bot.guild_id,
         http_session=aiohttp.ClientSession(),
         graph_client=build_ms_graph_client(),
         allowed_roles=roles,
@@ -43,7 +45,7 @@ async def main() -> None:
     )
 
     async with bot:
-        await bot.start(getenv("BOT_TOKEN"))
+        await bot.start(constants.Bot.token)
 
 
 if __name__ == "__main__":

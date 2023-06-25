@@ -1,17 +1,16 @@
 """
-Loads bot configuration from environment variables
-and `.env` files. By default, this simply loads the
-default configuration defined thanks to the `default`
-keyword argument in each instance of the `Field` class
-If two files called `.env` and `.env.server` are found
-in the project directory, the values will be loaded
-from both of them, thus overlooking the predefined defaults.
-Any settings left out in the custom user configuration
-will default to the values passed to the `default` kwarg.
+Loads bot configuration from environment variables and `.env` files.
+
+By default, the values defined in the classes are used, these can be overridden by an env var with the same name.
+
+`.env` and `.env.server` files are used to populate env vars, if present.
 """
 
 from pydantic import BaseSettings, root_validator
+from os import getenv
 
+# Git SHA for Sentry
+GIT_SHA = getenv("GIT_SHA", "development")
 
 class EnvConfig(BaseSettings):
     """EnvConfig"""
@@ -99,6 +98,19 @@ class _Bot(EnvConfig):
 
 
 Bot = _Bot()
+
+
+class _Sentry(BaseSettings):
+    class Config(BaseSettings.Config):
+        env_prefix = "sentry_"
+        env_file = ".env"
+
+    dsn: str = ""
+    environment: str = ""
+    release_prefix: str = ""
+
+
+Sentry = _Sentry()  # pyright: ignore
 
 
 class _Channels(EnvConfig):
@@ -310,7 +322,7 @@ class _Colours(EnvConfig):
 Colours = _Colours()
 
 # Bot replies
-NEGATIVE_REPLIES = {
+NEGATIVE_REPLIES = [
     "Noooooo!!",
     "Nope.",
     "I'm sorry Dave, I'm afraid I can't do that.",
@@ -328,9 +340,9 @@ NEGATIVE_REPLIES = {
     "NEGATORY.",
     "Nuh-uh.",
     "Not in my house!",
-}
+]
 
-POSITIVE_REPLIES = {
+POSITIVE_REPLIES = [
     "Yep.",
     "Absolutely!",
     "Can do!",
@@ -348,9 +360,9 @@ POSITIVE_REPLIES = {
     "Of course!",
     "Aye aye, cap'n!",
     "I'll allow it.",
-}
+]
 
-ERROR_REPLIES = {
+ERROR_REPLIES = [
     "Please don't do that.",
     "You have to stop.",
     "Do you mind?",
@@ -361,4 +373,4 @@ ERROR_REPLIES = {
     "Are you trying to kill me?",
     "Noooooo!!",
     "I can't believe you've done this",
-}
+]
