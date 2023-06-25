@@ -20,7 +20,7 @@ async def main() -> None:
     """Run the bot."""
 
     bot = Bot(
-        guild_id=constants.Bot.guild_id,
+        guild_id=constants.Guild.id,
         http_session=aiohttp.ClientSession(),
         allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),
         command_prefix=commands.when_mentioned,

@@ -50,7 +50,6 @@ class _DragonflyAuthentication(EnvConfig):
     client_secret: str = ""
     username: str = ""
     password: str = ""
-
     domain: str = "vipyrsec.us.auth0.com"
     audience: str = "https://dragonfly.vipyrsec.com"
 
@@ -63,10 +62,9 @@ class _DragonflyConfig(EnvConfig):
 
     EnvConfig.Config.env_prefix = "dragonfly_"
 
-    alerts_channel_id = 1091743420487319563
-    logs_channel_id = 1091743382130405396
-    alerts_role_id = 1091463980402356326
-    security_role_id = 1086881843636359188
+    alerts_channel_id = 1121462652342910986
+    logs_channel_id = 1121462677131251752
+    alerts_role_id = 1122647527485878392
     api_url = "https://dragonfly.vipyrsec.com"
     interval = 60
     threshold: int = 5
@@ -92,7 +90,6 @@ class _Bot(EnvConfig):
 
     EnvConfig.Config.env_prefix = "bot_"
 
-    guild_id = 1033456860864466995
     sentry_dsn = ""
     token = ""
     trace_loggers = "*"
@@ -118,13 +115,8 @@ class _Channels(EnvConfig):
     EnvConfig.Config.env_prefix = "channels_"
     """Channel constants"""
 
-    dev_alerts = 1087922776024830075
-    mod_alerts = 1087908228978966669
-    soc_alerts = 1087922465021370388
-
-    dev_log = 1012202489342345246
-    mod_log = 1087901347040465006
-    soc_log = 1087901419132170260
+    mod_alerts = 1121492582686539788
+    mod_log = 1121492613070082118
 
 
 Channels = _Channels()
@@ -134,8 +126,13 @@ class _Roles(EnvConfig):
     EnvConfig.Config.env_prefix = "roles_"
     """Channel constants"""
 
-    moderators = 1087224451571142716
-    vipyr_security = 1086881843636359188
+    administrators = 1121450967360098486
+
+    moderators = 1121472560140390440
+
+    vipyr_security = 1121472420755275776
+
+    core_developers = 1121472691740880998
 
 
 Roles = _Roles()
@@ -144,12 +141,47 @@ Roles = _Roles()
 class _Guild(EnvConfig):
     EnvConfig.Config.env_prefix = "guild_"
 
-    id = 1033456860864466995
+    id = 1121450543462760448
 
     moderation_roles = [Roles.moderators]
 
 
 Guild = _Guild()
+
+
+class _BaseURLs(EnvConfig):
+    EnvConfig.Config.env_prefix = "urls_"
+
+    # Snekbox endpoints
+    snekbox_eval_api = "http://localhost:8060/eval"
+
+    # Discord API
+    discord_api = "https://discordapp.com/api/v7/"
+
+    # Misc endpoints
+    bot_avatar = "https://raw.githubusercontent.com/python-discord/branding/main/logos/logo_circle/logo_circle.png"
+
+    github_bot_repo = "https://github.com/vipyrsec/bot"
+
+    paste = "https://paste.pythondiscord.com"
+
+
+BaseURLs = _BaseURLs()
+
+
+class _URLs(_BaseURLs):
+    # Discord API endpoints
+    discord_invite_api: str = "".join([BaseURLs.discord_api, "invites"])
+
+    # Base site vars
+    connect_max_retries = 3
+    connect_cooldown = 5
+
+    paste_service: str = "".join([BaseURLs.paste, "/{key}"])
+    site_logs_view: str = "https://pythondiscord.com/staff/bot/logs"
+
+
+URLs = _URLs()
 
 
 class _Tokens(EnvConfig):
