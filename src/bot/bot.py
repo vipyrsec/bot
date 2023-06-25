@@ -53,10 +53,7 @@ class Bot(BotBase):
     def __init__(
         self,
         *args,
-        allowed_roles: list,
         http_session: aiohttp.ClientSession,
-        graph_client: GraphClient,
-        templates: dict[str, Template],
         **kwargs,
     ):
         """
@@ -67,16 +64,11 @@ class Bot(BotBase):
         """
         super().__init__(
             *args,
-            allowed_roles=allowed_roles,
             tree_cls=CommandTree,
             **kwargs,
         )
 
         self.http_session = http_session
-
-        self.graph_client = graph_client
-
-        self.templates = templates
 
         self.all_extensions: frozenset[str] | None = None
 
