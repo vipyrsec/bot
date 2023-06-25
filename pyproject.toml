@@ -1,11 +1,11 @@
 [project]
-name = "dragonfly-bot"
+name = "bot"
 version = "3.0.0"
 dynamic = ["dependencies"]
 
 [project.urls]
-repository = "https://github.com/letsbuilda/dragonfly-bot"
-documentation = "https://docs.letsbuilda.dev/dragonfly-bot/"
+repository = "https://github.com/vipyrsec/bot/"
+documentation = "https://docs.vipyrsec.com/bot/"
 
 [project.optional-dependencies]
 dev = [

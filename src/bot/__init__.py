@@ -1,4 +1,4 @@
-"""Dragonfly bot"""
+"""Bot"""
 
 from bot import log
 

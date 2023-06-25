@@ -1,3 +1,3 @@
-# Dragonfly Bot
+# Vipyr Bot
 
-A Discord bot for interacting with the Dragonfly ecosystem.
+A Discord bot for Vipyr
