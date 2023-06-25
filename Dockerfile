@@ -1,18 +1,18 @@
-FROM python:3.11-slim@sha256:53a67c012da3b807905559fa59fac48a3a68600d73c5da10c2f0d8adc96dbd01
+FROM python:3.11-slim@sha256:eaee5f73efa9ae962d2077756292bc4878c04fcbc13dc168bb00cc365f35647e
 
 RUN adduser --disabled-password bot
 USER bot
 
-ENV PATH="${PATH}:/home/bot/.local/bin"
-
-# Set Git SHA environment variable
+# Define Git SHA build argument for sentry
 ARG git_sha="development"
 ENV GIT_SHA=$git_sha
 
-WORKDIR /app
-COPY pyproject.toml src ./
-RUN python -m pip install .
+WORKDIR /home/bot
 
-EXPOSE 8080
+COPY requirements.txt .
+RUN python -m pip install --requirement requirements.txt
+
+COPY --chown=bot:bot . .
+RUN python -m pip install .
 
 CMD ["python", "-m", "bot"]
