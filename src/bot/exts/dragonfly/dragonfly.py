@@ -164,6 +164,7 @@ class Dragonfly(commands.Cog):
             alerts_channel=alerts_channel,
         )
 
+    @commands.has_role(Roles.vipyr_security)
     @commands.command()
     async def start(self, ctx: commands.Context) -> None:
         if self.scan_loop.is_running():
@@ -172,6 +173,7 @@ class Dragonfly(commands.Cog):
             self.scan_loop.start()
             await ctx.send("Started task 2...")
 
+    @commands.has_role(Roles.vipyr_security)
     @commands.command()
     async def stop(self, ctx: commands.Context, force: bool = False) -> None:
         if self.scan_loop.is_running():
