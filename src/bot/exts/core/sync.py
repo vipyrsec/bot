@@ -23,7 +23,7 @@ class Sync(commands.Cog):
     async def _sync_commands(self) -> list[AppCommand]:
         """App command syncing logic. Returns a list of app commands that were synced."""
         tree = self.bot.tree
-        guild = discord.Object(id=constants.Bot.guild_id)
+        guild = discord.Object(id=constants.Guild.id)
 
         log.debug("Syncing tree...")
         tree.copy_global_to(guild=guild)
