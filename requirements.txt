@@ -62,7 +62,7 @@ pycparser==2.21
     # via cffi
 pydantic==1.10.9
     # via -r requirements.in
-pydis-core==9.9.1
+pydis-core==9.9.2
     # via -r requirements.in
 python-dateutil==2.8.2
     # via
