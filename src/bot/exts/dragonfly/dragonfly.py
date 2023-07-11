@@ -126,12 +126,13 @@ async def run(
     *,
     alerts_channel: discord.abc.Messageable,
     logs_channel: discord.abc.Messageable,
+    score: int,
 ) -> None:
     """Script entrypoint"""
     since = datetime.now(tz=timezone.utc) - timedelta(seconds=DragonflyConfig.interval)
     scan_results = await lookup_package_info(bot, since=since)
     for result in scan_results:
-        if result.score > DragonflyConfig.threshold:
+        if result.score >= score:
             embed = _build_package_scan_result_embed(result)
             await alerts_channel.send(
                 f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result)
@@ -148,6 +149,7 @@ async def run(
 class Dragonfly(commands.Cog):
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
+        self.score_threshold = DragonflyConfig.threshold
         super().__init__()
 
     @tasks.loop(seconds=DragonflyConfig.interval)
@@ -195,6 +197,20 @@ class Dragonfly(commands.Cog):
             await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message("No entries were found with the specified filters.")
+
+    @commands.group()
+    async def threshold(self, ctx: commands.Context) -> None:
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(self.threshold)
+
+    @threshold.command()
+    async def get(self, ctx: commands.Context) -> None:
+        await ctx.send(f"The current threshold is set to `{self.score_threshold}`")
+
+    @threshold.command()
+    async def set(self, ctx: commands.Context, value: int) -> None:
+        self.score_threshold = value
+        await ctx.send(f"The current threshold has been set to {value}")
 
 
 async def setup(bot: Bot) -> None:
