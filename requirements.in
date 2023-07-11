@@ -1,15 +1,31 @@
+# Requirements
+# --index-url=http://pypi.example.com/simple
+# --no-cache-dir
+
 # Core
 discord.py
 pydis-core
+aiohttp
+pydantic[dotenv]==1.10.10
+
+# Logging
 sentry-sdk
 rapidfuzz
 coloredlogs
-pydantic
-aiohttp
-arrow
-tldextract
-regex
-wonderwords
 
-# Dragonfly
+# Database
+psycopg[binary]
+SQLAlchemy
+
+# Utilities
+# utils/helpers
+tldextract
+
+# Extensions
+# exts/utilities/internal
+arrow
+# exts/utilities/snekbox
+regex
+# exts/dragonfly
+# exts/pypi
 letsbuilda-pypi
