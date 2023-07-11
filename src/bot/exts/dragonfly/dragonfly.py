@@ -211,7 +211,7 @@ class Dragonfly(commands.Cog):
     @threshold.command()
     async def set(self, ctx: commands.Context, value: int) -> None:
         self.score_threshold = value
-        await ctx.send(f"The current threshold has been set to {value}")
+        await ctx.send(f"The current threshold has been set to `{value}`")
 
 
 async def setup(bot: Bot) -> None:
