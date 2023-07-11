@@ -12,7 +12,6 @@ dev = [
     "pip-tools",
     "pre-commit",
     "black",
-    "isort",
     "ruff",
 ]
 tests = [
@@ -32,9 +31,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic.dependencies]
 file = ["requirements.txt"]
-
-[tool.isort]
-profile = "black"
 
 [tool.black]
 line-length = 120
