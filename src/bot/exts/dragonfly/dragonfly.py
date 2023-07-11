@@ -164,6 +164,7 @@ class Dragonfly(commands.Cog):
             self.bot,
             logs_channel=logs_channel,
             alerts_channel=alerts_channel,
+            score=self.score_threshold,
         )
 
     @commands.has_role(Roles.vipyr_security)
