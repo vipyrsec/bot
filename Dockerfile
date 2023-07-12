@@ -1,4 +1,4 @@
-FROM python:3.11-slim@sha256:54065a36b5dfada92010a856935de942425f8f3088a983d150f44db637f92bf8
+FROM python:3.11-slim@sha256:364ee1a9e029fb7b60102ae56ff52153ccc929ceab9aa387402fe738432d24cc
 
 RUN adduser --disabled-password bot
 USER bot
