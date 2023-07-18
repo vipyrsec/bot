@@ -39,13 +39,17 @@ class ConfirmReportModal(discord.ui.Modal):
         self.bot = bot
 
     async def on_submit(self, interaction: discord.Interaction):
+        # discord.py returns empty string "" if not filled out, we want it to be `None`
+        additional_information_override = self.additional_information or None
+        inspector_url_override = self.inspector_url or None
+
         log.info(
             "User %s reported package %s@%s with additional_information '%s' and inspector_url '%s'",
             interaction.user,
             self.package.name,
             self.package.version,
-            self.additional_information.value,
-            self.inspector_url.value,
+            additional_information_override,
+            inspector_url_override,
         )
 
         log_channel = interaction.client.get_channel(DragonflyConfig.logs_channel_id)
@@ -53,8 +57,8 @@ class ConfirmReportModal(discord.ui.Modal):
             await log_channel.send(
                 f"User {interaction.user.mention} "
                 f"reported package `{self.package.name}` "
-                f"with additional_description `{self.additional_information.value}`"
-                f"with inspector_url `{self.inspector_url.value}`"
+                f"with additional_description `{additional_information_override}`"
+                f"with inspector_url `{inspector_url_override}`"
             )
 
         url = f"{DragonflyConfig.api_url}/report"
@@ -62,8 +66,8 @@ class ConfirmReportModal(discord.ui.Modal):
         json = dict(
             name=self.package.name,
             version=self.package.version,
-            inspector_url=self.inspector_url.value,
-            additional_information=self.additional_information.value,
+            inspector_url=inspector_url_override,
+            additional_information=additional_information_override,
         )
         async with self.bot.http_session.post(url=url, json=json, headers=headers) as response:
             if response.status == 200:
