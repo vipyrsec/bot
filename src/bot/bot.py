@@ -75,6 +75,7 @@ class Bot(BotBase):
             username=DragonflyAuthentication.username,
             password=DragonflyAuthentication.password,
             grant_type="password",
+            audience=DragonflyAuthentication.audience,
         )
         async with self.http_session.post(url, json=json) as res:
             res.raise_for_status()
