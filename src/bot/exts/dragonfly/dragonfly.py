@@ -40,8 +40,8 @@ class ConfirmReportModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         # discord.py returns empty string "" if not filled out, we want it to be `None`
-        additional_information_override = self.additional_information or None
-        inspector_url_override = self.inspector_url or None
+        additional_information_override = self.additional_information.value or None
+        inspector_url_override = self.inspector_url.value or None
 
         log.info(
             "User %s reported package %s@%s with additional_information '%s' and inspector_url '%s'",
