@@ -58,13 +58,14 @@ class ConfirmReportModal(discord.ui.Modal):
             )
 
         url = f"{DragonflyConfig.api_url}/report"
+        headers = {"Authorization": f"Bearer {self.bot.access_token}"}
         json = dict(
             name=self.package.name,
             version=self.package.version,
             inspector_url=self.inspector_url.value,
             additional_information=self.additional_information.value,
         )
-        async with self.bot.http_session.post(url=url, json=json) as response:
+        async with self.bot.http_session.post(url=url, json=json, headers=headers) as response:
             if response.status == 200:
                 await interaction.response.send_message("Reported!", ephemeral=True)
             else:
