@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from logging import getLogger
+import aiohttp
 
 import discord
 from discord.ext import commands, tasks
@@ -38,6 +39,13 @@ class ConfirmReportModal(discord.ui.Modal):
         self.package = package
         self.bot = bot
 
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        if isinstance(error, aiohttp.ClientResponseError):
+            return await interaction.response.send_message(f"Error from upstream: {error.status}", ephemeral=True)
+
+        await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
+        raise error
+
     async def on_submit(self, interaction: discord.Interaction):
         # discord.py returns empty string "" if not filled out, we want it to be `None`
         additional_information_override = self.additional_information.value or None
@@ -70,10 +78,8 @@ class ConfirmReportModal(discord.ui.Modal):
             additional_information=additional_information_override,
         )
         async with self.bot.http_session.post(url=url, json=json, headers=headers) as response:
-            if response.status == 200:
-                await interaction.response.send_message("Reported!", ephemeral=True)
-            else:
-                await interaction.response.send_message(f"Error from upstream: {response.status}", ephemeral=True)
+            response.raise_for_status()
+            await interaction.response.send_message("Reported!", ephemeral=True)
 
 
 class ReportView(discord.ui.View):
@@ -85,8 +91,14 @@ class ReportView(discord.ui.View):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
-    async def report(self, interaction: discord.Interaction, _) -> None:
-        await interaction.response.send_modal(ConfirmReportModal(package=self.payload, bot=self.bot))
+    async def report(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        modal = ConfirmReportModal(package=self.payload, bot=self.bot)
+        await interaction.response.send_modal(modal)
+
+        timed_out = await modal.wait()
+        if timed_out is False:
+            button.disabled = True
+            await interaction.edit_original_response(view=self)
 
 
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
