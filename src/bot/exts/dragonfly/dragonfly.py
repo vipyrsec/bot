@@ -182,6 +182,10 @@ class Dragonfly(commands.Cog):
             score=self.score_threshold,
         )
 
+    @scan_loop.before_loop
+    async def before_scan_loop(self) -> None:
+        await self.bot.wait_until_ready()
+
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
     async def start(self, ctx: commands.Context) -> None:
@@ -230,4 +234,6 @@ class Dragonfly(commands.Cog):
 
 
 async def setup(bot: Bot) -> None:
-    await bot.add_cog(Dragonfly(bot))
+    cog = Dragonfly(bot)
+    cog.scan_loop.start()
+    await bot.add_cog(cog)
