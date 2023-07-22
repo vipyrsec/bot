@@ -18,8 +18,6 @@ log.setLevel(logging.INFO)
 
 
 class ConfirmReportModal(discord.ui.Modal):
-    title = "Confirm Report"
-
     additional_information = discord.ui.TextInput(
         label="Additional information",
         placeholder="Additional information",
@@ -35,9 +33,14 @@ class ConfirmReportModal(discord.ui.Modal):
     )
 
     def __init__(self, *, package: PackageScanResult, bot: Bot) -> None:
-        super().__init__()
         self.package = package
         self.bot = bot
+
+        # set dynamic properties here because we can't set dynamic class attributes
+        self.title = self._build_modal_title()
+        self.inspector_url.default = package.inspector_url
+
+        super().__init__()
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         if isinstance(error, aiohttp.ClientResponseError):
@@ -45,6 +48,13 @@ class ConfirmReportModal(discord.ui.Modal):
 
         await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
         raise error
+
+    def _build_modal_title(self) -> str:
+        title = f"Confirm report for {self.package.name} v{self.package.version}"
+        if len(title) >= 45:
+            title = title[:42] + "..."
+
+        return title
 
     async def on_submit(self, interaction: discord.Interaction):
         # discord.py returns empty string "" if not filled out, we want it to be `None`
