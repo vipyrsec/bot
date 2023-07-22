@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from logging import getLogger
+import aiohttp
 
 import discord
 from discord.ext import commands, tasks
@@ -40,6 +41,13 @@ class ConfirmReportModal(discord.ui.Modal):
         self.inspector_url.default = package.inspector_url
 
         super().__init__()
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        if isinstance(error, aiohttp.ClientResponseError):
+            return await interaction.response.send_message(f"Error from upstream: {error.status}", ephemeral=True)
+
+        await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
+        raise error
 
     def _build_modal_title(self) -> str:
         title = f"Confirm report for {self.package.name} v{self.package.version}"
@@ -95,8 +103,14 @@ class ReportView(discord.ui.View):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
-    async def report(self, interaction: discord.Interaction, _) -> None:
-        await interaction.response.send_modal(ConfirmReportModal(package=self.payload, bot=self.bot))
+    async def report(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        modal = ConfirmReportModal(package=self.payload, bot=self.bot)
+        await interaction.response.send_modal(modal)
+
+        timed_out = await modal.wait()
+        if not timed_out:
+            button.disabled = True
+            await interaction.edit_original_response(view=self)
 
 
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
