@@ -13,6 +13,8 @@ from bot import exts
 from bot.constants import DragonflyAuthentication
 from bot.exts import pypi
 
+from bot.exts.dragonfly.dragonfly import Dragonfly as DragonflyCog
+
 log = logging.getLogger(__name__)
 
 
@@ -98,6 +100,9 @@ class Bot(BotBase):
         client = PyPIServices(self.http_session)
         self.package_view = pypi.PackageViewer(packages=(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL)))
         self.add_view(self.package_view)
+
+        log.debug("Starting Dragonfly scan loop")
+        DragonflyCog.scan_loop.start()
 
     async def on_error(self, event: str, *args, **kwargs) -> None:
         """Log errors raised in event listeners rather than printing them to stderr."""
