@@ -234,4 +234,6 @@ class Dragonfly(commands.Cog):
 
 
 async def setup(bot: Bot) -> None:
-    await bot.add_cog(Dragonfly(bot))
+    cog = Dragonfly(bot)
+    cog.scan_loop.start()
+    await bot.add_cog(cog)
