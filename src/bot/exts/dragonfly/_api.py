@@ -85,6 +85,7 @@ async def report_package(
     version: str,
     inspector_url: Optional[str],
     additional_information: Optional[str],
+    recipient: Optional[str],
 ) -> None:
     headers = {"Authorization": f"Bearer {bot.access_token}"}
     body = {
@@ -92,6 +93,7 @@ async def report_package(
         "version": version,
         "inspector_url": inspector_url,
         "additional_information": additional_information,
+        "recipient": recipient,
     }
 
     req = bot.http_session.post(f"{DragonflyConfig.api_url}/report", json=body, headers=headers)
