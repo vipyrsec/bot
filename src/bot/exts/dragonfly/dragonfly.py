@@ -11,7 +11,7 @@ from discord.ext import commands, tasks
 from bot.bot import Bot
 from bot.constants import DragonflyConfig, Roles
 
-from ._api import PackageScanResult, lookup_package_info
+from ._api import PackageScanResult, lookup_package_info, report_package
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -79,17 +79,19 @@ class ConfirmReportModal(discord.ui.Modal):
                 f"with inspector_url `{inspector_url_override}`"
             )
 
-        url = f"{DragonflyConfig.api_url}/report"
-        headers = {"Authorization": f"Bearer {self.bot.access_token}"}
-        json = dict(
-            name=self.package.name,
-            version=self.package.version,
-            inspector_url=inspector_url_override,
-            additional_information=additional_information_override,
-        )
-        async with self.bot.http_session.post(url=url, json=json, headers=headers) as response:
-            response.raise_for_status()
+        try:
+            await report_package(
+                bot=self.bot,
+                name=self.package.name,
+                version=self.package.version,
+                inspector_url=inspector_url_override,
+                additional_information=additional_information_override,
+            )
+
             await interaction.response.send_message("Reported!", ephemeral=True)
+        except:
+            await interaction.response.send_message("An unexpected error occured!", ephemeral=True)
+            raise
 
 
 class ReportView(discord.ui.View):
@@ -194,6 +196,10 @@ class Dragonfly(commands.Cog):
             score=self.score_threshold,
         )
 
+    @scan_loop.before_loop
+    async def before_scan_loop(self) -> None:
+        await self.bot.wait_until_ready()
+
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
     async def start(self, ctx: commands.Context) -> None:
@@ -201,7 +207,7 @@ class Dragonfly(commands.Cog):
             await ctx.send("Task is already running.")
         else:
             self.scan_loop.start()
-            await ctx.send("Started task 2...")
+            await ctx.send("Started task...")
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
@@ -242,4 +248,6 @@ class Dragonfly(commands.Cog):
 
 
 async def setup(bot: Bot) -> None:
-    await bot.add_cog(Dragonfly(bot))
+    cog = Dragonfly(bot)
+    cog.scan_loop.start()
+    await bot.add_cog(cog)
