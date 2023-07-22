@@ -258,5 +258,7 @@ class Dragonfly(commands.Cog):
 
 async def setup(bot: Bot) -> None:
     cog = Dragonfly(bot)
-    cog.scan_loop.start()
+    task = cog.scan_loop
+    if not task.is_running():
+        task.start()
     await bot.add_cog(cog)
