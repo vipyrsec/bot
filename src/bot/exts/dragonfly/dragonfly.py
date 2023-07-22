@@ -10,7 +10,7 @@ from discord.ext import commands, tasks
 from bot.bot import Bot
 from bot.constants import DragonflyConfig, Roles
 
-from ._api import PackageScanResult, lookup_package_info
+from ._api import PackageScanResult, lookup_package_info, report_package
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -61,19 +61,19 @@ class ConfirmReportModal(discord.ui.Modal):
                 f"with inspector_url `{inspector_url_override}`"
             )
 
-        url = f"{DragonflyConfig.api_url}/report"
-        headers = {"Authorization": f"Bearer {self.bot.access_token}"}
-        json = dict(
-            name=self.package.name,
-            version=self.package.version,
-            inspector_url=inspector_url_override,
-            additional_information=additional_information_override,
-        )
-        async with self.bot.http_session.post(url=url, json=json, headers=headers) as response:
-            if response.status == 200:
-                await interaction.response.send_message("Reported!", ephemeral=True)
-            else:
-                await interaction.response.send_message(f"Error from upstream: {response.status}", ephemeral=True)
+        try:
+            await report_package(
+                bot=self.bot,
+                name=self.package.name,
+                version=self.package.version,
+                inspector_url=inspector_url_override,
+                additional_information=additional_information_override,
+            )
+
+            await interaction.response.send_message("Reported!", ephemeral=True)
+        except:
+            await interaction.response.send_message("An unexpected error occured!", ephemeral=True)
+            raise
 
 
 class ReportView(discord.ui.View):

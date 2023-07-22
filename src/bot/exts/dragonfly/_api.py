@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 from bot.bot import Bot
 from bot.constants import DragonflyConfig
@@ -75,3 +76,27 @@ async def lookup_package_info(
 
     data = await res.json()
     return [PackageScanResult.from_dict(d) for d in data]
+
+
+async def report_package(
+    bot: Bot,
+    *,
+    name: str,
+    version: str,
+    inspector_url: Optional[str],
+    additional_information: Optional[str],
+) -> None:
+    headers = {"Authorization": f"Bearer {bot.access_token}"}
+    body = {
+        "name": name,
+        "version": version,
+        "inspector_url": inspector_url,
+        "additional_information": additional_information,
+    }
+
+    req = bot.http_session.post(f"{DragonflyConfig.api_url}/report", json=body, headers=headers)
+    res = await req
+    if res.status == 401:
+        await bot.authorize()
+        res = await req
+        res.raise_for_status()  # We should throw an error if something goes wrong the second time
