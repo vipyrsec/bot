@@ -179,7 +179,7 @@ class Dragonfly(commands.Cog):
             await ctx.send("Task is already running.")
         else:
             self.scan_loop.start()
-            await ctx.send("Started task 2...")
+            await ctx.send("Started task...")
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
