@@ -13,7 +13,6 @@ from bot import exts
 from bot.constants import DragonflyAuthentication
 from bot.exts import pypi
 
-
 log = logging.getLogger(__name__)
 
 
