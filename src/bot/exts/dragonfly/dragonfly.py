@@ -96,7 +96,7 @@ class ReportView(discord.ui.View):
         await interaction.response.send_modal(modal)
 
         timed_out = await modal.wait()
-        if timed_out is False:
+        if not timed_out:
             button.disabled = True
             await interaction.edit_original_response(view=self)
 
