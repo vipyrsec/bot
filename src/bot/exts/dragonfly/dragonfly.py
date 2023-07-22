@@ -18,6 +18,14 @@ log.setLevel(logging.INFO)
 
 
 class ConfirmReportModal(discord.ui.Modal):
+    recipient = discord.ui.TextInput(
+        label="Recipient",
+        placeholder="Recipient's Email Address",
+        required=False,
+        default="security@pypi.org",
+        style=discord.TextStyle.short,
+    )
+
     additional_information = discord.ui.TextInput(
         label="Additional information",
         placeholder="Additional information",
@@ -86,6 +94,7 @@ class ConfirmReportModal(discord.ui.Modal):
                 version=self.package.version,
                 inspector_url=inspector_url_override,
                 additional_information=additional_information_override,
+                recipient=self.recipient.value,
             )
 
             await interaction.response.send_message("Reported!", ephemeral=True)
