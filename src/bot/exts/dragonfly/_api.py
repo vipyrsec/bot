@@ -94,9 +94,8 @@ async def report_package(
         "additional_information": additional_information,
     }
 
-    req = bot.http_session.post(f"{DragonflyConfig.api_url}/report", json=body, headers=headers)
-    res = await req
+    res = await bot.http_session.post(f"{DragonflyConfig.api_url}/report", json=body, headers=headers)
     if res.status == 401:
         await bot.authorize()
-        res = await req
+        res = await bot.http_session.post(f"{DragonflyConfig.api_url}/report", json=body, headers=headers)
         res.raise_for_status()  # We should throw an error if something goes wrong the second time
