@@ -67,11 +67,10 @@ async def lookup_package_info(
 
     headers = {"Authorization": f"Bearer {bot.access_token}"}
 
-    req = bot.http_session.get(f"{DragonflyConfig.api_url}/package", params=params, headers=headers)
-    res = await req
+    res = await bot.http_session.get(f"{DragonflyConfig.api_url}/package", params=params, headers=headers)
     if res.status == 401:
         await bot.authorize()
-        res = await req
+        res = await bot.http_session.get(f"{DragonflyConfig.api_url}/package", params=params, headers=headers)
         res.raise_for_status()  # We should throw an error if something goes wrong the second time
 
     data = await res.json()
