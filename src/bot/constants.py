@@ -117,7 +117,7 @@ class _Channels(EnvConfig):
 
     mod_alerts = 1121492582686539788
     mod_log = 1121492613070082118
-    reporting_channel = 1126657120897617961
+    reporting = 1126657120897617961
 
 Channels = _Channels()
 
