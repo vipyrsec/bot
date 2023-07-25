@@ -63,7 +63,7 @@ class _DragonflyConfig(EnvConfig):
     EnvConfig.Config.env_prefix = "dragonfly_"
 
     alerts_channel_id = 1121462652342910986
-    logs_channel_id = 1126657120897617961
+    logs_channel_id = 1121462677131251752
     alerts_role_id = 1122647527485878392
     api_url = "https://dragonfly.vipyrsec.com"
     interval = 60
@@ -117,7 +117,7 @@ class _Channels(EnvConfig):
 
     mod_alerts = 1121492582686539788
     mod_log = 1121492613070082118
-
+    reporting_channel = 1126657120897617961
 
 Channels = _Channels()
 
