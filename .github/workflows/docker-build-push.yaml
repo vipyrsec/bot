@@ -16,4 +16,4 @@ permissions:
 
 jobs:
   build-push:
-    uses: darbiadev/.github/.github/workflows/docker-build-push.yaml@b0478c2e1835f75bfe679b05a5f72c46c969b938
+    uses: darbiadev/.github/.github/workflows/docker-build-push.yaml@4aa7c64159244d12bf9a39d42da89e80004d4af6 # v1.0.1
