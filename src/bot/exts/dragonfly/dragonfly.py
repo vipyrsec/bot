@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands, tasks
 
 from bot.bot import Bot
-from bot.constants import DragonflyConfig, Roles
+from bot.constants import DragonflyConfig, Roles, Channels
 
 from ._api import PackageScanResult, lookup_package_info, report_package
 
@@ -78,7 +78,7 @@ class ConfirmReportModal(discord.ui.Modal):
             inspector_url_override,
         )
 
-        log_channel = interaction.client.get_channel(DragonflyConfig.logs_channel_id)
+        log_channel = interaction.client.get_channel(Channels.reporting)
         if isinstance(log_channel, discord.abc.Messageable):
             await log_channel.send(
                 f"User {interaction.user.mention} "
