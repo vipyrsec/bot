@@ -6,7 +6,7 @@
 discord.py
 pydis-core
 aiohttp
-pydantic[dotenv]==1.10.10
+pydantic-settings
 
 # Logging
 sentry-sdk
