@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from logging import getLogger
 import aiohttp
+import urllib
 
 import discord
 from discord.ext import commands, tasks
@@ -133,7 +134,7 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
 
     embed.add_field(
         name="\u200B",
-        value=f"[Inspector]({scan_result.inspector_url})",
+        value=f"[Inspector]({urllib.parse.quote(scan_result.inspector_url)})",
         inline=True,
     )
 
