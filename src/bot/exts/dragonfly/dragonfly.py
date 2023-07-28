@@ -4,8 +4,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from logging import getLogger
 import aiohttp
-import urllib
-
+from urllib.parse import urlparse, quote
+ 
 import discord
 from discord.ext import commands, tasks
 
@@ -132,9 +132,13 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
         color=0xF70606,
     )
 
+    path = urlparse(scan_result.inspector_url).path
+    encoded_path = quote(path)
+    encoded_inspector_url = "https://inspector.pypi.io" + encoded_path
+
     embed.add_field(
         name="\u200B",
-        value=f"[Inspector]({urllib.parse.quote(scan_result.inspector_url)})",
+        value=f"[Inspector]({encoded_inspector_url})",
         inline=True,
     )
 
