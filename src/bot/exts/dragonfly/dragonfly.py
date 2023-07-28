@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from logging import getLogger
 import aiohttp
+from urllib import parse
 
 import discord
 from discord.ext import commands, tasks
@@ -46,7 +47,8 @@ class ConfirmReportModal(discord.ui.Modal):
 
         # set dynamic properties here because we can't set dynamic class attributes
         self.title = self._build_modal_title()
-        self.inspector_url.default = package.inspector_url
+        formatted_url = f"http://{parse.quote(package.inspector_url[8:])}"
+        self.inspector_url.default = formatted_url
 
         super().__init__()
 
