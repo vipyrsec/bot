@@ -34,5 +34,5 @@ class StartupNotify(commands.Cog):
 
 
 async def setup(bot: Bot) -> None:
-    """Load the Ping cog."""
+    """Load the Startup Notify cog."""
     await bot.add_cog(StartupNotify(bot))
