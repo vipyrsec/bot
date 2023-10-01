@@ -102,7 +102,7 @@ six==1.16.0
     # via
     #   python-dateutil
     #   requests-file
-sqlalchemy==2.0.19
+sqlalchemy==2.0.21
     # via -r requirements.in
 statsd==4.0.1
     # via pydis-core
