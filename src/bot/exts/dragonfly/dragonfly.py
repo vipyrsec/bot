@@ -214,8 +214,11 @@ class Dragonfly(commands.Cog):
         logs_channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
         assert isinstance(logs_channel, discord.abc.Messageable)
 
-        core_devs_role = logs_channel.guild.get_role(Roles.core_developers)
-        await logs_channel.send(f"{core_devs_role.mention if core_devs_role else ''} Error in task")
+        if core_devs_role := logs_channel.guild.get_role(Roles.core_developers):
+            mention = core_devs_role.mention
+        else:
+            mention = ""
+        await logs_channel.send(f"{mention} Error in task")
 
         raise exc
 
