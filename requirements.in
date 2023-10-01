@@ -28,4 +28,4 @@ arrow
 regex
 # exts/dragonfly
 # exts/pypi
-letsbuilda-pypi
+letsbuilda-pypi==4.0.0
