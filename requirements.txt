@@ -86,7 +86,7 @@ python-dotenv==1.0.0
     # via pydantic-settings
 pytzdata==2020.1
     # via pendulum
-rapidfuzz==3.1.2
+rapidfuzz==3.3.1
     # via -r requirements.in
 regex==2023.6.3
     # via -r requirements.in
