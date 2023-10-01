@@ -218,7 +218,13 @@ class Dragonfly(commands.Cog):
             mention = core_devs_role.mention
         else:
             mention = ""
-        await logs_channel.send(f"{mention} Error in task")
+
+        embed = discord.Embed(
+            title="Error in task",
+            description=f"```{type(exc).__name__}: {exc}```",
+            color=discord.Color.red(),
+        )
+        await logs_channel.send(mention, embed=embed)
 
         raise exc
 
