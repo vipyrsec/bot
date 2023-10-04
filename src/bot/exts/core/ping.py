@@ -1,4 +1,4 @@
-"""Pinging the bot"""
+"""Pinging the bot."""
 
 from discord import Embed
 from discord.ext import commands
@@ -10,7 +10,7 @@ from bot.constants import Colours
 class Ping(commands.Cog):
     """Get info about the bot's ping and uptime."""
 
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: Bot) -> None:
         self.bot = bot
 
     @commands.command(name="ping")

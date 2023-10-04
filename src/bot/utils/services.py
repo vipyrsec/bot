@@ -18,7 +18,7 @@ class PasteTooLongError(Exception):
 
 
 async def send_to_paste_service(
-    http_session: ClientSession, contents: str, *, extension: str = "", max_length: int = MAX_PASTE_LENGTH
+    http_session: ClientSession, contents: str, *, extension: str = "", max_length: int = MAX_PASTE_LENGTH,
 ) -> str:
     """
     Upload `contents` to the paste service.
@@ -32,14 +32,16 @@ async def send_to_paste_service(
     Return the generated URL with the extension.
     """
     if max_length > MAX_PASTE_LENGTH:
-        raise ValueError(f"`max_length` must not be greater than {MAX_PASTE_LENGTH}")
+        msg = f"`max_length` must not be greater than {MAX_PASTE_LENGTH}"
+        raise ValueError(msg)
 
     extension = extension and f".{extension}"
 
     contents_size = len(contents.encode())
     if contents_size > max_length:
         log.info("Contents too large to send to paste service.")
-        raise PasteTooLongError(f"Contents of size {contents_size} greater than maximum size {max_length}")
+        msg = f"Contents of size {contents_size} greater than maximum size {max_length}"
+        raise PasteTooLongError(msg)
 
     log.debug(f"Sending contents of size {contents_size} bytes to paste service.")
     paste_url = URLs.paste_service.format(key="documents")
@@ -50,20 +52,20 @@ async def send_to_paste_service(
         except ClientConnectorError:
             log.warning(
                 f"Failed to connect to paste service at url {paste_url}, "
-                f"trying again ({attempt}/{FAILED_REQUEST_ATTEMPTS})."
+                f"trying again ({attempt}/{FAILED_REQUEST_ATTEMPTS}).",
             )
             continue
         except Exception:
             log.exception(
                 f"An unexpected error has occurred during handling of the request, "
-                f"trying again ({attempt}/{FAILED_REQUEST_ATTEMPTS})."
+                f"trying again ({attempt}/{FAILED_REQUEST_ATTEMPTS}).",
             )
             continue
 
         if "message" in response_json:
             log.warning(
                 f"Paste service returned error {response_json['message']} with status code {response.status}, "
-                f"trying again ({attempt}/{FAILED_REQUEST_ATTEMPTS})."
+                f"trying again ({attempt}/{FAILED_REQUEST_ATTEMPTS}).",
             )
             continue
         if "key" in response_json:
@@ -78,7 +80,8 @@ async def send_to_paste_service(
 
         log.warning(
             f"Got unexpected JSON response from paste service: {response_json}\n"
-            f"trying again ({attempt}/{FAILED_REQUEST_ATTEMPTS})."
+            f"trying again ({attempt}/{FAILED_REQUEST_ATTEMPTS}).",
         )
 
-    raise PasteUploadError("Failed to upload contents to paste service")
+    msg = "Failed to upload contents to paste service"
+    raise PasteUploadError(msg)

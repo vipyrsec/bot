@@ -1,9 +1,9 @@
-"""Cog for package audition"""
+"""Cog for package audition."""
 
 
 import math
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import discord
 from discord import app_commands, ui
@@ -16,7 +16,7 @@ from .dragonfly._api import lookup_package_info
 
 
 class PaginatorView(ui.View):
-    def __init__(self, *, member: discord.Member | discord.User, packages: list[PackageScanResult], per: int = 15):
+    def __init__(self, *, member: discord.Member | discord.User, packages: list[PackageScanResult], per: int = 15) -> None:
         super().__init__(timeout=None)
         pages = math.ceil(len(packages) / per)
         self.member = member
@@ -76,7 +76,7 @@ class PaginatorView(ui.View):
 
 
 class Audit(commands.Cog):
-    """Cog for package auditing"""
+    """Cog for package auditing."""
 
     def __init__(
         self,
@@ -87,7 +87,7 @@ class Audit(commands.Cog):
     @app_commands.command(name="audit", description="Randomly pick packages and display them")
     async def audit(self, interaction: discord.Interaction, hours: int, amount: int) -> None:
         """
-        Recalls for scanned packages within a given time frame and amount
+        Recalls for scanned packages within a given time frame and amount.
 
         Parameters
         ----------
@@ -98,11 +98,10 @@ class Audit(commands.Cog):
                  The amount of random packages that should be chosen
 
         """
-
         # Defer immediately because it make take longer than 3 seconds to respond
         await interaction.response.defer(thinking=True)
 
-        since = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(tz=UTC) - timedelta(hours=hours)
 
         packages = await lookup_package_info(bot=self.bot, since=since)
         packages = random.sample(packages, k=amount)

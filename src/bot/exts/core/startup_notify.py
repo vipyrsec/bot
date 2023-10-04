@@ -1,9 +1,10 @@
-from logging import getLogger
 import logging
+from logging import getLogger
+
 import discord
-from bot.bot import Bot
 from discord.ext import commands
 
+from bot.bot import Bot
 from bot.constants import DragonflyConfig
 
 log = getLogger(__name__)
@@ -11,7 +12,7 @@ log.setLevel(logging.INFO)
 
 
 class StartupNotify(commands.Cog):
-    """Cog that notifies a channel when the bot starts up"""
+    """Cog that notifies a channel when the bot starts up."""
 
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
@@ -30,7 +31,7 @@ class StartupNotify(commands.Cog):
             await channel.send(embed=self._build_notify_embed())
             log.info("Successfully sent startup notification message")
         else:
-            log.warn("Channel %s is not messageable, could not send startup message", channel)
+            log.warning("Channel %s is not messageable, could not send startup message", channel)
 
 
 async def setup(bot: Bot) -> None:

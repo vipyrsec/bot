@@ -1,4 +1,4 @@
-"""Bot subclass"""
+"""Bot subclass."""
 
 import logging
 
@@ -17,12 +17,12 @@ log = logging.getLogger(__name__)
 
 
 class CommandTree(discord.app_commands.CommandTree):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         super().__init__(bot)
 
     async def on_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
         if isinstance(error, discord.app_commands.MissingRole):
-            log.warn(
+            log.warning(
                 "User '%s' attempted to run command '%s', which requires the '%s' role which the user is missing.",
                 interaction.user,
                 interaction.command.name if interaction.command else "None",
@@ -30,10 +30,10 @@ class CommandTree(discord.app_commands.CommandTree):
             )
 
             await interaction.response.send_message(
-                f"The '{error.missing_role}' role is required to run this command.", ephemeral=True
+                f"The '{error.missing_role}' role is required to run this command.", ephemeral=True,
             )
         elif isinstance(error, discord.app_commands.NoPrivateMessage):
-            log.warn(
+            log.warning(
                 "User '%s' attempted to run command '%s', which cannot be invoked from DMs",
                 interaction.user,
                 interaction.command,
@@ -51,7 +51,7 @@ class Bot(BotBase):
         self,
         *args,
         **kwargs,
-    ):
+    ) -> None:
         """
         Initialise the base bot instance.
         Args:
@@ -69,14 +69,14 @@ class Bot(BotBase):
     async def authorize(self) -> None:
         log.info("Authenticating")
         url = f"https://{DragonflyAuthentication.domain}/oauth/token"
-        json = dict(
-            client_id=DragonflyAuthentication.client_id,
-            client_secret=DragonflyAuthentication.client_secret,
-            username=DragonflyAuthentication.username,
-            password=DragonflyAuthentication.password,
-            grant_type="password",
-            audience=DragonflyAuthentication.audience,
-        )
+        json = {
+            "client_id": DragonflyAuthentication.client_id,
+            "client_secret": DragonflyAuthentication.client_secret,
+            "username": DragonflyAuthentication.username,
+            "password": DragonflyAuthentication.password,
+            "grant_type": "password",
+            "audience": DragonflyAuthentication.audience,
+        }
         async with self.http_session.post(url, json=json) as res:
             res.raise_for_status()
             json = await res.json()

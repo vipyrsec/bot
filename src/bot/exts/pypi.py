@@ -1,8 +1,8 @@
-"""Cog for interacting with PyPI"""
+"""Cog for interacting with PyPI."""
 
+from collections.abc import Generator
 from itertools import islice
 from math import ceil
-from typing import Generator
 
 import discord
 from discord.ext import commands
@@ -12,7 +12,7 @@ from bot.constants import PyPiConfigs
 
 
 class EmbedPaginator:
-    """Paginate embeds"""
+    """Paginate embeds."""
 
     def __init__(self, packages: list[PackageMetadata], per_page: int) -> None:
         self.idx = 0
@@ -48,7 +48,7 @@ class EmbedPaginator:
                             f"[Package Link]({package.package_link})",
                             f"[Inspector Link](https://inspector.pypi.io/project/{package.title})",
                             package.author if PyPiConfigs.show_author_in_embed and package.author else "",
-                        )
+                        ),
                     ),
                 )
 
@@ -86,7 +86,7 @@ class EmbedPaginator:
 
 
 class PackageViewer(discord.ui.View):
-    """Package viewer"""
+    """Package viewer."""
 
     def __init__(self, *, packages: list[PackageMetadata]) -> None:
         self.paginator = EmbedPaginator(packages, per_page=3)
@@ -116,9 +116,9 @@ class PackageViewer(discord.ui.View):
 
 
 class Pypi(commands.Cog):
-    """Cog for interacting with PyPI"""
+    """Cog for interacting with PyPI."""
 
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
     @commands.command()
@@ -127,5 +127,5 @@ class Pypi(commands.Cog):
 
 
 async def setup(bot) -> None:
-    """Setup the cog on the bot"""
+    """Setup the cog on the bot."""
     await bot.add_cog(Pypi(bot))

@@ -1,4 +1,4 @@
-"""Logging"""
+"""Logging."""
 
 import logging
 import os
@@ -16,10 +16,7 @@ from bot import constants
 TRACE_LEVEL = 5
 
 
-if TYPE_CHECKING:
-    LoggerClass = Logger
-else:
-    LoggerClass = logging.getLoggerClass()
+LoggerClass = Logger if TYPE_CHECKING else logging.getLoggerClass()
 
 
 class CustomLogger(LoggerClass):

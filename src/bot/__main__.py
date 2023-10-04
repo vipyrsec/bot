@@ -1,4 +1,4 @@
-"""Main runner"""
+"""Main runner."""
 
 import asyncio
 
@@ -18,7 +18,6 @@ intents.message_content = True
 
 async def main() -> None:
     """Run the bot."""
-
     bot = Bot(
         guild_id=constants.Guild.id,
         http_session=aiohttp.ClientSession(),

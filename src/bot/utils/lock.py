@@ -29,7 +29,7 @@ class SharedEvent:
     when all of the holders finish the event will be set.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._active_count = 0
         self._event = asyncio.Event()
         self._event.set()
@@ -123,7 +123,7 @@ def lock(
 def lock_arg(
     namespace: Hashable,
     name_or_pos: function.Argument,
-    func: Callable[[Any], _IdCallableReturn] = None,
+    func: Callable[[Any], _IdCallableReturn] | None = None,
     *,
     raise_error: bool = False,
     wait: bool = False,

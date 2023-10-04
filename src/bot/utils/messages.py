@@ -1,4 +1,4 @@
-"""Message utilities"""
+"""Message utilities."""
 
 import contextlib
 
@@ -21,8 +21,7 @@ async def get_discord_message(ctx: Context, text: str) -> Message | str:
     Returns `text` if the conversion fails.
     """
     with contextlib.suppress(commands.BadArgument):
-        text = await MessageConverter().convert(ctx, text)
-    return text
+        return await MessageConverter().convert(ctx, text)
 
 
 async def get_text_and_embed(ctx: Context, text: str) -> tuple[str, Embed | None]:

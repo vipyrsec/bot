@@ -3,8 +3,9 @@
 import functools
 import inspect
 import types
-from collections.abc import Callable
-from typing import Any, OrderedDict, Sequence
+from collections import OrderedDict
+from collections.abc import Callable, Sequence
+from typing import Any
 
 from bot.log import get_logger
 
@@ -38,21 +39,24 @@ def get_arg_value(name_or_pos: Argument, arguments: BoundArgs) -> Any:
             name, value = arg_values[arg_pos]
             return value
         except IndexError:
-            raise ValueError(f"Argument position {arg_pos} is out of bounds.")
+            msg = f"Argument position {arg_pos} is out of bounds."
+            raise ValueError(msg)
     elif isinstance(name_or_pos, str):
         arg_name = name_or_pos
         try:
             return arguments[arg_name]
         except KeyError:
-            raise ValueError(f"Argument {arg_name!r} doesn't exist.")
+            msg = f"Argument {arg_name!r} doesn't exist."
+            raise ValueError(msg)
     else:
-        raise TypeError("'arg' must either be an int (positional index) or a str (keyword).")
+        msg = "'arg' must either be an int (positional index) or a str (keyword)."
+        raise TypeError(msg)
 
 
 def get_arg_value_wrapper(
     decorator_func: Callable[[ArgValGetter], Decorator],
     name_or_pos: Argument,
-    func: Callable[[Any], Any] = None,
+    func: Callable[[Any], Any] | None = None,
 ) -> Decorator:
     """
     Call `decorator_func` with the value of the arg at the given name/position.
@@ -114,10 +118,9 @@ def update_wrapper_globals(
     shared_globals = set(wrapper.__code__.co_names) & set(annotation_global_names)
     shared_globals &= set(wrapped.__globals__) & set(wrapper.__globals__) - ignored_conflict_names
     if shared_globals:
+        msg = f"wrapper and the wrapped function share the following global names used by annotations: {', '.join(shared_globals)}. Resolve the conflicts or add the name to the `ignored_conflict_names` set to suppress this error if this is intentional."
         raise GlobalNameConflictError(
-            f"wrapper and the wrapped function share the following "
-            f"global names used by annotations: {', '.join(shared_globals)}. Resolve the conflicts or add "
-            f"the name to the `ignored_conflict_names` set to suppress this error if this is intentional."
+            msg,
         )
 
     new_globals = wrapper.__globals__.copy()

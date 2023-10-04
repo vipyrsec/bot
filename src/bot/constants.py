@@ -38,7 +38,7 @@ DEBUG_MODE = Miscellaneous.debug
 
 
 class _DragonflyAuthentication(EnvConfig, env_prefix="auth0_"):
-    """Settings related to authenticating with Dragonfly API"""
+    """Settings related to authenticating with Dragonfly API."""
 
     client_id: str = ""
     client_secret: str = ""
@@ -52,7 +52,7 @@ DragonflyAuthentication = _DragonflyAuthentication()
 
 
 class _DragonflyConfig(EnvConfig, env_prefix="dragonfly_"):
-    """Dragonfly Cog Configuration"""
+    """Dragonfly Cog Configuration."""
 
     alerts_channel_id: int = 1121462652342910986
     logs_channel_id: int = 1121462677131251752
@@ -67,7 +67,7 @@ DragonflyConfig = _DragonflyConfig()
 
 
 class _PyPi(EnvConfig, env_prefix="pypi_"):
-    """PyPI Cog Configuration"""
+    """PyPI Cog Configuration."""
 
     show_author_in_embed: bool = False
 
@@ -76,7 +76,7 @@ PyPiConfigs = _PyPi()
 
 
 class _Bot(EnvConfig, env_prefix="bot_"):
-    """Bot data"""
+    """Bot data."""
 
     token: str = ""
     trace_loggers: str = "*"
@@ -97,7 +97,7 @@ Sentry = _Sentry()
 
 
 class _Channels(EnvConfig, env_prefix="channels_"):
-    """Channel constants"""
+    """Channel constants."""
 
     mod_alerts: int = 1121492582686539788
     mod_log: int = 1121492613070082118
@@ -108,7 +108,7 @@ Channels = _Channels()
 
 
 class _Roles(EnvConfig, env_prefix="roles_"):
-    """Channel constants"""
+    """Channel constants."""
 
     administrators: int = 1121450967360098486
 
@@ -151,13 +151,13 @@ BaseURLs = _BaseURLs()
 
 class _URLs(_BaseURLs):
     # Discord API endpoints
-    discord_invite_api: str = "".join([BaseURLs.discord_api, "invites"])
+    discord_invite_api: str = f"{BaseURLs.discord_api}invites"
 
     # Base site vars
     connect_max_retries: int = 3
     connect_cooldown: int = 5
 
-    paste_service: str = "".join([BaseURLs.paste, "/{key}"])
+    paste_service: str = f"{BaseURLs.paste}/{{key}}"
     site_logs_view: str = "https://pythondiscord.com/staff/bot/logs"
 
 
@@ -165,7 +165,7 @@ URLs = _URLs()
 
 
 class _Tokens(EnvConfig, env_prefix="tokens_"):
-    """Authentication tokens for external services"""
+    """Authentication tokens for external services."""
 
     github: str = ""
 

@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from bot.bot import Bot
 from bot.constants import DragonflyConfig
@@ -82,9 +81,9 @@ async def report_package(
     *,
     name: str,
     version: str,
-    inspector_url: Optional[str],
-    additional_information: Optional[str],
-    recipient: Optional[str],
+    inspector_url: str | None,
+    additional_information: str | None,
+    recipient: str | None,
 ) -> None:
     headers = {"Authorization": f"Bearer {bot.access_token}"}
     body = {

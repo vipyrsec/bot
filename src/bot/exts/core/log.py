@@ -1,4 +1,4 @@
-"""Cog to log"""
+"""Cog to log."""
 
 import logging
 from datetime import datetime
@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 class Log(Cog):
     """Logging for server events and staff actions."""
 
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: Bot) -> None:
         self.bot = bot
 
     # pylint: disable-next=too-many-locals,too-many-arguments
@@ -51,10 +51,7 @@ class Log(Cog):
             embed.set_thumbnail(url=thumbnail)
 
         if ping_mods:
-            if content:
-                content = f"<@&{Roles.moderators}> {content}"
-            else:
-                content = f"<@&{Roles.moderators}>"
+            content = f"<@&{Roles.moderators}> {content}" if content else f"<@&{Roles.moderators}>"
 
         # Truncate content to 2000 characters and append an ellipsis.
         if content and len(content) > 2000:

@@ -1,15 +1,15 @@
-"""Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
+"""Download the most recent packages from PyPI and use Dragonfly to check them for malware."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from logging import getLogger
-import aiohttp
 
+import aiohttp
 import discord
 from discord.ext import commands, tasks
 
 from bot.bot import Bot
-from bot.constants import DragonflyConfig, Roles, Channels
+from bot.constants import Channels, DragonflyConfig, Roles
 
 from ._api import PackageScanResult, lookup_package_info, report_package
 
@@ -84,7 +84,7 @@ class ConfirmReportModal(discord.ui.Modal):
                 f"User {interaction.user.mention} "
                 f"reported package `{self.package.name}` "
                 f"with additional_description `{additional_information_override}`"
-                f"with inspector_url `{inspector_url_override}`"
+                f"with inspector_url `{inspector_url_override}`",
             )
 
         try:
@@ -104,7 +104,7 @@ class ConfirmReportModal(discord.ui.Modal):
 
 
 class ReportView(discord.ui.View):
-    """Report view"""
+    """Report view."""
 
     def __init__(self, bot: Bot, payload: PackageScanResult) -> None:
         self.bot = bot
@@ -123,8 +123,7 @@ class ReportView(discord.ui.View):
 
 
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
-    """Build the embed that shows the results of a package scan"""
-
+    """Build the embed that shows the results of a package scan."""
     embed = discord.Embed(
         title=f"New Scan Result: {scan_result.name} v{scan_result.version}",
         description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
@@ -149,8 +148,7 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
 
 
 def _build_all_packages_scanned_embed(scan_results: list[PackageScanResult]) -> discord.Embed:
-    """Build the embed that shows a list of all packages scanned"""
-
+    """Build the embed that shows a list of all packages scanned."""
     desc = "\n".join(map(str, scan_results))
     embed = discord.Embed(title="Dragonfly Scan Logs", description=f"```{desc}```")
 
@@ -166,14 +164,14 @@ async def run(
     logs_channel: discord.abc.Messageable,
     score: int,
 ) -> None:
-    """Script entrypoint"""
-    since = datetime.now(tz=timezone.utc) - timedelta(seconds=DragonflyConfig.interval)
+    """Script entrypoint."""
+    since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
     scan_results = await lookup_package_info(bot, since=since)
     for result in scan_results:
         if result.score >= score:
             embed = _build_package_scan_result_embed(result)
             await alerts_channel.send(
-                f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result)
+                f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result),
             )
 
     if scan_results:

@@ -28,7 +28,7 @@ log = get_logger(__name__)
 class Internal(Cog):
     """Administrator and Core Developer commands."""
 
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: Bot) -> None:
         self.bot = bot
         self.env = {}
         self.ln = 0
@@ -87,9 +87,8 @@ class Internal(Cog):
                 # to indent it.
                 start = "...: ".rjust(len(str(self.ln)) + 7)
 
-            if i == len(lines) - 2:
-                if line.startswith("return"):
-                    line = line[6:].strip()
+            if i == len(lines) - 2 and line.startswith("return"):
+                line = line[6:].strip()
 
             # Combine everything
             res += start + line + "\n"
@@ -118,10 +117,7 @@ class Internal(Cog):
                 # Leave out the traceback message
                 out = "\n" + "\n".join(out.split("\n")[1:])
 
-            if isinstance(out, str):
-                pretty = out
-            else:
-                pretty = pprint.pformat(out, compact=True, width=60)
+            pretty = out if isinstance(out, str) else pprint.pformat(out, compact=True, width=60)
 
             if pretty != str(out):
                 # We're using the pretty version, start on the next line
@@ -180,7 +176,7 @@ async def func():  # (None,) -> Any
     finally:
         self.env.update(locals())
 """.format(
-            textwrap.indent(code, "            ")
+            textwrap.indent(code, "            "),
         )
 
         try:
@@ -212,7 +208,7 @@ async def func():  # (None,) -> Any
             else:
                 paste_text = f"full contents at {paste_link}"
 
-            await ctx.send(f"```py\n{out[:truncate_index]}\n```" f"... response truncated; {paste_text}", embed=embed)
+            await ctx.send(f"```py\n{out[:truncate_index]}\n```... response truncated; {paste_text}", embed=embed)
             return None
 
         await ctx.send(f"```py\n{out}```", embed=embed)
@@ -221,7 +217,7 @@ async def func():  # (None,) -> Any
     @group(name="internal", aliases=("int",))
     @has_any_role(Roles.administrators, Roles.core_developers)
     async def internal_group(self, ctx: Context) -> None:
-        """Internal commands. Top secret!"""
+        """Internal commands. Top secret!."""
         if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
@@ -235,7 +231,7 @@ async def func():  # (None,) -> Any
 
         if (
             not re.search(  # Check if it's an expression
-                r"^(return|import|for|while|def|class|" r"from|exit|[a-zA-Z0-9]+\s*=)", code, re.M
+                r"^(return|import|for|while|def|class|from|exit|[a-zA-Z0-9]+\s*=)", code, re.M,
             )
             and len(code.split("\n")) == 1
         ):
