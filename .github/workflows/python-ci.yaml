@@ -25,3 +25,12 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: ${{ matrix.python-version }}
+
+  docs:
+    # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    uses: darbiadev/.github/.github/workflows/github-pages-python-sphinx.yaml@068870f051676db9e2651013f7c7196ffdaeadaa # v2.0.0

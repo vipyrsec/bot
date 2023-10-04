@@ -1,2 +1,2 @@
-# CI
+# Require DevOps signoff on CI changes
 .github @letsbuilda/devops
