@@ -1,42 +1,42 @@
 [project]
 name = "bot"
 version = "4.0.0"
-dynamic = ["dependencies"]
+dynamic = ["dependencies", "optional-dependencies"]
 
 [project.urls]
 repository = "https://github.com/vipyrsec/bot/"
 documentation = "https://docs.vipyrsec.com/bot/"
-
-[project.optional-dependencies]
-dev = [
-    "pip-tools",
-    "pre-commit",
-    "black",
-    "ruff",
-]
-tests = [
-    "pytest",
-]
-docs = [
-    "sphinx",
-    "furo",
-    "sphinx-autoapi",
-    "toml",
-    "releases",
-]
 
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic.dependencies]
-file = ["requirements.txt"]
+file = ["requirements/requirements.txt"]
+
+[tool.setuptools.dynamic.optional-dependencies]
+dev = { file = ["requirements/requirements-dev.txt"] }
+tests = { file = ["requirements/requirements-tests.txt"] }
+docs = { file = ["requirements/requirements-docs.txt"] }
 
 [tool.black]
+target-version = ["py311"]
 line-length = 120
 
 [tool.ruff]
+target-version = "py311"
 line-length = 120
+select = ["ALL"]
+ignore = []
 
-[tool.pytest.ini_options]
-addopts = "tests -r a -v --doctest-modules src"
+[tool.ruff.extend-per-file-ignores]
+"docs/*" = [
+    "INP001", # (File `tests/*.py` is part of an implicit namespace package. Add an `__init__.py`.) - Docs are not modules
+]
+"tests/*" = [
+    "INP001", # (File `tests/*.py` is part of an implicit namespace package. Add an `__init__.py`.) - Tests are not modules
+    "S101", # (Use of `assert` detected) - Yes, that's the point
+]
+
+[tool.ruff.pydocstyle]
+convention = "numpy"

@@ -4,6 +4,7 @@ Changelog
 - :release:`4.0.0 <4th October 2023>`
 - :feature:`-` Reinitialize versioning
 - :feature:`-` Reinitialize CI
+- :feature:`-` Reinitialize dependencies
 
 - :release:`2.3.2 <15th May 2023>`
 - :feature:`62` Add slash command to bring up package modal on demand
