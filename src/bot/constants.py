@@ -80,6 +80,7 @@ class _Bot(EnvConfig, env_prefix="bot_"):
 
     token: str = ""
     trace_loggers: str = "*"
+    prefix: str = "$"
 
 
 Bot = _Bot()

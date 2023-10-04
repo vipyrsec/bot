@@ -15,18 +15,21 @@ setup_sentry()
 intents = discord.Intents.default()
 intents.message_content = True
 
+def get_prefix(bot_, message_):
+    extras = constants.Bot.prefix.split(",")
+    return commands.when_mentioned_or(*extras)(bot_, message_)
 
 async def main() -> None:
     """Run the bot."""
-    bot = Bot(
-        guild_id=constants.Guild.id,
-        http_session=aiohttp.ClientSession(),
-        allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),
-        command_prefix=commands.when_mentioned,
-        intents=intents,
-    )
+    async with aiohttp.ClientSession() as session:
+        bot = Bot(
+            guild_id=constants.Guild.id,
+            http_session=session,
+            allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),
+            command_prefix=get_prefix,
+            intents=intents,
+        )
 
-    async with bot:
         await bot.start(constants.Bot.token)
 
 
