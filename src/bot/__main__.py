@@ -15,9 +15,11 @@ setup_sentry()
 intents = discord.Intents.default()
 intents.message_content = True
 
+
 def get_prefix(bot_, message_):
     extras = constants.Bot.prefix.split(",")
     return commands.when_mentioned_or(*extras)(bot_, message_)
+
 
 async def main() -> None:
     """Run the bot."""

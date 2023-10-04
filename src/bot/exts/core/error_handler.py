@@ -28,16 +28,12 @@ class CommandErrorHandler(commands.Cog):
     @staticmethod
     def revert_cooldown_counter(command: commands.Command, message: Message) -> None:
         """Undoes the last cooldown counter for user-error cases."""
-        # pylint: disable-next=protected-access
         if command._buckets.valid:
-            # pylint: disable-next=protected-access
             bucket = command._buckets.get_bucket(message)
-            # pylint: disable-next=protected-access
             bucket._tokens = min(bucket.rate, bucket._tokens + 1)
             logging.debug("Cooldown counter reverted as the command was not used correctly.")
 
     @staticmethod
-    # pylint: disable-next=dangerous-default-value
     def error_embed(message: str, title: Iterable | str = NEGATIVE_REPLIES) -> Embed:
         """Build a basic embed with red colour and either a random error title or a title provided."""
         embed = Embed(colour=Colours.soft_red)

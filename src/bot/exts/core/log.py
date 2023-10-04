@@ -18,7 +18,6 @@ class Log(Cog):
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
 
-    # pylint: disable-next=too-many-locals,too-many-arguments
     async def send_log_message(
         self,
         icon_url: str | None,
