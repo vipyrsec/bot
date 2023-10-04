@@ -30,7 +30,8 @@ class CommandTree(discord.app_commands.CommandTree):
             )
 
             await interaction.response.send_message(
-                f"The '{error.missing_role}' role is required to run this command.", ephemeral=True,
+                f"The '{error.missing_role}' role is required to run this command.",
+                ephemeral=True,
             )
         elif isinstance(error, discord.app_commands.NoPrivateMessage):
             log.warning(

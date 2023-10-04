@@ -231,7 +231,9 @@ async def func():  # (None,) -> Any
 
         if (
             not re.search(  # Check if it's an expression
-                r"^(return|import|for|while|def|class|from|exit|[a-zA-Z0-9]+\s*=)", code, re.M,
+                r"^(return|import|for|while|def|class|from|exit|[a-zA-Z0-9]+\s*=)",
+                code,
+                re.M,
             )
             and len(code.split("\n")) == 1
         ):

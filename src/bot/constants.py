@@ -149,7 +149,6 @@ class _URLs(_BaseURLs):
 URLs = _URLs()
 
 
-
 class _Colours(EnvConfig, env_prefix="colours_"):
     """Named color constants."""
 

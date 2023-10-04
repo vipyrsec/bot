@@ -171,7 +171,9 @@ async def run(
         if result.score >= score:
             embed = _build_package_scan_result_embed(result)
             await alerts_channel.send(
-                f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result),
+                f"<@&{DragonflyConfig.alerts_role_id}>",
+                embed=embed,
+                view=ReportView(bot, result),
             )
 
     if scan_results:

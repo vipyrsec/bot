@@ -18,7 +18,11 @@ class PasteTooLongError(Exception):
 
 
 async def send_to_paste_service(
-    http_session: ClientSession, contents: str, *, extension: str = "", max_length: int = MAX_PASTE_LENGTH,
+    http_session: ClientSession,
+    contents: str,
+    *,
+    extension: str = "",
+    max_length: int = MAX_PASTE_LENGTH,
 ) -> str:
     """
     Upload `contents` to the paste service.

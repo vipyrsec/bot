@@ -29,7 +29,9 @@ class Sync(commands.Cog):
         tree.copy_global_to(guild=guild)
         synced_commands = await tree.sync(guild=guild)
         log.debug(
-            "Synced %s commands: %s", len(synced_commands), ", ".join(command.name for command in synced_commands),
+            "Synced %s commands: %s",
+            len(synced_commands),
+            ", ".join(command.name for command in synced_commands),
         )
 
         return synced_commands

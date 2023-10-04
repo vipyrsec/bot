@@ -16,7 +16,13 @@ from .dragonfly._api import lookup_package_info
 
 
 class PaginatorView(ui.View):
-    def __init__(self, *, member: discord.Member | discord.User, packages: list[PackageScanResult], per: int = 15) -> None:
+    def __init__(
+        self,
+        *,
+        member: discord.Member | discord.User,
+        packages: list[PackageScanResult],
+        per: int = 15,
+    ) -> None:
         super().__init__(timeout=None)
         pages = math.ceil(len(packages) / per)
         self.member = member
