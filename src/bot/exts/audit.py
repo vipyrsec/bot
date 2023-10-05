@@ -12,8 +12,6 @@ from bot.bot import Bot
 from bot.dragonfly_services import PackageScanResult
 
 
-
-
 class PaginatorView(ui.View):
     def __init__(
         self,

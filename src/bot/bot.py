@@ -4,13 +4,11 @@ import logging
 
 import discord
 from discord.ext import commands
-from letsbuilda.pypi import PyPIServices
 from pydis_core import BotBase
 from pydis_core.utils import scheduling
 from sentry_sdk import push_scope
 
 from bot import exts
-from bot.exts import pypi
 
 log = logging.getLogger(__name__)
 
@@ -75,10 +73,6 @@ class Bot(BotBase):
         # wait_until_guild_available in their cog_load method.
         log.debug("load_extensions")
         scheduling.create_task(self.load_extensions(exts))
-
-        client = PyPIServices(self.http_session)
-        self.package_view = pypi.PackageViewer(packages=(await client.get_rss_feed(client.NEWEST_PACKAGES_FEED_URL)))
-        self.add_view(self.package_view)
 
     async def on_error(self, event: str, *args, **kwargs) -> None:
         """Log errors raised in event listeners rather than printing them to stderr."""
