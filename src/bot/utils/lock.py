@@ -4,7 +4,7 @@ import types
 from collections import defaultdict
 from collections.abc import Awaitable, Callable, Hashable
 from functools import partial
-from typing import Any
+from typing import Any, Self
 from weakref import WeakValueDictionary
 
 from bot.log import get_logger
@@ -29,23 +29,23 @@ class SharedEvent:
     when all of the holders finish the event will be set.
     """
 
-    def __init__(self) -> None:
+    def __init__(self: Self) -> None:
         self._active_count = 0
         self._event = asyncio.Event()
         self._event.set()
 
-    def __enter__(self):
+    def __enter__(self: Self):
         """Increment the count of the active holders and clear the internal event."""
         self._active_count += 1
         self._event.clear()
 
-    def __exit__(self, _exc_type, _exc_val, _exc_tb):  # noqa: ANN001
+    def __exit__(self: Self, _exc_type, _exc_val, _exc_tb):  # noqa: ANN001
         """Decrement the count of the active holders; if 0 is reached set the internal event."""
         self._active_count -= 1
         if not self._active_count:
             self._event.set()
 
-    async def wait(self) -> None:
+    async def wait(self: Self) -> None:
         """Wait for all active holders to exit."""
         await self._event.wait()
 

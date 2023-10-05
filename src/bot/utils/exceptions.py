@@ -1,12 +1,13 @@
 """Custom Exception(s)."""
 
 from collections.abc import Hashable
+from typing import Self
 
 
 class APIError(Exception):
     """Raised when an external API (eg. Wikipedia) returns an error response."""
 
-    def __init__(self, api: str, status_code: int, error_msg: str | None = None) -> None:
+    def __init__(self: Self, api: str, status_code: int, error_msg: str | None = None) -> None:
         super().__init__()
         self.api = api
         self.status_code = status_code
@@ -16,7 +17,7 @@ class APIError(Exception):
 class MovedCommandError(Exception):
     """Raised when a command has moved locations."""
 
-    def __init__(self, new_command_name: str) -> None:
+    def __init__(self: Self, new_command_name: str) -> None:
         self.new_command_name = new_command_name
 
 
@@ -30,7 +31,7 @@ class LockedResourceError(RuntimeError):
         `id` -- ID of the locked resource
     """
 
-    def __init__(self, resource_type: str, resource_id: Hashable) -> None:
+    def __init__(self: Self, resource_type: str, resource_id: Hashable) -> None:
         self.type = resource_type
         self.id = resource_id
 

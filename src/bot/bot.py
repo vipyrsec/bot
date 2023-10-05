@@ -14,10 +14,14 @@ log = logging.getLogger(__name__)
 
 
 class CommandTree(discord.app_commands.CommandTree):
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self: Self, bot: commands.Bot) -> None:
         super().__init__(bot)
 
-    async def on_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
+    async def on_error(
+        self: Self,
+        interaction: discord.Interaction,
+        error: discord.app_commands.AppCommandError,
+    ) -> None:
         if isinstance(error, discord.app_commands.MissingRole):
             log.warning(
                 "User '%s' attempted to run command '%s', which requires the '%s' role which the user is missing.",
@@ -46,7 +50,7 @@ class Bot(BotBase):
     """Bot implementation."""
 
     def __init__(
-        self,
+        self: Self,
         *args,
         **kwargs,
     ) -> None:
@@ -74,7 +78,7 @@ class Bot(BotBase):
         log.debug("load_extensions")
         scheduling.create_task(self.load_extensions(exts))
 
-    async def on_error(self, event: str, *args, **kwargs) -> None:
+    async def on_error(self: Self, event: str, *args, **kwargs) -> None:
         """Log errors raised in event listeners rather than printing them to stderr."""
         with push_scope() as scope:
             scope.set_tag("event", event)

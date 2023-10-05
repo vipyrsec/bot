@@ -5,7 +5,7 @@ import os
 import sys
 from logging import Logger, handlers
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Self, cast
 
 import coloredlogs
 import sentry_sdk
@@ -22,7 +22,7 @@ LoggerClass = Logger if TYPE_CHECKING else logging.getLoggerClass()
 class CustomLogger(LoggerClass):
     """Custom implementation of the `Logger` class with an added `trace` method."""
 
-    def trace(self, msg: str, *args, **kwargs) -> None:
+    def trace(self: Self, msg: str, *args, **kwargs) -> None:
         """
         Log 'msg % args' with severity 'TRACE'.
 

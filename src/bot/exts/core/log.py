@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime
+from typing import Self
 
 import discord
 from discord.ext.commands import Cog, Context
@@ -15,7 +16,7 @@ log = logging.getLogger(__name__)
 class Log(Cog):
     """Logging for server events and staff actions."""
 
-    def __init__(self, bot: Bot) -> None:
+    def __init__(self: Self, bot: Bot) -> None:
         self.bot = bot
 
     async def send_log_message(

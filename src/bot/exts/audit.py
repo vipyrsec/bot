@@ -3,6 +3,7 @@
 import math
 import random
 from datetime import UTC, datetime, timedelta
+from typing import Self
 
 import discord
 from discord import app_commands, ui
@@ -30,7 +31,7 @@ class PaginatorView(ui.View):
         self.current = 0
 
     @ui.button(emoji="◀️")
-    async def previous(self, interaction: discord.Interaction, _) -> None:
+    async def previous(self: Self, interaction: discord.Interaction, _) -> None:
         if self.current == 0:
             self.current = len(self.embeds) - 1
         else:
@@ -39,7 +40,7 @@ class PaginatorView(ui.View):
         await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
 
     @ui.button(emoji="⏹️")
-    async def stop(self, interaction: discord.Interaction, button: ui.Button) -> None:
+    async def stop(self: Self, interaction: discord.Interaction, button: ui.Button) -> None:
         self.previous.disabled = True
         button.disabled = True
         self.next.disabled = True
@@ -47,7 +48,7 @@ class PaginatorView(ui.View):
         await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
 
     @ui.button(emoji="▶️")
-    async def next(self, interaction: discord.Interaction, _) -> None:
+    async def next(self: Self, interaction: discord.Interaction, _) -> None:
         if self.current == len(self.embeds) - 1:
             self.current = 0
         else:
@@ -55,14 +56,14 @@ class PaginatorView(ui.View):
 
         await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    async def interaction_check(self: Self, interaction: discord.Interaction) -> bool:
         if interaction.user == self.member:
             return True
 
         await interaction.response.send_message("This paginator is not for you!", ephemeral=True)
         return False
 
-    def _build_embed(self, packages: list[PackageScanResult], page: int, total: int) -> discord.Embed:
+    def _build_embed(self: Self, packages: list[PackageScanResult], page: int, total: int) -> discord.Embed:
         embed = discord.Embed(
             title="Package Audit",
             description="\n".join(
@@ -82,13 +83,13 @@ class Audit(commands.Cog):
     """Cog for package auditing."""
 
     def __init__(
-        self,
+        self: Self,
         bot: Bot,
     ) -> None:
         self.bot = bot
 
     @app_commands.command(name="audit", description="Randomly pick packages and display them")
-    async def audit(self, interaction: discord.Interaction, hours: int, amount: int) -> None:
+    async def audit(self: Self, interaction: discord.Interaction, hours: int, amount: int) -> None:
         """
         Recalls for scanned packages within a given time frame and amount.
 
