@@ -10,8 +10,7 @@ from discord.ext import commands, tasks
 
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
-
-from ._api import PackageScanResult, lookup_package_info, report_package
+from bot.dragonfly_services import PackageScanResult
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -88,8 +87,7 @@ class ConfirmReportModal(discord.ui.Modal):
             )
 
         try:
-            await report_package(
-                bot=self.bot,
+            await self.bot.dragonfly_services.report_package(
                 name=self.package.name,
                 version=self.package.version,
                 inspector_url=inspector_url_override,
@@ -166,7 +164,7 @@ async def run(
 ) -> None:
     """Script entrypoint."""
     since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
-    scan_results = await lookup_package_info(bot, since=since)
+    scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
     for result in scan_results:
         if result.score >= score:
             embed = _build_package_scan_result_embed(result)
@@ -253,7 +251,7 @@ class Dragonfly(commands.Cog):
     @discord.app_commands.checks.has_role(Roles.vipyr_security)
     @discord.app_commands.command(name="lookup", description="Scans a package")
     async def lookup(self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
-        scan_results = await lookup_package_info(self.bot, name=name, version=version)
+        scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
         if scan_results:
             embed = _build_package_scan_result_embed(scan_results[0])
             await interaction.response.send_message(embed=embed)

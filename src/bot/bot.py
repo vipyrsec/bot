@@ -10,7 +10,6 @@ from pydis_core.utils import scheduling
 from sentry_sdk import push_scope
 
 from bot import exts
-from bot.constants import DragonflyAuthentication
 from bot.exts import pypi
 
 log = logging.getLogger(__name__)
@@ -67,29 +66,10 @@ class Bot(BotBase):
 
         self.all_extensions: frozenset[str] | None = None
 
-    async def authorize(self) -> None:
-        log.info("Authenticating")
-        url = f"https://{DragonflyAuthentication.domain}/oauth/token"
-        json = {
-            "client_id": DragonflyAuthentication.client_id,
-            "client_secret": DragonflyAuthentication.client_secret,
-            "username": DragonflyAuthentication.username,
-            "password": DragonflyAuthentication.password,
-            "grant_type": "password",
-            "audience": DragonflyAuthentication.audience,
-        }
-        async with self.http_session.post(url, json=json) as res:
-            res.raise_for_status()
-            json = await res.json()
-            self.access_token: str = json["access_token"]
-
     async def setup_hook(self) -> None:
         """Default async initialisation method for discord.py."""
         log.debug("setup_hook")
         await super().setup_hook()
-
-        log.info("Performing initial authentication")
-        await self.authorize()
 
         # This is not awaited to avoid a deadlock with any cogs that have
         # wait_until_guild_available in their cog_load method.

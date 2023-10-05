@@ -1,6 +1,5 @@
 """Cog for package audition."""
 
-
 import math
 import random
 from datetime import UTC, datetime, timedelta
@@ -10,9 +9,9 @@ from discord import app_commands, ui
 from discord.ext import commands
 
 from bot.bot import Bot
-from bot.exts.dragonfly._api import PackageScanResult
+from bot.dragonfly_services import PackageScanResult
 
-from .dragonfly._api import lookup_package_info
+
 
 
 class PaginatorView(ui.View):
@@ -109,7 +108,7 @@ class Audit(commands.Cog):
 
         since = datetime.now(tz=UTC) - timedelta(hours=hours)
 
-        packages = await lookup_package_info(bot=self.bot, since=since)
+        packages = await self.bot.dragonfly_services.get_scanned_packages(since=since)
         packages = random.sample(packages, k=amount)
 
         view = PaginatorView(member=interaction.user, packages=packages)
