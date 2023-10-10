@@ -4,6 +4,7 @@ import logging
 import math
 import random
 from collections.abc import Iterable
+from typing import Self
 
 from discord import Embed, Message
 from discord.ext import commands
@@ -22,15 +23,15 @@ QUESTION_MARK_ICON = "https://cdn.discordapp.com/emojis/512367613339369475.png"
 class CommandErrorHandler(commands.Cog):
     """The error handler."""
 
-    def __init__(self, bot: Bot) -> None:
+    def __init__(self: Self, bot: Bot) -> None:
         self.bot = bot
 
     @staticmethod
     def revert_cooldown_counter(command: commands.Command, message: Message) -> None:
         """Undoes the last cooldown counter for user-error cases."""
-        if command._buckets.valid:
-            bucket = command._buckets.get_bucket(message)
-            bucket._tokens = min(bucket.rate, bucket._tokens + 1)
+        if command._buckets.valid:  # noqa: SLF001 -- Underscored attribute
+            bucket = command._buckets.get_bucket(message)  # noqa: SLF001 -- Underscored attribute
+            bucket._tokens = min(bucket.rate, bucket._tokens + 1)  # noqa: SLF001 -- Underscored attribute
             logging.debug("Cooldown counter reverted as the command was not used correctly.")
 
     @staticmethod
@@ -40,12 +41,16 @@ class CommandErrorHandler(commands.Cog):
         if isinstance(title, str):
             embed.title = title
         else:
-            embed.title = random.choice(title)
+            embed.title = random.choice(title)  # noqa: S311 -- wat
         embed.description = message
         return embed
 
     @commands.Cog.listener()
-    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
+    async def on_command_error(  # noqa: C901,PLR0911 -- Probably refactor this?
+        self: Self,
+        ctx: commands.Context,
+        error: commands.CommandError,
+    ) -> None:
         """Activates when a command raises an error."""
         if getattr(error, "handled", False):
             logging.debug(f"Command {ctx.command} had its error already handled locally; ignoring.")
@@ -136,8 +141,8 @@ class CommandErrorHandler(commands.Cog):
 
             log.exception(f"Unhandled command error: {error!s}", exc_info=error)
 
-    async def send_command_suggestion(self, ctx: commands.Context, command_name: str) -> None:
-        """Sends user similar commands if any can be found."""
+    async def send_command_suggestion(self: Self, ctx: commands.Context, command_name: str) -> None:
+        """Send user similar commands if any can be found."""
         command_suggestions = []
         if similar_command_names := get_command_suggestions(list(self.bot.all_commands.keys()), command_name):
             for similar_command_name in similar_command_names:

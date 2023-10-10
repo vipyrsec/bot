@@ -15,7 +15,7 @@ def format_user(user: discord.abc.User) -> str:
 
 async def get_discord_message(ctx: Context, text: str) -> Message | str:
     """
-    Attempts to convert a given `text` to a discord Message object and return it.
+    Attempt to convert a given `text` to a discord Message object and return it.
 
     Conversion will succeed if given a discord Message ID or link.
     Returns `text` if the conversion fails.
@@ -26,7 +26,7 @@ async def get_discord_message(ctx: Context, text: str) -> Message | str:
 
 async def get_text_and_embed(ctx: Context, text: str) -> tuple[str, Embed | None]:
     """
-    Attempts to extract the text and embed from a possible link to a discord Message.
+    Attempt to extract the text and embed from a possible link to a discord Message.
 
     Does not retrieve the text and embed from the Message if it is in a channel the user does
     not have read permissions in.

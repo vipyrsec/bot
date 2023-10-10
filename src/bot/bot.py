@@ -1,6 +1,7 @@
 """Bot subclass."""
 
 import logging
+from typing import Self
 
 import discord
 from discord.ext import commands
@@ -14,6 +15,8 @@ log = logging.getLogger(__name__)
 
 
 class CommandTree(discord.app_commands.CommandTree):
+    """Custom command tree that handles errors raised by commands."""
+
     def __init__(self: Self, bot: commands.Bot) -> None:
         super().__init__(bot)
 
@@ -22,6 +25,7 @@ class CommandTree(discord.app_commands.CommandTree):
         interaction: discord.Interaction,
         error: discord.app_commands.AppCommandError,
     ) -> None:
+        """Override the default error handler to handle custom errors."""
         if isinstance(error, discord.app_commands.MissingRole):
             log.warning(
                 "User '%s' attempted to run command '%s', which requires the '%s' role which the user is missing.",
@@ -51,11 +55,12 @@ class Bot(BotBase):
 
     def __init__(
         self: Self,
-        *args,
-        **kwargs,
+        *args: tuple,
+        **kwargs: dict,
     ) -> None:
         """
         Initialise the base bot instance.
+
         Args:
             allowed_roles: A list of role IDs that the bot is allowed to mention.
             http_session (aiohttp.ClientSession): The session to use for the bot.
@@ -68,8 +73,8 @@ class Bot(BotBase):
 
         self.all_extensions: frozenset[str] | None = None
 
-    async def setup_hook(self) -> None:
-        """Default async initialisation method for discord.py."""
+    async def setup_hook(self: Self) -> None:
+        """Default async initialisation method for discord.py."""  # noqa: D401
         log.debug("setup_hook")
         await super().setup_hook()
 
@@ -78,7 +83,7 @@ class Bot(BotBase):
         log.debug("load_extensions")
         scheduling.create_task(self.load_extensions(exts))
 
-    async def on_error(self: Self, event: str, *args, **kwargs) -> None:
+    async def on_error(self: Self, event: str, *args: tuple, **kwargs: dict) -> None:
         """Log errors raised in event listeners rather than printing them to stderr."""
         with push_scope() as scope:
             scope.set_tag("event", event)

@@ -1,3 +1,5 @@
+"""Locking utilities for mutually exclusive operations on resources."""
+
 import asyncio
 import inspect
 import types
@@ -34,12 +36,12 @@ class SharedEvent:
         self._event = asyncio.Event()
         self._event.set()
 
-    def __enter__(self: Self):
+    def __enter__(self: Self) -> None:
         """Increment the count of the active holders and clear the internal event."""
         self._active_count += 1
         self._event.clear()
 
-    def __exit__(self: Self, _exc_type, _exc_val, _exc_tb):  # noqa: ANN001
+    def __exit__(self: Self, _exc_type, _exc_val, _exc_tb) -> None:  # noqa: ANN001
         """Decrement the count of the active holders; if 0 is reached set the internal event."""
         self._active_count -= 1
         if not self._active_count:
@@ -79,7 +81,7 @@ def lock(
         name = func.__name__
 
         @command_wraps(func)
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401 -- matches signature of upstream
             log.trace(f"{name}: mutually exclusive decorator called")
 
             if callable(resource_id):

@@ -22,7 +22,7 @@ LoggerClass = Logger if TYPE_CHECKING else logging.getLoggerClass()
 class CustomLogger(LoggerClass):
     """Custom implementation of the `Logger` class with an added `trace` method."""
 
-    def trace(self: Self, msg: str, *args, **kwargs) -> None:
+    def trace(self: Self, msg: str, *args: tuple, **kwargs: dict) -> None:
         """
         Log 'msg % args' with severity 'TRACE'.
 
@@ -36,7 +36,7 @@ class CustomLogger(LoggerClass):
 
 
 def get_logger(name: str | None = None) -> CustomLogger:
-    """Utility to make mypy recognise that logger is of type `CustomLogger`."""
+    """Helper to make mypy recognise that logger is of type `CustomLogger`."""  # noqa: D401
     return cast(CustomLogger, logging.getLogger(name))
 
 

@@ -1,6 +1,7 @@
 """Main runner."""
 
 import asyncio
+from collections.abc import Callable
 
 import discord
 from aiohttp import ClientSession, ClientTimeout
@@ -18,7 +19,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 
-def get_prefix(bot_, message_):
+def get_prefix(bot_: Bot, message_: discord.Message) -> Callable[[Bot, discord.Message], list[str]]:
+    """Return a callable to check for the bot's prefix."""
     extras = constants.Bot.prefix.split(",")
     return commands.when_mentioned_or(*extras)(bot_, message_)
 

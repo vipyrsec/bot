@@ -18,6 +18,8 @@ log.setLevel(logging.INFO)
 
 
 class ConfirmReportModal(discord.ui.Modal):
+    """Modal for confirming a report."""
+
     recipient = discord.ui.TextInput(
         label="Recipient",
         placeholder="Recipient's Email Address",
@@ -41,6 +43,7 @@ class ConfirmReportModal(discord.ui.Modal):
     )
 
     def __init__(self: Self, *, package: PackageScanResult, bot: Bot) -> None:
+        """Initialize the modal."""
         self.package = package
         self.bot = bot
 
@@ -51,6 +54,7 @@ class ConfirmReportModal(discord.ui.Modal):
         super().__init__()
 
     async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:
+        """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
             return await interaction.response.send_message(f"Error from upstream: {error.status}", ephemeral=True)
 
@@ -58,13 +62,15 @@ class ConfirmReportModal(discord.ui.Modal):
         raise error
 
     def _build_modal_title(self: Self) -> str:
+        """Build the modal title."""
         title = f"Confirm report for {self.package.name} v{self.package.version}"
-        if len(title) >= 45:
+        if len(title) >= 45:  # noqa: PLR2004
             title = title[:42] + "..."
 
         return title
 
-    async def on_submit(self: Self, interaction: discord.Interaction):
+    async def on_submit(self: Self, interaction: discord.Interaction) -> None:
+        """Submit the report."""
         # discord.py returns empty string "" if not filled out, we want it to be `None`
         additional_information_override = self.additional_information.value or None
         inspector_url_override = self.inspector_url.value or None
@@ -112,6 +118,7 @@ class ReportView(discord.ui.View):
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
     async def report(self: Self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        """Report a package."""
         modal = ConfirmReportModal(package=self.payload, bot=self.bot)
         await interaction.response.send_modal(modal)
 
@@ -184,13 +191,17 @@ async def run(
 
 
 class Dragonfly(commands.Cog):
+    """Cog for the Dragonfly scanner."""
+
     def __init__(self: Self, bot: Bot) -> None:
+        """Initialize the Dragonfly cog."""
         self.bot = bot
         self.score_threshold = DragonflyConfig.threshold
         super().__init__()
 
     @tasks.loop(seconds=DragonflyConfig.interval)
-    async def scan_loop(self) -> None:
+    async def scan_loop(self: Self) -> None:
+        """Loop that runs the scan task."""
         logs_channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
         assert isinstance(logs_channel, discord.abc.Messageable)
 
@@ -205,11 +216,13 @@ class Dragonfly(commands.Cog):
         )
 
     @scan_loop.before_loop
-    async def before_scan_loop(self) -> None:
+    async def before_scan_loop(self: Self) -> None:
+        """Wait until the bot is ready."""
         await self.bot.wait_until_ready()
 
     @scan_loop.error
     async def scan_loop_error(self: Self, exc: BaseException) -> None:
+        """Log any errors that occur in the scan loop."""
         logs_channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
         assert isinstance(logs_channel, discord.abc.Messageable)
 
@@ -230,6 +243,7 @@ class Dragonfly(commands.Cog):
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
     async def start(self: Self, ctx: commands.Context) -> None:
+        """Start the scan task."""
         if self.scan_loop.is_running():
             await ctx.send("Task is already running.")
         else:
@@ -238,7 +252,8 @@ class Dragonfly(commands.Cog):
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
-    async def stop(self: Self, ctx: commands.Context, force: bool = False) -> None:
+    async def stop(self: Self, ctx: commands.Context, force: bool = False) -> None:  # noqa: FBT001,FBT002
+        """Stop the scan task."""
         if self.scan_loop.is_running():
             if force:
                 self.scan_loop.cancel()
@@ -252,6 +267,7 @@ class Dragonfly(commands.Cog):
     @discord.app_commands.checks.has_role(Roles.vipyr_security)
     @discord.app_commands.command(name="lookup", description="Scans a package")
     async def lookup(self: Self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
+        """Pull the scan results for a package."""
         scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
         if scan_results:
             embed = _build_package_scan_result_embed(scan_results[0])
@@ -261,20 +277,24 @@ class Dragonfly(commands.Cog):
 
     @commands.group()
     async def threshold(self: Self, ctx: commands.Context) -> None:
+        """Group of commands for managing the score threshold."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(self.threshold)
 
     @threshold.command()
     async def get(self: Self, ctx: commands.Context) -> None:
+        """Get the score threshold."""
         await ctx.send(f"The current threshold is set to `{self.score_threshold}`")
 
     @threshold.command()
-    async def set(self: Self, ctx: commands.Context, value: int) -> None:
+    async def set(self: Self, ctx: commands.Context, value: int) -> None:  # noqa: A003
+        """Set the score threshold."""
         self.score_threshold = value
         await ctx.send(f"The current threshold has been set to `{value}`")
 
 
 async def setup(bot: Bot) -> None:
+    """Load the Dragonfly cog."""
     cog = Dragonfly(bot)
     task = cog.scan_loop
     if not task.is_running():

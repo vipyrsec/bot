@@ -1,3 +1,5 @@
+"""Internal commands for bot administration and core development."""
+
 import contextlib
 import inspect
 import pprint
@@ -47,7 +49,7 @@ class Internal(Cog):
         self.socket_event_total += 1
         self.socket_events[event_type] += 1
 
-    def _format(self: Self, inp: str, out: Any) -> tuple[str, discord.Embed | None]:
+    def _format(self: Self, inp: str, out: Any) -> tuple[str, discord.Embed | None]:  # noqa: ANN401,C901,PLR0912
         """Format the eval output into a string & attempt to format it into an Embed."""
         self._ = out
 
@@ -64,7 +66,7 @@ class Internal(Cog):
 
         # Create the input dialog
         for i, line in enumerate(lines):
-            if i == 0:
+            if i == 0:  # noqa: SIM108 -- ternary would strip the comment
                 # Start dialog
                 start = f"In [{self.ln}]: "
 
@@ -88,7 +90,7 @@ class Internal(Cog):
                 start = "...: ".rjust(len(str(self.ln)) + 7)
 
             if i == len(lines) - 2 and line.startswith("return"):
-                line = line[6:].strip()
+                line = line[6:].strip()  # noqa: PLW2901
 
             # Combine everything
             res += start + line + "\n"
@@ -123,7 +125,7 @@ class Internal(Cog):
                 # We're using the pretty version, start on the next line
                 res += "\n"
 
-            if pretty.count("\n") > 20:
+            if pretty.count("\n") > 20:  # noqa: PLR2004
                 # Text too long, shorten
                 li = pretty.split("\n")
 
@@ -184,7 +186,7 @@ async def func():  # (None,) -> Any
             func = self.env["func"]
             res = await func()
 
-        except Exception:
+        except Exception:  # noqa: BLE001
             res = traceback.format_exc()
 
         out, embed = self._format(code, res)
@@ -193,7 +195,7 @@ async def func():  # (None,) -> Any
         # Truncate output to max 15 lines or 1500 characters
         newline_truncate_index = find_nth_occurrence(out, "\n", 15)
 
-        if newline_truncate_index is None or newline_truncate_index > 1500:
+        if newline_truncate_index is None or newline_truncate_index > 1500:  # noqa: PLR2004
             truncate_index = 1500
         else:
             truncate_index = newline_truncate_index
@@ -217,13 +219,13 @@ async def func():  # (None,) -> Any
     @group(name="internal", aliases=("int",))
     @has_any_role(Roles.administrators, Roles.core_developers)
     async def internal_group(self: Self, ctx: Context) -> None:
-        """Internal commands. Top secret!."""
+        """Internal commands. Top secret!."""  # noqa: D401
         if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
     @internal_group.command(name="eval", aliases=("e",))
     @has_any_role(Roles.administrators)
-    async def eval(self: Self, ctx: Context, *, code: str) -> None:
+    async def eval(self: Self, ctx: Context, *, code: str) -> None:  # noqa: A003
         """Run eval in a REPL-like format."""
         code = code.strip("`")
         if re.match("py(thon)?\n", code):

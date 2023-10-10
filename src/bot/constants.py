@@ -7,7 +7,7 @@ An `.env` file is used to populate env vars, if present.
 """
 
 from os import getenv
-from typing import Self
+from typing import ClassVar, Self
 
 from pydantic import root_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -125,9 +125,9 @@ Roles = _Roles()
 
 
 class _Guild(EnvConfig, env_prefix="guild_"):
-    id: int = 1121450543462760448
+    id: int = 1121450543462760448  # noqa: A003 - inside a class, this is fine
 
-    moderation_roles: list[int] = [Roles.moderators]
+    moderation_roles: ClassVar[list[int]] = [Roles.moderators]
 
 
 Guild = _Guild()
