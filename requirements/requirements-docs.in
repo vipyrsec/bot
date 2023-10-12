@@ -1,0 +1,7 @@
+# Constrain versions installed to be compatible with core dependencies
+--constraint requirements.txt
+
+sphinx
+furo
+sphinx-autoapi
+releases

@@ -1,23 +1,25 @@
-"""Download the most recent packages from PyPI and use Dragonfly to check them for malware"""
+"""Download the most recent packages from PyPI and use Dragonfly to check them for malware."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from logging import getLogger
-import aiohttp
+from typing import Self
 
+import aiohttp
 import discord
 from discord.ext import commands, tasks
 
 from bot.bot import Bot
-from bot.constants import DragonflyConfig, Roles, Channels
-
-from ._api import PackageScanResult, lookup_package_info, report_package
+from bot.constants import Channels, DragonflyConfig, Roles
+from bot.dragonfly_services import PackageScanResult
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
 class ConfirmReportModal(discord.ui.Modal):
+    """Modal for confirming a report."""
+
     recipient = discord.ui.TextInput(
         label="Recipient",
         placeholder="Recipient's Email Address",
@@ -40,7 +42,8 @@ class ConfirmReportModal(discord.ui.Modal):
         style=discord.TextStyle.short,
     )
 
-    def __init__(self, *, package: PackageScanResult, bot: Bot) -> None:
+    def __init__(self: Self, *, package: PackageScanResult, bot: Bot) -> None:
+        """Initialize the modal."""
         self.package = package
         self.bot = bot
 
@@ -50,21 +53,24 @@ class ConfirmReportModal(discord.ui.Modal):
 
         super().__init__()
 
-    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+    async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:
+        """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
             return await interaction.response.send_message(f"Error from upstream: {error.status}", ephemeral=True)
 
         await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
         raise error
 
-    def _build_modal_title(self) -> str:
+    def _build_modal_title(self: Self) -> str:
+        """Build the modal title."""
         title = f"Confirm report for {self.package.name} v{self.package.version}"
-        if len(title) >= 45:
+        if len(title) >= 45:  # noqa: PLR2004
             title = title[:42] + "..."
 
         return title
 
-    async def on_submit(self, interaction: discord.Interaction):
+    async def on_submit(self: Self, interaction: discord.Interaction) -> None:
+        """Submit the report."""
         # discord.py returns empty string "" if not filled out, we want it to be `None`
         additional_information_override = self.additional_information.value or None
         inspector_url_override = self.inspector_url.value or None
@@ -84,12 +90,11 @@ class ConfirmReportModal(discord.ui.Modal):
                 f"User {interaction.user.mention} "
                 f"reported package `{self.package.name}` "
                 f"with additional_description `{additional_information_override}`"
-                f"with inspector_url `{inspector_url_override}`"
+                f"with inspector_url `{inspector_url_override}`",
             )
 
         try:
-            await report_package(
-                bot=self.bot,
+            await self.bot.dragonfly_services.report_package(
                 name=self.package.name,
                 version=self.package.version,
                 inspector_url=inspector_url_override,
@@ -104,15 +109,16 @@ class ConfirmReportModal(discord.ui.Modal):
 
 
 class ReportView(discord.ui.View):
-    """Report view"""
+    """Report view."""
 
-    def __init__(self, bot: Bot, payload: PackageScanResult) -> None:
+    def __init__(self: Self, bot: Bot, payload: PackageScanResult) -> None:
         self.bot = bot
         self.payload = payload
         super().__init__(timeout=None)
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
-    async def report(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def report(self: Self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        """Report a package."""
         modal = ConfirmReportModal(package=self.payload, bot=self.bot)
         await interaction.response.send_modal(modal)
 
@@ -123,8 +129,7 @@ class ReportView(discord.ui.View):
 
 
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
-    """Build the embed that shows the results of a package scan"""
-
+    """Build the embed that shows the results of a package scan."""
     embed = discord.Embed(
         title=f"New Scan Result: {scan_result.name} v{scan_result.version}",
         description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
@@ -149,8 +154,7 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
 
 
 def _build_all_packages_scanned_embed(scan_results: list[PackageScanResult]) -> discord.Embed:
-    """Build the embed that shows a list of all packages scanned"""
-
+    """Build the embed that shows a list of all packages scanned."""
     desc = "\n".join(map(str, scan_results))
     embed = discord.Embed(title="Dragonfly Scan Logs", description=f"```{desc}```")
 
@@ -166,14 +170,16 @@ async def run(
     logs_channel: discord.abc.Messageable,
     score: int,
 ) -> None:
-    """Script entrypoint"""
-    since = datetime.now(tz=timezone.utc) - timedelta(seconds=DragonflyConfig.interval)
-    scan_results = await lookup_package_info(bot, since=since)
+    """Script entrypoint."""
+    since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
+    scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
     for result in scan_results:
         if result.score >= score:
             embed = _build_package_scan_result_embed(result)
             await alerts_channel.send(
-                f"<@&{DragonflyConfig.alerts_role_id}>", embed=embed, view=ReportView(bot, result)
+                f"<@&{DragonflyConfig.alerts_role_id}>",
+                embed=embed,
+                view=ReportView(bot, result),
             )
 
     if scan_results:
@@ -185,13 +191,17 @@ async def run(
 
 
 class Dragonfly(commands.Cog):
-    def __init__(self, bot: Bot) -> None:
+    """Cog for the Dragonfly scanner."""
+
+    def __init__(self: Self, bot: Bot) -> None:
+        """Initialize the Dragonfly cog."""
         self.bot = bot
         self.score_threshold = DragonflyConfig.threshold
         super().__init__()
 
     @tasks.loop(seconds=DragonflyConfig.interval)
-    async def scan_loop(self) -> None:
+    async def scan_loop(self: Self) -> None:
+        """Loop that runs the scan task."""
         logs_channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
         assert isinstance(logs_channel, discord.abc.Messageable)
 
@@ -206,11 +216,13 @@ class Dragonfly(commands.Cog):
         )
 
     @scan_loop.before_loop
-    async def before_scan_loop(self) -> None:
+    async def before_scan_loop(self: Self) -> None:
+        """Wait until the bot is ready."""
         await self.bot.wait_until_ready()
 
     @scan_loop.error
-    async def scan_loop_error(self, exc: BaseException) -> None:
+    async def scan_loop_error(self: Self, exc: BaseException) -> None:
+        """Log any errors that occur in the scan loop."""
         logs_channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
         assert isinstance(logs_channel, discord.abc.Messageable)
 
@@ -230,7 +242,8 @@ class Dragonfly(commands.Cog):
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
-    async def start(self, ctx: commands.Context) -> None:
+    async def start(self: Self, ctx: commands.Context) -> None:
+        """Start the scan task."""
         if self.scan_loop.is_running():
             await ctx.send("Task is already running.")
         else:
@@ -239,7 +252,8 @@ class Dragonfly(commands.Cog):
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
-    async def stop(self, ctx: commands.Context, force: bool = False) -> None:
+    async def stop(self: Self, ctx: commands.Context, force: bool = False) -> None:  # noqa: FBT001,FBT002
+        """Stop the scan task."""
         if self.scan_loop.is_running():
             if force:
                 self.scan_loop.cancel()
@@ -252,8 +266,9 @@ class Dragonfly(commands.Cog):
 
     @discord.app_commands.checks.has_role(Roles.vipyr_security)
     @discord.app_commands.command(name="lookup", description="Scans a package")
-    async def lookup(self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
-        scan_results = await lookup_package_info(self.bot, name=name, version=version)
+    async def lookup(self: Self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
+        """Pull the scan results for a package."""
+        scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
         if scan_results:
             embed = _build_package_scan_result_embed(scan_results[0])
             await interaction.response.send_message(embed=embed)
@@ -261,21 +276,25 @@ class Dragonfly(commands.Cog):
             await interaction.response.send_message("No entries were found with the specified filters.")
 
     @commands.group()
-    async def threshold(self, ctx: commands.Context) -> None:
+    async def threshold(self: Self, ctx: commands.Context) -> None:
+        """Group of commands for managing the score threshold."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(self.threshold)
 
     @threshold.command()
-    async def get(self, ctx: commands.Context) -> None:
+    async def get(self: Self, ctx: commands.Context) -> None:
+        """Get the score threshold."""
         await ctx.send(f"The current threshold is set to `{self.score_threshold}`")
 
     @threshold.command()
-    async def set(self, ctx: commands.Context, value: int) -> None:
+    async def set(self: Self, ctx: commands.Context, value: int) -> None:  # noqa: A003
+        """Set the score threshold."""
         self.score_threshold = value
         await ctx.send(f"The current threshold has been set to `{value}`")
 
 
 async def setup(bot: Bot) -> None:
+    """Load the Dragonfly cog."""
     cog = Dragonfly(bot)
     task = cog.scan_loop
     if not task.is_running():

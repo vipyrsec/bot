@@ -1,4 +1,4 @@
-"""Command utils"""
+"""Command utils."""
 
 from rapidfuzz import process
 

@@ -1,4 +1,4 @@
-"""Bot"""
+"""Bot."""
 
 from bot import log
 

@@ -1,10 +1,12 @@
+"""Locking utilities for mutually exclusive operations on resources."""
+
 import asyncio
 import inspect
 import types
 from collections import defaultdict
 from collections.abc import Awaitable, Callable, Hashable
 from functools import partial
-from typing import Any
+from typing import Any, Self
 from weakref import WeakValueDictionary
 
 from bot.log import get_logger
@@ -29,23 +31,23 @@ class SharedEvent:
     when all of the holders finish the event will be set.
     """
 
-    def __init__(self):
+    def __init__(self: Self) -> None:
         self._active_count = 0
         self._event = asyncio.Event()
         self._event.set()
 
-    def __enter__(self):
+    def __enter__(self: Self) -> None:
         """Increment the count of the active holders and clear the internal event."""
         self._active_count += 1
         self._event.clear()
 
-    def __exit__(self, _exc_type, _exc_val, _exc_tb):  # noqa: ANN001
+    def __exit__(self: Self, _exc_type, _exc_val, _exc_tb) -> None:  # noqa: ANN001
         """Decrement the count of the active holders; if 0 is reached set the internal event."""
         self._active_count -= 1
         if not self._active_count:
             self._event.set()
 
-    async def wait(self) -> None:
+    async def wait(self: Self) -> None:
         """Wait for all active holders to exit."""
         await self._event.wait()
 
@@ -79,7 +81,7 @@ def lock(
         name = func.__name__
 
         @command_wraps(func)
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401 -- matches signature of upstream
             log.trace(f"{name}: mutually exclusive decorator called")
 
             if callable(resource_id):
@@ -123,7 +125,7 @@ def lock(
 def lock_arg(
     namespace: Hashable,
     name_or_pos: function.Argument,
-    func: Callable[[Any], _IdCallableReturn] = None,
+    func: Callable[[Any], _IdCallableReturn] | None = None,
     *,
     raise_error: bool = False,
     wait: bool = False,

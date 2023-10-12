@@ -1,4 +1,4 @@
-"""Helper utils"""
+"""Helper utils."""
 
 import re
 from abc import ABCMeta
@@ -37,7 +37,7 @@ def pad_base64(data: str) -> str:
 
 
 def remove_subdomain_from_url(url: str) -> str:
-    """Removes subdomains from a URL whilst preserving the original URL composition."""
+    """Remove subdomains from a URL whilst preserving the original URL composition."""
     parsed_url = urlparse(url)
     extracted_url = extract(url)
     # Eliminate subdomain by using the registered domain only
@@ -47,7 +47,7 @@ def remove_subdomain_from_url(url: str) -> str:
 
 
 def suppress_links(message: str) -> str:
-    """Accepts a message that may contain links, suppresses them, and returns them."""
+    """Accept a message that may contain links, suppresses them, and returns them."""
     for link in set(re.findall(r"https?://[^\s]+", message, re.IGNORECASE)):
         message = message.replace(link, f"<{link}>")
     return message

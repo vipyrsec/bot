@@ -1,7 +1,8 @@
-"""Sync all application commands"""
+"""Sync all application commands."""
 
 import logging
 from logging import getLogger
+from typing import Self
 
 import discord
 from discord.app_commands import AppCommand
@@ -15,12 +16,12 @@ log.setLevel(logging.INFO)
 
 
 class Sync(commands.Cog):
-    """Sync all application commands"""
+    """Sync all application commands."""
 
-    def __init__(self, bot: Bot):
+    def __init__(self: Self, bot: Bot) -> None:
         self.bot = bot
 
-    async def _sync_commands(self) -> list[AppCommand]:
+    async def _sync_commands(self: Self) -> list[AppCommand]:
         """App command syncing logic. Returns a list of app commands that were synced."""
         tree = self.bot.tree
         guild = discord.Object(id=constants.Guild.id)
@@ -29,25 +30,27 @@ class Sync(commands.Cog):
         tree.copy_global_to(guild=guild)
         synced_commands = await tree.sync(guild=guild)
         log.debug(
-            "Synced %s commands: %s", len(synced_commands), ", ".join(command.name for command in synced_commands)
+            "Synced %s commands: %s",
+            len(synced_commands),
+            ", ".join(command.name for command in synced_commands),
         )
 
         return synced_commands
 
     @commands.command(name="sync")
     @commands.has_permissions(administrator=True)
-    async def sync_prefix(self, ctx: commands.Context) -> None:
-        """Prefix command that syncs all application commands"""
+    async def sync_prefix(self: Self, ctx: commands.Context) -> None:
+        """Prefix command that syncs all application commands."""
         synced_commands = await self._sync_commands()
 
         await ctx.send(
-            f"Synced {len(synced_commands)} commands: {', '.join(command.name for command in synced_commands)}"
+            f"Synced {len(synced_commands)} commands: {', '.join(command.name for command in synced_commands)}",
         )
 
     @discord.app_commands.command(name="sync", description="Sync all application commands")
     @discord.app_commands.checks.has_permissions(administrator=True)
-    async def sync_slash(self, interaction: discord.Interaction) -> None:
-        """Slash command that syncs all application commands"""
+    async def sync_slash(self: Self, interaction: discord.Interaction) -> None:
+        """Slash command that syncs all application commands."""
         synced_commands = await self._sync_commands()
 
         await interaction.response.send_message(

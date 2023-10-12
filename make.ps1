@@ -11,8 +11,7 @@ COMMANDS
     install-dev       install local package in editable mode
     update-deps       update the dependencies
     upgrade-deps      upgrade the dependencies
-    lint              run `isort` and `black`
-    pylint            run `pylint`
+    lint              run `pre-commit` and `black` and `ruff`
     test              run `pytest`
     build-dist        run `python -m build`
     clean             delete generated content
@@ -20,7 +19,7 @@ COMMANDS
 #>
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("init", "install-dev", "update-deps", "upgrade-deps", "lint", "pylint", "test", "build-dist", "clean", "help")]
+    [ValidateSet("init", "install-dev", "update-deps", "upgrade-deps", "lint", "test", "build-dist", "clean", "help")]
     [string]$Command
 )
 
@@ -41,25 +40,28 @@ function Invoke-Install-Dev
 
 function Invoke-Update-Deps
 {
-    pip-compile --output-file requirements.txt requirements.in
+    python -m pip install --upgrade pip-tools
+    pip-compile --resolver=backtracking requirements/requirements.in --output-file requirements/requirements.txt
+    pip-compile --resolver=backtracking requirements/requirements-dev.in --output-file requirements/requirements-dev.txt
+    pip-compile --resolver=backtracking requirements/requirements-tests.in --output-file requirements/requirements-tests.txt
+    pip-compile --resolver=backtracking requirements/requirements-docs.in --output-file requirements/requirements-docs.txt
 }
 
 function Invoke-Upgrade-Deps
 {
+    python -m pip install --upgrade pip-tools pre-commit
     pre-commit autoupdate
-    pip-compile --output-file requirements.txt --upgrade requirements.in
+    pip-compile --resolver=backtracking --upgrade requirements/requirements.in --output-file requirements/requirements.txt
+    pip-compile --resolver=backtracking --upgrade requirements/requirements-dev.in --output-file requirements/requirements-dev.txt
+    pip-compile --resolver=backtracking --upgrade requirements/requirements-tests.in --output-file requirements/requirements-tests.txt
+    pip-compile --resolver=backtracking --upgrade requirements/requirements-docs.in --output-file requirements/requirements-docs.txt
 }
 
 function Invoke-Lint
 {
     pre-commit run --all-files
-    python -m isort src/
-    python -m black src/
-}
-
-function Invoke-Pylint
-{
-    python -m pylint src/
+    python -m black .
+    python -m ruff --fix .
 }
 
 function Invoke-Test
@@ -103,9 +105,6 @@ switch ($Command)
     }
     "upgrade-deps"  {
         Invoke-Upgrade-Deps
-    }
-    "pylint"    {
-        Invoke-Pylint
     }
     "test"    {
         Invoke-Test

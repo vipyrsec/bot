@@ -3,8 +3,9 @@
 import functools
 import inspect
 import types
-from collections.abc import Callable
-from typing import Any, OrderedDict, Sequence
+from collections import OrderedDict
+from collections.abc import Callable, Sequence
+from typing import Any
 
 from bot.log import get_logger
 
@@ -20,7 +21,7 @@ class GlobalNameConflictError(Exception):
     """Raised when there's a conflict between the globals used to resolve annotations of wrapped and its wrapper."""
 
 
-def get_arg_value(name_or_pos: Argument, arguments: BoundArgs) -> Any:
+def get_arg_value(name_or_pos: Argument, arguments: BoundArgs) -> Any:  # noqa: ANN401
     """
     Return a value from `arguments` based on a name or position.
 
@@ -36,23 +37,27 @@ def get_arg_value(name_or_pos: Argument, arguments: BoundArgs) -> Any:
 
         try:
             name, value = arg_values[arg_pos]
+        except IndexError as exception:
+            msg = f"Argument position {arg_pos} is out of bounds."
+            raise ValueError(msg) from exception
+        else:
             return value
-        except IndexError:
-            raise ValueError(f"Argument position {arg_pos} is out of bounds.")
     elif isinstance(name_or_pos, str):
         arg_name = name_or_pos
         try:
             return arguments[arg_name]
-        except KeyError:
-            raise ValueError(f"Argument {arg_name!r} doesn't exist.")
+        except KeyError as exception:
+            msg = f"Argument {arg_name!r} doesn't exist."
+            raise ValueError(msg) from exception
     else:
-        raise TypeError("'arg' must either be an int (positional index) or a str (keyword).")
+        msg = "'arg' must either be an int (positional index) or a str (keyword)."
+        raise TypeError(msg)
 
 
 def get_arg_value_wrapper(
     decorator_func: Callable[[ArgValGetter], Decorator],
     name_or_pos: Argument,
-    func: Callable[[Any], Any] = None,
+    func: Callable[[Any], Any] | None = None,
 ) -> Decorator:
     """
     Call `decorator_func` with the value of the arg at the given name/position.
@@ -65,7 +70,7 @@ def get_arg_value_wrapper(
     Return the decorator returned by `decorator_func`.
     """
 
-    def wrapper(args: BoundArgs) -> Any:
+    def wrapper(args: BoundArgs) -> Any:  # noqa: ANN401
         value = get_arg_value(name_or_pos, args)
         if func:
             value = func(value)
@@ -114,11 +119,11 @@ def update_wrapper_globals(
     shared_globals = set(wrapper.__code__.co_names) & set(annotation_global_names)
     shared_globals &= set(wrapped.__globals__) & set(wrapper.__globals__) - ignored_conflict_names
     if shared_globals:
-        raise GlobalNameConflictError(
-            f"wrapper and the wrapped function share the following "
-            f"global names used by annotations: {', '.join(shared_globals)}. Resolve the conflicts or add "
-            f"the name to the `ignored_conflict_names` set to suppress this error if this is intentional."
+        msg = (
+            f"wrapper and the wrapped function share the following global names used by annotations: {', '.join(shared_globals)}."  # noqa: E501
+            "Resolve the conflicts or add the name to the `ignored_conflict_names` set to suppress this error if this is intentional."  # noqa: E501
         )
+        raise GlobalNameConflictError(msg)
 
     new_globals = wrapper.__globals__.copy()
     new_globals.update((k, v) for k, v in wrapped.__globals__.items() if k not in wrapper.__code__.co_names)
