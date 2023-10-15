@@ -147,6 +147,8 @@ class _URLs(_BaseURLs):
 
     paste_service: str = f"{BaseURLs.paste}/{{key}}"
 
+    database: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/db"
+
 
 URLs = _URLs()
 
