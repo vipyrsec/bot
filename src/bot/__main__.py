@@ -6,6 +6,7 @@ from collections.abc import Callable
 import discord
 from aiohttp import ClientSession, ClientTimeout
 from discord.ext import commands
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from bot import constants
 from bot.bot import Bot
@@ -31,6 +32,7 @@ async def main() -> None:
         bot = Bot(
             guild_id=constants.Guild.id,
             http_session=session,
+            engine=create_async_engine(constants.URLs.database),
             allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),
             command_prefix=get_prefix,
             intents=intents,
