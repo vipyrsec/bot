@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Containerfile
+
+    depends_on:
+      db:
+        condition: service_healthy
+    tty: true
+    restart: always
+    environment:
+      DB_URL: postgresql+asyncpg://postgres:postgres@db:5432
+    volumes:
+      - "./src:/app/src"
+
+  db:
+    image: postgres
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
