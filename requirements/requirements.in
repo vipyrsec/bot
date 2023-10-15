@@ -14,8 +14,9 @@ rapidfuzz
 coloredlogs
 
 # Database
-psycopg[binary]
+asyncpg
 SQLAlchemy
+alembic
 
 # Utilities
 # utils/helpers
