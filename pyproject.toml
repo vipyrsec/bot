@@ -26,7 +26,6 @@ line-length = 120
 [tool.ruff]
 target-version = "py311"
 line-length = 120
-select = ["ALL"]
 ignore = [
     "G004", # (Logging statement uses f-string) - Developer UX
     "S101", # (Use of `assert` detected) - This should probably be changed
