@@ -245,10 +245,10 @@ class Dragonfly(commands.Cog):
     async def start(self: Self, ctx: commands.Context) -> None:
         """Start the scan task."""
         if self.scan_loop.is_running():
-            await ctx.send("Task is already running.")
+            await ctx.send("Task is already running")
         else:
             self.scan_loop.start()
-            await ctx.send("Started task...")
+            await ctx.send("Started task")
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
@@ -257,12 +257,12 @@ class Dragonfly(commands.Cog):
         if self.scan_loop.is_running():
             if force:
                 self.scan_loop.cancel()
-                await ctx.send("Forcing shutdown...")
+                await ctx.send("Forcing shutdown")
             else:
                 self.scan_loop.stop()
-                await ctx.send("Executing graceful shutdown...")
+                await ctx.send("Executing graceful shutdown")
         else:
-            await ctx.send("Task is not running.")
+            await ctx.send("Task is not running")
 
     @discord.app_commands.checks.has_role(Roles.vipyr_security)
     @discord.app_commands.command(name="lookup", description="Scans a package")
