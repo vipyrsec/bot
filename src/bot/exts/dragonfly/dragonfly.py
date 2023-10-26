@@ -131,7 +131,7 @@ class ReportView(discord.ui.View):
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
     """Build the embed that shows the results of a package scan."""
     embed = discord.Embed(
-        title=f"New Scan Result: {scan_result.name} v{scan_result.version}",
+        title=f"Malicious package found: {scan_result.name} @ {scan_result.version}",
         description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
         color=0xF70606,
     )
@@ -148,19 +148,15 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
         inline=True,
     )
 
-    embed.set_footer(text="DragonFly V2")
-
     return embed
 
 
 def _build_all_packages_scanned_embed(scan_results: list[PackageScanResult]) -> discord.Embed:
     """Build the embed that shows a list of all packages scanned."""
-    desc = "\n".join(map(str, scan_results))
-    embed = discord.Embed(title="Dragonfly Scan Logs", description=f"```{desc}```")
-
-    embed.set_footer(text="Dragonfly V3")
-
-    return embed
+    if scan_results:
+        description = "\n".join(map(str, scan_results))
+        return discord.Embed(description=f"```{description}```")
+    return discord.Embed(description="_No packages scanned_")
 
 
 async def run(
@@ -182,12 +178,7 @@ async def run(
                 view=ReportView(bot, result),
             )
 
-    if scan_results:
-        log_embed = _build_all_packages_scanned_embed(scan_results)
-        await logs_channel.send(embed=log_embed)
-    else:
-        embed = discord.Embed(description="No packages scanned", color=discord.Colour.red())
-        await logs_channel.send(embed=embed)
+    await logs_channel.send(embed=_build_all_packages_scanned_embed(scan_results))
 
 
 class Dragonfly(commands.Cog):
