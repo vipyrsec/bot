@@ -95,6 +95,7 @@ class DragonflyServices:
             "password": self.password,
         }
         async with self.session.post(self.auth_url, json=auth_dict) as response:
+            response.raise_for_status()
             data = await response.json()
             self.token = data["access_token"]
             self.token_expires_at = datetime.now(tz=UTC) + timedelta(seconds=data["expires_in"])
@@ -124,6 +125,7 @@ class DragonflyServices:
             args["json"] = json
 
         async with self.session.request(**args) as response:
+            response.raise_for_status()
             return await response.json()
 
     async def get_scanned_packages(
