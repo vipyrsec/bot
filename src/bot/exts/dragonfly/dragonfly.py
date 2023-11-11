@@ -7,6 +7,7 @@ from typing import Self
 
 import aiohttp
 import discord
+import sentry_sdk
 from discord.ext import commands, tasks
 
 from bot.bot import Bot
@@ -162,12 +163,12 @@ def _build_all_packages_scanned_embed(scan_results: list[PackageScanResult]) -> 
 async def run(
     bot: Bot,
     *,
+    since: datetime,
     alerts_channel: discord.abc.Messageable,
     logs_channel: discord.abc.Messageable,
     score: int,
 ) -> None:
     """Script entrypoint."""
-    since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
     scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
     for result in scan_results:
         if result.score >= score:
@@ -188,6 +189,7 @@ class Dragonfly(commands.Cog):
         """Initialize the Dragonfly cog."""
         self.bot = bot
         self.score_threshold = DragonflyConfig.threshold
+        self.since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
         super().__init__()
 
     @tasks.loop(seconds=DragonflyConfig.interval)
@@ -199,37 +201,24 @@ class Dragonfly(commands.Cog):
         alerts_channel = self.bot.get_channel(DragonflyConfig.alerts_channel_id)
         assert isinstance(alerts_channel, discord.abc.Messageable)
 
-        await run(
-            self.bot,
-            logs_channel=logs_channel,
-            alerts_channel=alerts_channel,
-            score=self.score_threshold,
-        )
+        try:
+            await run(
+                self.bot,
+                since=self.since,
+                logs_channel=logs_channel,
+                alerts_channel=alerts_channel,
+                score=self.score_threshold,
+            )
+        except Exception as e:
+            log.exception("An error occured in the scan loop task. Skipping run.")
+            sentry_sdk.capture_exception(e)
+        else:
+            self.since = datetime.now(tz=UTC)
 
     @scan_loop.before_loop
     async def before_scan_loop(self: Self) -> None:
         """Wait until the bot is ready."""
         await self.bot.wait_until_ready()
-
-    @scan_loop.error
-    async def scan_loop_error(self: Self, exc: BaseException) -> None:
-        """Log any errors that occur in the scan loop."""
-        logs_channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
-        assert isinstance(logs_channel, discord.abc.Messageable)
-
-        if core_devs_role := logs_channel.guild.get_role(Roles.core_developers):
-            mention = core_devs_role.mention
-        else:
-            mention = ""
-
-        embed = discord.Embed(
-            title="Error in task",
-            description=f"```{type(exc).__name__}: {exc}```",
-            color=discord.Color.red(),
-        )
-        await logs_channel.send(mention, embed=embed)
-
-        raise exc
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
