@@ -3,5 +3,4 @@
 
 pip-tools
 pre-commit
-black
 ruff
