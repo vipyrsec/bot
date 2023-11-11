@@ -62,7 +62,7 @@ jobs:
     needs: setup-python
     # As pre-commit does not support user installs, we set
     # PIP_USER=0 to not do a user install.
-    step:
+    steps:
       - name: "Run pre-commit hooks"
         run: export PIP_USER=0; pre-commit run --all-files
 
