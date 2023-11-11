@@ -59,7 +59,10 @@ jobs:
               ${{ hashFiles('./.pre-commit-config.yaml') }}"
 
   pre-commit:
+    runs-on: ubuntu-latest
+
     needs: setup-python
+
     # As pre-commit does not support user installs, we set
     # PIP_USER=0 to not do a user install.
     steps:
