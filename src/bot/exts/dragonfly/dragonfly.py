@@ -2,6 +2,7 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
+from http import HTTPStatus
 from logging import getLogger
 from typing import Self
 
@@ -219,6 +220,25 @@ class Dragonfly(commands.Cog):
     async def before_scan_loop(self: Self) -> None:
         """Wait until the bot is ready."""
         await self.bot.wait_until_ready()
+
+    @commands.has_role(Roles.vipyr_security)
+    @commands.hybrid_command()
+    async def queue(self: Self, ctx: commands.Context, name: str, version: str) -> None:
+        """Add a package to the Dragonfly scan queue."""
+        try:
+            await self.bot.dragonfly_services.queue_package(name=name, version=version)
+            await ctx.send(f"Successfully queued package `{name} v{version}`")
+        except aiohttp.ClientResponseError as http_error:
+            status_code = http_error.status
+
+            if status_code == HTTPStatus.NOT_FOUND:
+                await ctx.send(f"Package `{name} v{version}` was not found on PyPI")
+
+            if status_code == HTTPStatus.CONFLICT:
+                await ctx.send(f"Package `{name} v{version}` is already queued")
+        except Exception as e:
+            await ctx.send(str(e))
+            raise
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
