@@ -235,7 +235,17 @@ class Dragonfly(commands.Cog):
                 await ctx.send(f"Package `{name} v{version}` was not found on PyPI")
 
             if status_code == HTTPStatus.CONFLICT:
-                await ctx.send(f"Package `{name} v{version}` is already queued")
+                scan_results: list[PackageScanResult] = await self.bot.dragonfly_services.get_scanned_packages(
+                    name=name,
+                    version=version,
+                )
+                package = scan_results[0] if scan_results else None
+
+                if package:
+                    embed = _build_package_scan_result_embed(scan_results[0])
+                    await ctx.send(f"Package `{name} v{version}` has already been scanned.", embed=embed)
+                else:
+                    await ctx.send(f"Package `{name} v{version}` is already waiting to be scanned.")
         except Exception as e:
             await ctx.send(str(e))
             raise
