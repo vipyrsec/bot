@@ -26,13 +26,13 @@ pip-tools==7.3.0
     # via -r requirements/requirements-dev.in
 platformdirs==3.11.0
     # via virtualenv
-pre-commit==3.5.0
+pre-commit==3.6.0
     # via -r requirements/requirements-dev.in
 pyproject-hooks==1.0.0
     # via build
 pyyaml==6.0.1
     # via pre-commit
-ruff==0.1.5
+ruff==0.1.15
     # via -r requirements/requirements-dev.in
 virtualenv==20.24.5
     # via pre-commit
