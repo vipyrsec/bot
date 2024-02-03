@@ -18,6 +18,28 @@ log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+def _build_package_report_log_embed(
+    *,
+    member: discord.User | discord.Member,
+    package_name: str,
+    package_version: str,
+    description: str | None,
+    inspector_url: str,
+) -> discord.Embed:
+    embed = discord.Embed(
+        title=f"Package reported: {package_name} v{package_version}",
+        color=discord.Colour.red(),
+        description=description or "*No description provided*",
+        timestamp=datetime.now(tz=UTC),
+    )
+
+    embed.set_author(name=member.name, icon_url=member.display_avatar.url)
+    embed.add_field(name="Reported by", value=member.mention)
+    embed.add_field(name="Inspector URL", value=f"[Inspector URL]({inspector_url})")
+
+    return embed
+
+
 class ConfirmReportModal(discord.ui.Modal):
     """Modal for confirming a report."""
 
@@ -87,13 +109,14 @@ class ConfirmReportModal(discord.ui.Modal):
 
         log_channel = interaction.client.get_channel(Channels.reporting)
         if isinstance(log_channel, discord.abc.Messageable):
-            await log_channel.send(
-                f"User {interaction.user.mention} "
-                f"reported package `{self.package.name}` "
-                f"with additional_description `{additional_information_override}`"
-                f"with inspector_url `{inspector_url_override}`",
+            embed = _build_package_report_log_embed(
+                member=interaction.user,
+                package_name=self.package.name,
+                package_version=self.package.version,
+                description=additional_information_override,
+                inspector_url=inspector_url_override or self.package.inspector_url,
             )
-
+            await log_channel.send(embed=embed)
         try:
             await self.bot.dragonfly_services.report_package(
                 name=self.package.name,
