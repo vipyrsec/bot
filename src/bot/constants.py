@@ -7,7 +7,7 @@ An `.env` file is used to populate env vars, if present.
 """
 
 from os import getenv
-from typing import ClassVar, Self
+from typing import ClassVar
 
 from pydantic import root_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -125,7 +125,7 @@ Roles = _Roles()
 
 
 class _Guild(EnvConfig, env_prefix="guild_"):
-    id: int = 1121450543462760448  # noqa: A003 - inside a class, this is fine
+    id: int = 1121450543462760448
 
     moderation_roles: ClassVar[list[int]] = [Roles.moderators]
 
@@ -171,10 +171,10 @@ class _Colours(EnvConfig, env_prefix="colours_"):
     gold: int = 0xE6C200
 
     @root_validator(pre=True)
-    def parse_hex_values(cls: type[Self], values: dict[str, int]) -> dict[str, int]:  # noqa: N805 - check this
+    def parse_hex_values(cls, values: dict[str, int]) -> dict[str, int]:  # noqa: N805 - check this
         """Verify that colors are valid hex."""
         for key, value in values.items():
-            values[key] = int(value, 16)
+            values[key] = int(value, 16)  # type: ignore[call-overload]
         return values
 
 

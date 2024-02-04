@@ -32,13 +32,13 @@ class Internal(Cog):
 
     def __init__(self: Self, bot: Bot) -> None:
         self.bot = bot
-        self.env = {}
+        self.env = {}  # type: ignore[var-annotated]
         self.ln = 0
         self.stdout = StringIO()
 
         self.socket_since = arrow.utcnow()
         self.socket_event_total = 0
-        self.socket_events = Counter()
+        self.socket_events = Counter()  # type: ignore[var-annotated]
 
         if DEBUG_MODE:
             self.eval.add_check(is_owner().predicate)
@@ -112,7 +112,7 @@ class Internal(Cog):
         if isinstance(out, discord.Embed):
             # We made an embed? Send that as embed
             res += "<Embed>"
-            res = (res, out)
+            res = (res, out)  # type: ignore[assignment]
 
         else:
             if isinstance(out, str) and out.startswith("Traceback (most recent call last):\n"):
@@ -137,11 +137,11 @@ class Internal(Cog):
 
             # Add the output
             res += pretty
-            res = (res, None)
+            res = (res, None)  # type: ignore[assignment]
 
-        return res  # Return (text, embed)
+        return res  # type: ignore[return-value] # Return (text, embed)
 
-    async def _eval(self: Self, ctx: Context, code: str) -> discord.Message | None:
+    async def _eval(self: Self, ctx: Context, code: str) -> discord.Message | None:  # type: ignore[type-arg]
         """Eval the input code string & send an embed to the invoking context."""
         self.ln += 1
 
@@ -210,22 +210,22 @@ async def func():  # (None,) -> Any
             else:
                 paste_text = f"full contents at {paste_link}"
 
-            await ctx.send(f"```py\n{out[:truncate_index]}\n```... response truncated; {paste_text}", embed=embed)
+            await ctx.send(f"```py\n{out[:truncate_index]}\n```... response truncated; {paste_text}", embed=embed)  # type: ignore[arg-type]
             return None
 
-        await ctx.send(f"```py\n{out}```", embed=embed)
+        await ctx.send(f"```py\n{out}```", embed=embed)  # type: ignore[arg-type]
         return None
 
     @group(name="internal", aliases=("int",))
     @has_any_role(Roles.administrators, Roles.core_developers)
-    async def internal_group(self: Self, ctx: Context) -> None:
+    async def internal_group(self: Self, ctx: Context) -> None:  # type: ignore[type-arg]
         """Internal commands. Top secret!."""  # noqa: D401
         if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
-    @internal_group.command(name="eval", aliases=("e",))
+    @internal_group.command(name="eval", aliases=("e",))  # type: ignore[arg-type]
     @has_any_role(Roles.administrators)
-    async def eval(self: Self, ctx: Context, *, code: str) -> None:  # noqa: A003
+    async def eval(self: Self, ctx: Context, *, code: str) -> None:  # type: ignore[type-arg]
         """Run eval in a REPL-like format."""
         code = code.strip("`")
         if re.match("py(thon)?\n", code):
@@ -235,7 +235,7 @@ async def func():  # (None,) -> Any
             not re.search(  # Check if it's an expression
                 r"^(return|import|for|while|def|class|from|exit|[a-zA-Z0-9]+\s*=)",
                 code,
-                re.M,
+                re.MULTILINE,
             )
             and len(code.split("\n")) == 1
         ):
@@ -243,9 +243,9 @@ async def func():  # (None,) -> Any
 
         await self._eval(ctx, code)
 
-    @internal_group.command(name="socketstats", aliases=("socket", "stats"))
+    @internal_group.command(name="socketstats", aliases=("socket", "stats"))  # type: ignore[arg-type]
     @has_any_role(Roles.administrators, Roles.core_developers)
-    async def socketstats(self: Self, ctx: Context) -> None:
+    async def socketstats(self: Self, ctx: Context) -> None:  # type: ignore[type-arg]
         """Fetch information on the socket events received from Discord."""
         running_s = (arrow.utcnow() - self.socket_since).total_seconds()
 

@@ -16,7 +16,7 @@ from bot.utils.function import command_wraps
 from .exceptions import LockedResourceError
 
 log = get_logger(__name__)
-__lock_dicts = defaultdict(WeakValueDictionary)
+__lock_dicts = defaultdict(WeakValueDictionary)  # type: ignore[var-annotated]
 
 _IdCallableReturn = Hashable | Awaitable[Hashable]
 _IdCallable = Callable[[function.BoundArgs], _IdCallableReturn]
@@ -41,7 +41,7 @@ class SharedEvent:
         self._active_count += 1
         self._event.clear()
 
-    def __exit__(self: Self, _exc_type, _exc_val, _exc_tb) -> None:  # noqa: ANN001
+    def __exit__(self: Self, _exc_type, _exc_val, _exc_tb) -> None:  # type: ignore[no-untyped-def] # noqa: ANN001
         """Decrement the count of the active holders; if 0 is reached set the internal event."""
         self._active_count -= 1
         if not self._active_count:
@@ -58,7 +58,7 @@ def lock(
     *,
     raise_error: bool = False,
     wait: bool = False,
-) -> Callable:
+) -> Callable:  # type: ignore[type-arg]
     """
     Turn the decorated coroutine function into a mutually exclusive operation on a `resource_id`.
 
@@ -80,8 +80,8 @@ def lock(
     def decorator(func: types.FunctionType) -> types.FunctionType:
         name = func.__name__
 
-        @command_wraps(func)
-        async def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401 -- matches signature of upstream
+        @command_wraps(func)  # type: ignore[arg-type]
+        async def wrapper(*args: tuple, **kwargs: dict) -> Any:  # type: ignore[type-arg] # noqa: ANN401 -- matches signature of upstream
             log.trace(f"{name}: mutually exclusive decorator called")
 
             if callable(resource_id):
@@ -114,7 +114,7 @@ def lock(
             else:
                 log.info(f"{name}: aborted because resource {namespace!r}:{id_!r} is locked")
                 if raise_error:
-                    raise LockedResourceError(str(namespace), id_)
+                    raise LockedResourceError(str(namespace), id_)  # type: ignore[arg-type]
                 return None
 
         return wrapper
@@ -129,7 +129,7 @@ def lock_arg(
     *,
     raise_error: bool = False,
     wait: bool = False,
-) -> Callable:
+) -> Callable:  # type: ignore[type-arg]
     """
     Apply the `lock` decorator using the value of the arg at the given name/position as the ID.
 
