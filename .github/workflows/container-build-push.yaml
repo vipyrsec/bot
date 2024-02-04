@@ -1,4 +1,4 @@
-name: "Docker Build and Push"
+name: "Container Build and Push"
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - main
     tags:
       - v*
+  pull_request:
 
 permissions:
   contents: read
@@ -17,3 +18,5 @@ permissions:
 jobs:
   build-push:
     uses: darbiadev/.github/.github/workflows/docker-build-push.yaml@ea97d99e1520c46080c4c9032a69552e491474ac # v13.0.0
+    with:
+      file-name: Dockerfile
