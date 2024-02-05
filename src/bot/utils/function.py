@@ -13,7 +13,7 @@ log = get_logger(__name__)
 
 Argument = int | str
 BoundArgs = OrderedDict[str, Any]
-Decorator = Callable[[Callable], Callable]
+Decorator = Callable[[Callable], Callable]  # type: ignore[type-arg]
 ArgValGetter = Callable[[BoundArgs], Any]
 
 
@@ -36,7 +36,7 @@ def get_arg_value(name_or_pos: Argument, arguments: BoundArgs) -> Any:  # noqa: 
         arg_pos = name_or_pos
 
         try:
-            name, value = arg_values[arg_pos]
+            _name, value = arg_values[arg_pos]
         except IndexError as exception:
             msg = f"Argument position {arg_pos} is out of bounds."
             raise ValueError(msg) from exception
@@ -79,7 +79,7 @@ def get_arg_value_wrapper(
     return decorator_func(wrapper)
 
 
-def get_bound_args(func: Callable, args: tuple, kwargs: dict[str, Any]) -> BoundArgs:
+def get_bound_args(func: Callable, args: tuple, kwargs: dict[str, Any]) -> BoundArgs:  # type: ignore[type-arg]
     """
     Bind `args` and `kwargs` to `func` and return a mapping of parameter names to argument values.
 
@@ -96,7 +96,7 @@ def update_wrapper_globals(
     wrapper: types.FunctionType,
     wrapped: types.FunctionType,
     *,
-    ignored_conflict_names: set[str] = frozenset(),
+    ignored_conflict_names: set[str] = frozenset(),  # type: ignore[assignment]
 ) -> types.FunctionType:
     """
     Update globals of `wrapper` with the globals from `wrapped`.
@@ -141,7 +141,7 @@ def command_wraps(
     assigned: Sequence[str] = functools.WRAPPER_ASSIGNMENTS,
     updated: Sequence[str] = functools.WRAPPER_UPDATES,
     *,
-    ignored_conflict_names: set[str] = frozenset(),
+    ignored_conflict_names: set[str] = frozenset(),  # type: ignore[assignment]
 ) -> Callable[[types.FunctionType], types.FunctionType]:
     """Update the decorated function to look like `wrapped` and update globals for discordpy forwardref evaluation."""
 

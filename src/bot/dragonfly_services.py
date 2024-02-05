@@ -34,7 +34,7 @@ class PackageScanResult:
     score: int
 
     @classmethod
-    def from_dict(cls: type[Self], data: dict) -> Self:
+    def from_dict(cls: type[Self], data: dict) -> Self:  # type: ignore[type-arg]
         """Create a PackageScanResult from a dictionary."""
         return cls(
             status=ScanStatus(data["status"]),
@@ -58,7 +58,7 @@ class PackageScanResult:
 class DragonflyServices:
     """A class wrapping Dragonfly's API."""
 
-    def __init__(  # noqa: PLR0913 -- Maybe pass the entire constants class?
+    def __init__(  # noqa: PLR0913,PLR0917 -- Maybe pass the entire constants class?
         self: Self,
         session: ClientSession,
         base_url: str,
@@ -106,7 +106,7 @@ class DragonflyServices:
         path: str,
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
-    ) -> dict:
+    ) -> dict:  # type: ignore[type-arg]
         """Make a request to Dragonfly's API."""
         await self._update_token()
 
@@ -124,9 +124,9 @@ class DragonflyServices:
         if json is not None:
             args["json"] = json
 
-        async with self.session.request(**args) as response:
+        async with self.session.request(**args) as response:  # type: ignore[arg-type]
             response.raise_for_status()
-            return await response.json()
+            return await response.json()  # type: ignore[no-any-return]
 
     async def get_scanned_packages(
         self: Self,
@@ -143,7 +143,7 @@ class DragonflyServices:
             params["version"] = version
 
         if since:
-            params["since"] = int(since.timestamp())
+            params["since"] = int(since.timestamp())  # type: ignore[assignment]
 
         data = await self.make_request("GET", "/package", params=params)
         return [PackageScanResult.from_dict(dct) for dct in data]

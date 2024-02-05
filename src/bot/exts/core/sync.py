@@ -35,11 +35,11 @@ class Sync(commands.Cog):
             ", ".join(command.name for command in synced_commands),
         )
 
-        return synced_commands
+        return synced_commands  # type: ignore[no-any-return]
 
     @commands.command(name="sync")
     @commands.has_permissions(administrator=True)
-    async def sync_prefix(self: Self, ctx: commands.Context) -> None:
+    async def sync_prefix(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
         """Prefix command that syncs all application commands."""
         synced_commands = await self._sync_commands()
 
@@ -47,9 +47,9 @@ class Sync(commands.Cog):
             f"Synced {len(synced_commands)} commands: {', '.join(command.name for command in synced_commands)}",
         )
 
-    @discord.app_commands.command(name="sync", description="Sync all application commands")
+    @discord.app_commands.command(name="sync", description="Sync all application commands")  # type: ignore[arg-type]
     @discord.app_commands.checks.has_permissions(administrator=True)
-    async def sync_slash(self: Self, interaction: discord.Interaction) -> None:
+    async def sync_slash(self: Self, interaction: discord.Interaction) -> None:  # type: ignore[type-arg]
         """Slash command that syncs all application commands."""
         synced_commands = await self._sync_commands()
 

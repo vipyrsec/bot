@@ -13,7 +13,7 @@ def format_user(user: discord.abc.User) -> str:
     return f"{user.mention} (`{user.id}`)"
 
 
-async def get_discord_message(ctx: Context, text: str) -> Message | str:
+async def get_discord_message(ctx: Context, text: str) -> Message | str:  # type: ignore[return, type-arg]
     """
     Attempt to convert a given `text` to a discord Message object and return it.
 
@@ -24,7 +24,7 @@ async def get_discord_message(ctx: Context, text: str) -> Message | str:
         return await MessageConverter().convert(ctx, text)
 
 
-async def get_text_and_embed(ctx: Context, text: str) -> tuple[str, Embed | None]:
+async def get_text_and_embed(ctx: Context, text: str) -> tuple[str, Embed | None]:  # type: ignore[type-arg]
     """
     Attempt to extract the text and embed from a possible link to a discord Message.
 
@@ -40,7 +40,7 @@ async def get_text_and_embed(ctx: Context, text: str) -> tuple[str, Embed | None
     msg = await get_discord_message(ctx, text)
     # Ensure the user has read permissions for the channel the message is in
     if isinstance(msg, Message):
-        permissions = msg.channel.permissions_for(ctx.author)
+        permissions = msg.channel.permissions_for(ctx.author)  # type: ignore[arg-type]
         if permissions.read_messages:
             text = msg.clean_content
             # Take first embed because we can't send multiple embeds

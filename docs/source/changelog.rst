@@ -1,6 +1,9 @@
 Changelog
 =========
 
+- :release:`5.0.0 <4th February 2024>`
+- :feature:`-` Reestablish versioning
+
 - :release:`4.1.0 <25th October 2023>`
 - :feature:`188` Make Dragonfly embeds consistent
 

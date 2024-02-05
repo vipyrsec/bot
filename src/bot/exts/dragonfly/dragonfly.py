@@ -43,7 +43,7 @@ def _build_package_report_log_embed(
 class ConfirmReportModal(discord.ui.Modal):
     """Modal for confirming a report."""
 
-    recipient = discord.ui.TextInput(
+    recipient = discord.ui.TextInput(  # type: ignore[var-annotated]
         label="Recipient",
         placeholder="Recipient's Email Address",
         required=False,
@@ -51,14 +51,14 @@ class ConfirmReportModal(discord.ui.Modal):
         style=discord.TextStyle.short,
     )
 
-    additional_information = discord.ui.TextInput(
+    additional_information = discord.ui.TextInput(  # type: ignore[var-annotated]
         label="Additional information",
         placeholder="Additional information",
         required=False,
         style=discord.TextStyle.long,
     )
 
-    inspector_url = discord.ui.TextInput(
+    inspector_url = discord.ui.TextInput(  # type: ignore[var-annotated]
         label="Inspector URL",
         placeholder="Inspector URL",
         required=False,
@@ -76,7 +76,7 @@ class ConfirmReportModal(discord.ui.Modal):
 
         super().__init__()
 
-    async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:
+    async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:  # type: ignore[override, type-arg]
         """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
             return await interaction.response.send_message(f"Error from upstream: {error.status}", ephemeral=True)
@@ -92,7 +92,7 @@ class ConfirmReportModal(discord.ui.Modal):
 
         return title
 
-    async def on_submit(self: Self, interaction: discord.Interaction) -> None:
+    async def on_submit(self: Self, interaction: discord.Interaction) -> None:  # type: ignore[type-arg]
         """Submit the report."""
         # discord.py returns empty string "" if not filled out, we want it to be `None`
         additional_information_override = self.additional_information.value or None
@@ -141,7 +141,7 @@ class ReportView(discord.ui.View):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
-    async def report(self: Self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def report(self: Self, interaction: discord.Interaction, button: discord.ui.Button) -> None:  # type: ignore[type-arg]
         """Report a package."""
         modal = ConfirmReportModal(package=self.payload, bot=self.bot)
         await interaction.response.send_modal(modal)
@@ -161,13 +161,13 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
     )
 
     embed.add_field(
-        name="\u200B",
+        name="\u200b",
         value=f"[Inspector]({scan_result.inspector_url})",
         inline=True,
     )
 
     embed.add_field(
-        name="\u200B",
+        name="\u200b",
         value=f"[PyPI](https://pypi.org/project/{scan_result.name}/{scan_result.version})",
         inline=True,
     )
@@ -245,7 +245,7 @@ class Dragonfly(commands.Cog):
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
-    async def start(self: Self, ctx: commands.Context) -> None:
+    async def start(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
         """Start the scan task."""
         if self.scan_loop.is_running():
             await ctx.send("Task is already running")
@@ -255,7 +255,7 @@ class Dragonfly(commands.Cog):
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
-    async def stop(self: Self, ctx: commands.Context, force: bool = False) -> None:  # noqa: FBT001,FBT002
+    async def stop(self: Self, ctx: commands.Context, force: bool = False) -> None:  # type: ignore[type-arg] # noqa: FBT001,FBT002
         """Stop the scan task."""
         if self.scan_loop.is_running():
             if force:
@@ -267,9 +267,9 @@ class Dragonfly(commands.Cog):
         else:
             await ctx.send("Task is not running")
 
-    @discord.app_commands.checks.has_role(Roles.vipyr_security)
+    @discord.app_commands.checks.has_role(Roles.vipyr_security)  # type: ignore[arg-type]
     @discord.app_commands.command(name="lookup", description="Scans a package")
-    async def lookup(self: Self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:
+    async def lookup(self: Self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:  # type: ignore[type-arg]
         """Pull the scan results for a package."""
         scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
         if scan_results:
@@ -279,18 +279,18 @@ class Dragonfly(commands.Cog):
             await interaction.response.send_message("No entries were found with the specified filters.")
 
     @commands.group()
-    async def threshold(self: Self, ctx: commands.Context) -> None:
+    async def threshold(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
         """Group of commands for managing the score threshold."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(self.threshold)
 
-    @threshold.command()
-    async def get(self: Self, ctx: commands.Context) -> None:
+    @threshold.command()  # type: ignore[arg-type]
+    async def get(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
         """Get the score threshold."""
         await ctx.send(f"The current threshold is set to `{self.score_threshold}`")
 
-    @threshold.command()
-    async def set(self: Self, ctx: commands.Context, value: int) -> None:  # noqa: A003
+    @threshold.command()  # type: ignore[arg-type]
+    async def set(self: Self, ctx: commands.Context, value: int) -> None:  # type: ignore[type-arg]
         """Set the score threshold."""
         self.score_threshold = value
         await ctx.send(f"The current threshold has been set to `{value}`")

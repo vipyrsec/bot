@@ -16,7 +16,7 @@ class Ping(commands.Cog):
         self.bot = bot
 
     @commands.command(name="ping")
-    async def ping(self: Self, ctx: commands.Context) -> None:
+    async def ping(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
         """Ping the bot to see its latency and state."""
         embed = Embed(
             title=":ping_pong: Pong!",

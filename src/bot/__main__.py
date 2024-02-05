@@ -22,18 +22,18 @@ intents.message_content = True
 def get_prefix(bot_: Bot, message_: discord.Message) -> Callable[[Bot, discord.Message], list[str]]:
     """Return a callable to check for the bot's prefix."""
     extras = constants.Bot.prefix.split(",")
-    return commands.when_mentioned_or(*extras)(bot_, message_)
+    return commands.when_mentioned_or(*extras)(bot_, message_)  # type: ignore[return-value]
 
 
 async def main() -> None:
     """Run the bot."""
     async with ClientSession(headers={"Content-Type": "application/json"}, timeout=ClientTimeout(total=10)) as session:
         bot = Bot(
-            guild_id=constants.Guild.id,
-            http_session=session,
-            allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),
-            command_prefix=get_prefix,
-            intents=intents,
+            guild_id=constants.Guild.id,  # type: ignore[arg-type]
+            http_session=session,  # type: ignore[arg-type]
+            allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),  # type: ignore[arg-type]
+            command_prefix=get_prefix,  # type: ignore[arg-type]
+            intents=intents,  # type: ignore[arg-type]
         )
 
         bot.dragonfly_services = DragonflyServices(
