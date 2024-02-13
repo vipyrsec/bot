@@ -7,7 +7,7 @@ An `.env` file is used to populate env vars, if present.
 """
 
 from os import getenv
-from typing import ClassVar
+from typing import ClassVar, Self
 
 from pydantic import root_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,6 +35,32 @@ Miscellaneous = _Miscellaneous()
 
 FILE_LOGS = Miscellaneous.file_logs
 DEBUG_MODE = Miscellaneous.debug
+
+
+class _DatabaseConfig(EnvConfig, env_prefix="DB_"):
+    url: str = "postgresql://postgres:postgres@localhost:5432/"
+
+
+DatabaseConfig = _DatabaseConfig()
+
+
+class _MicrosoftConfig(EnvConfig, env_prefix="microsoft_"):
+    tenant_id: str = "NONE"
+    client_id: str = "NONE"
+    client_secret: str = "NONE"
+
+
+MicrosoftConfig = _MicrosoftConfig()
+
+
+class _MailerConfig(EnvConfig, env_prefix="MAILER_"):
+    reply_to: str = "support@vipyrsec.com"
+    sender: str = "system@vipyrsec.com"
+    recipient: str = "security@pypi.org"
+    bcc_recipients: frozenset[str] = frozenset()
+
+
+MailerConfig = _MailerConfig()
 
 
 class _Dragonfly(EnvConfig, env_prefix="auth0_"):
@@ -171,7 +197,8 @@ class _Colours(EnvConfig, env_prefix="colours_"):
     gold: int = 0xE6C200
 
     @root_validator(pre=True)
-    def parse_hex_values(cls, values: dict[str, int]) -> dict[str, int]:  # noqa: N805 - check this
+    @classmethod
+    def parse_hex_values(cls: type[Self], values: dict[str, int]) -> dict[str, int]:
         """Verify that colors are valid hex."""
         for key, value in values.items():
             values[key] = int(value, 16)  # type: ignore[call-overload]
