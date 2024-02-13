@@ -15,7 +15,12 @@ coloredlogs
 
 # Database
 psycopg[binary]
-SQLAlchemy
+SQLAlchemy[asyncio]
+dragonfly-db-commons @ git+https://github.com/vipyrsec/dragonfly-db-commons@main
+
+# Mailer
+msgraph-sdk
+azure-identity
 
 # Utilities
 # utils/helpers
