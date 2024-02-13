@@ -8,8 +8,10 @@ from discord.ext import commands
 from pydis_core import BotBase
 from pydis_core.utils import scheduling
 from sentry_sdk import push_scope
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bot import exts
+from bot.dragonfly_services import DragonflyServices
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +58,8 @@ class Bot(BotBase):  # type: ignore[misc]
     def __init__(
         self: Self,
         *args: tuple,  # type: ignore[type-arg]
+        database_engine: AsyncEngine,
+        dragonfly_services: DragonflyServices,
         **kwargs: dict,  # type: ignore[type-arg]
     ) -> None:
         """
@@ -72,6 +76,8 @@ class Bot(BotBase):  # type: ignore[misc]
         )
 
         self.all_extensions: frozenset[str] | None = None
+        self.database_engine = database_engine
+        self.dragonfly_services = dragonfly_services
 
     async def setup_hook(self: Self) -> None:
         """Default async initialisation method for discord.py."""  # noqa: D401
