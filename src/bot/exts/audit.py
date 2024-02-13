@@ -8,9 +8,9 @@ from typing import Self
 import discord
 from discord import app_commands, ui
 from discord.ext import commands
+from dragonfly_db_commons.models import Scan
 
 from bot.bot import Bot
-from bot.dragonfly_services import PackageScanResult
 
 
 class PaginatorView(ui.View):
@@ -20,7 +20,7 @@ class PaginatorView(ui.View):
         self: Self,
         *,
         member: discord.Member | discord.User,
-        packages: list[PackageScanResult],
+        packages: list[Scan],
         per: int = 15,
     ) -> None:
         """Initialize the paginator view."""
@@ -34,7 +34,7 @@ class PaginatorView(ui.View):
         self.current = 0
 
     @ui.button(emoji="◀️")
-    async def previous(self: Self, interaction: discord.Interaction, _) -> None:  # type: ignore[no-untyped-def, type-arg] # noqa: ANN001 -- What is this?
+    async def previous_btn(self: Self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
         """Go to the previous page."""
         if self.current == 0:
             self.current = len(self.embeds) - 1
@@ -44,16 +44,16 @@ class PaginatorView(ui.View):
         await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
 
     @ui.button(emoji="⏹️")
-    async def stop(self: Self, interaction: discord.Interaction, button: ui.Button) -> None:  # type: ignore[override, type-arg]
+    async def stop_btn(self: Self, interaction: discord.Interaction, button: ui.Button) -> None:
         """Stop the paginator."""
-        self.previous.disabled = True
+        self.previous_btn.disabled = True
         button.disabled = True
-        self.next.disabled = True
+        self.next_btn.disabled = True
 
         await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
 
     @ui.button(emoji="▶️")
-    async def next(self: Self, interaction: discord.Interaction, _) -> None:  # type: ignore[no-untyped-def, type-arg] # noqa: ANN001
+    async def next_btn(self: Self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
         """Go to the next page."""
         if self.current == len(self.embeds) - 1:
             self.current = 0
@@ -70,7 +70,7 @@ class PaginatorView(ui.View):
         await interaction.response.send_message("This paginator is not for you!", ephemeral=True)
         return False
 
-    def _build_embed(self: Self, packages: list[PackageScanResult], page: int, total: int) -> discord.Embed:
+    def _build_embed(self: Self, packages: list[Scan], page: int, total: int) -> discord.Embed:
         """Build an embed for the given packages."""
         embed = discord.Embed(
             title="Package Audit",
@@ -116,7 +116,7 @@ class Audit(commands.Cog):
 
         since = datetime.now(tz=UTC) - timedelta(hours=hours)
 
-        packages = await self.bot.dragonfly_services.get_scanned_packages(since=since)
+        packages = await self.bot.dragonfly_services.get_scanned_packages_since(since=since)
         packages = random.sample(packages, k=amount)
 
         view = PaginatorView(member=interaction.user, packages=packages)
