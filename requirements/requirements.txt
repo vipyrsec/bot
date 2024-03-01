@@ -52,9 +52,7 @@ multidict==6.0.5
     #   aiohttp
     #   yarl
 psycopg[binary]==3.1.18
-    # via
-    #   -r requirements/requirements.in
-    #   psycopg
+    # via -r requirements/requirements.in
 psycopg-binary==3.1.18
     # via psycopg
 pycares==4.4.0
@@ -67,7 +65,7 @@ pydantic==2.6.0
     #   pydis-core
 pydantic-core==2.16.1
     # via pydantic
-pydantic-settings==2.1.0
+pydantic-settings==2.2.1
     # via -r requirements/requirements.in
 pydis-core==10.7.0
     # via -r requirements/requirements.in
@@ -85,11 +83,11 @@ requests==2.31.0
     #   tldextract
 requests-file==2.0.0
     # via tldextract
-sentry-sdk==1.40.0
+sentry-sdk==1.40.6
     # via -r requirements/requirements.in
 six==1.16.0
     # via python-dateutil
-sqlalchemy==2.0.25
+sqlalchemy==2.0.27
     # via -r requirements/requirements.in
 statsd==4.0.1
     # via pydis-core
