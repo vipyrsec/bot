@@ -26,17 +26,19 @@ nodeenv==1.8.0
     # via pre-commit
 packaging==23.2
     # via build
-pip-tools==7.3.0
+pip-tools==7.4.0
     # via -r requirements/requirements-dev.in
 platformdirs==4.2.0
     # via virtualenv
-pre-commit==3.6.0
+pre-commit==3.6.2
     # via -r requirements/requirements-dev.in
 pyproject-hooks==1.0.0
-    # via build
+    # via
+    #   build
+    #   pip-tools
 pyyaml==6.0.1
     # via pre-commit
-ruff==0.2.0
+ruff==0.3.0
     # via -r requirements/requirements-dev.in
 typing-extensions==4.9.0
     # via
