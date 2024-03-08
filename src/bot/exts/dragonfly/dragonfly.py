@@ -216,9 +216,9 @@ class Dragonfly(commands.Cog):
         super().__init__()
 
     @commands.hybrid_command(name="username")  # type: ignore [arg-type]
-    async def get_username_command(self, ctx: commands.Context) -> None:
+    async def get_username_command(self, ctx: commands.Context[Bot]) -> None:
         """Get the username of the currently logged in user to the PyPI Observation API."""
-        async with self.bot.http_session.get(DragonflyConfig.reporter_url + "/echo") as res:
+        async with ctx.bot.http_session.get(DragonflyConfig.reporter_url + "/echo") as res:
             json = await res.json()
             username = json["username"]
 
