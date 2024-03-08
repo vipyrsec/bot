@@ -215,7 +215,7 @@ class Dragonfly(commands.Cog):
         self.since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
         super().__init__()
 
-    @commands.hybrid_command(name="username")
+    @commands.hybrid_command(name="username")  # type: ignore [arg-type]
     async def get_username_command(self, ctx: commands.Context) -> None:
         """Get the username of the currently logged in user to the PyPI Observation API."""
         async with self.bot.http_session.get(DragonflyConfig.reporter_url + "/echo") as res:
