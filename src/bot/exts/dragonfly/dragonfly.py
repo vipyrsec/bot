@@ -215,6 +215,15 @@ class Dragonfly(commands.Cog):
         self.since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
         super().__init__()
 
+    @commands.hybrid_command(name="username")  # type: ignore [arg-type]
+    async def get_username_command(self, ctx: commands.Context[Bot]) -> None:
+        """Get the username of the currently logged in user to the PyPI Observation API."""
+        async with ctx.bot.http_session.get(DragonflyConfig.reporter_url + "/echo") as res:
+            json = await res.json()
+            username = json["username"]
+
+        await ctx.send(username)
+
     @tasks.loop(seconds=DragonflyConfig.interval)
     async def scan_loop(self: Self) -> None:
         """Loop that runs the scan task."""
