@@ -153,6 +153,7 @@ class DragonflyServices:
         inspector_url: str | None,
         additional_information: str | None,
         recipient: str | None,
+        use_email: bool = False,
     ) -> None:
         """Report a package to Dragonfly."""
         data = {
@@ -161,5 +162,6 @@ class DragonflyServices:
             "inspector_url": inspector_url,
             "additional_information": additional_information,
             "recipient": recipient,
+            "use_email": use_email,
         }
         await self.make_request("POST", "/report", json=data)
