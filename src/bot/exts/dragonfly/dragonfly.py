@@ -11,16 +11,55 @@ from discord.ext import commands, tasks
 
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
-from bot.dragonfly_services import PackageScanResult
+from bot.dragonfly_services import DragonflyServices, PackageReport, PackageScanResult
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class ConfirmReportModal(discord.ui.Modal):
-    """Modal for confirming a report."""
+def _build_modal_title(name: str, version: str) -> str:
+    """Build the modal title."""
+    title = f"Confirm report for {name} v{version}"
+    if len(title) >= 45:  # noqa: PLR2004
+        title = title[:42] + "..."
 
-    recipient = discord.ui.TextInput(
+    return title
+
+
+async def handle_submit(
+    *,
+    report: PackageReport,
+    interaction: discord.Interaction,
+    dragonfly_services: DragonflyServices,
+) -> None:
+    """Handle modal submit."""
+    log.info(
+        "User %s reported package %s@%s with additional_information '%s' and inspector_url '%s'",
+        interaction.user,
+        report.name,
+        report.version,
+        report.additional_information,
+        report.inspector_url,
+    )
+
+    log_channel = interaction.client.get_channel(Channels.reporting)
+    if isinstance(log_channel, discord.abc.Messageable):
+        await log_channel.send(
+            f"User {interaction.user.mention} "
+            f"reported package `{report.name}` "
+            f"with additional_description `{report.additional_information}`"
+            f"with inspector_url `{report.inspector_url}`",
+        )
+
+    await dragonfly_services.report_package(report)
+
+    await interaction.response.send_message("Reported!", ephemeral=True)
+
+
+class ConfirmEmailReportModal(discord.ui.Modal):
+    """Modal for confirming an email report."""
+
+    recipient = discord.ui.TextInput(  # type: ignore[var-annotated]
         label="Recipient",
         placeholder="Recipient's Email Address",
         required=False,
@@ -48,7 +87,7 @@ class ConfirmReportModal(discord.ui.Modal):
         self.bot = bot
 
         # set dynamic properties here because we can't set dynamic class attributes
-        self.title = self._build_modal_title()
+        self.title = _build_modal_title(package.name, package.version)
         self.inspector_url.default = package.inspector_url
 
         super().__init__()
@@ -56,56 +95,124 @@ class ConfirmReportModal(discord.ui.Modal):
     async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:
         """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
-            return await interaction.response.send_message(f"Error from upstream: {error.status}", ephemeral=True)
+            message = (
+                f"Error from upstream: {error.status}\n"
+                f"```{error.message}```\n"
+                f"Retry using Observation API instead?"
+            )
+            view = ReportMethodSwitchConfirmationView(previous_modal=self)
+            return await interaction.response.send_message(message, view=view, ephemeral=True)
 
         await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
         raise error
 
-    def _build_modal_title(self: Self) -> str:
-        """Build the modal title."""
-        title = f"Confirm report for {self.package.name} v{self.package.version}"
-        if len(title) >= 45:  # noqa: PLR2004
-            title = title[:42] + "..."
-
-        return title
-
     async def on_submit(self: Self, interaction: discord.Interaction) -> None:
-        """Submit the report."""
-        # discord.py returns empty string "" if not filled out, we want it to be `None`
-        additional_information_override = self.additional_information.value or None
-        inspector_url_override = self.inspector_url.value or None
-
-        log.info(
-            "User %s reported package %s@%s with additional_information '%s' and inspector_url '%s'",
-            interaction.user,
-            self.package.name,
-            self.package.version,
-            additional_information_override,
-            inspector_url_override,
+        """Modal submit callback."""
+        report = PackageReport(
+            name=self.package.name,
+            version=self.package.version,
+            inspector_url=self.inspector_url.value or None,
+            additional_information=self.additional_information.value or None,
+            recipient=self.recipient.value or None,
+            use_email=True,
         )
 
-        log_channel = interaction.client.get_channel(Channels.reporting)
-        if isinstance(log_channel, discord.abc.Messageable):
-            await log_channel.send(
-                f"User {interaction.user.mention} "
-                f"reported package `{self.package.name}` "
-                f"with additional_description `{additional_information_override}`"
-                f"with inspector_url `{inspector_url_override}`",
-            )
+        await handle_submit(report=report, interaction=interaction, dragonfly_services=self.bot.dragonfly_services)
 
-        try:
-            await self.bot.dragonfly_services.report_package(
-                name=self.package.name,
-                version=self.package.version,
-                inspector_url=inspector_url_override,
-                additional_information=additional_information_override,
-                recipient=self.recipient.value,
-            )
 
-            await interaction.response.send_message("Reported!", ephemeral=True)
-        except:
-            await interaction.response.send_message("An unexpected error occured!", ephemeral=True)
-            raise
+class ConfirmReportModal(discord.ui.Modal):
+    """Modal for confirming a report through the Observations API."""
+
+    additional_information = discord.ui.TextInput(
+        label="Additional information",
+        placeholder="Additional information",
+        required=True,
+        style=discord.TextStyle.long,
+    )
+
+    inspector_url = discord.ui.TextInput(
+        label="Inspector URL",
+        placeholder="Inspector URL",
+        required=False,
+        style=discord.TextStyle.short,
+    )
+
+    def __init__(self: Self, *, package: PackageScanResult, bot: Bot) -> None:
+        """Initialize the modal."""
+        self.package = package
+        self.bot = bot
+
+        # set dynamic properties here because we can't set dynamic class attributes
+        self.title = _build_modal_title(package.name, package.version)
+        self.inspector_url.default = package.inspector_url
+        self.recipient = None
+
+        super().__init__()
+
+    async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:
+        """Handle errors that occur in the modal."""
+        if isinstance(error, aiohttp.ClientResponseError):
+            message = f"Error from upstream: {error.status}\n```{error.message}```\nRetry using email instead?"
+            view = ReportMethodSwitchConfirmationView(previous_modal=self)
+            return await interaction.response.send_message(message, view=view, ephemeral=True)
+
+        await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
+        raise error
+
+    async def on_submit(self: Self, interaction: discord.Interaction) -> None:
+        """Modal submit callback."""
+        report = PackageReport(
+            name=self.package.name,
+            version=self.package.version,
+            inspector_url=self.inspector_url.value or None,
+            additional_information=self.additional_information.value,
+            recipient=None,
+            use_email=False,
+        )
+
+        await handle_submit(report=report, interaction=interaction, dragonfly_services=self.bot.dragonfly_services)
+
+
+class ReportMethodSwitchConfirmationView(discord.ui.View):
+    """Prompt user if they want to switch reporting methods (email/API).
+
+    View sent when reporting via the Observation API fails, and we want to ask the
+    user if they want to switch to another method of sending reports.
+    """
+
+    def __init__(self: Self, previous_modal: ConfirmReportModal | ConfirmEmailReportModal) -> None:
+        super().__init__()
+        self.previous_modal = previous_modal
+        self.package = previous_modal.package
+        self.bot = previous_modal.bot
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def confirm(self: Self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
+        """Confirm button callback."""
+        if isinstance(self.previous_modal, ConfirmReportModal):
+            modal = ConfirmEmailReportModal(package=self.package, bot=self.bot)
+        else:
+            modal = ConfirmReportModal(package=self.package, bot=self.bot)
+
+        await interaction.response.send_modal(modal)
+
+        self.disable_all()
+        await interaction.edit_original_response(view=self)
+
+    @discord.ui.button(label="No, retry the operation", style=discord.ButtonStyle.red)
+    async def cancel(self: Self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
+        """Cancel button callback."""
+        modal = type(self.previous_modal)(package=self.package, bot=self.bot)
+
+        await interaction.response.send_modal(modal)
+
+        self.disable_all()
+        await interaction.edit_original_response(view=self)
+
+    def disable_all(self: Self) -> None:
+        """Disable both confirm and cancel buttons."""
+        self.confirm.disabled = True
+        self.cancel.disabled = True
 
 
 class ReportView(discord.ui.View):
