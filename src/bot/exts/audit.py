@@ -34,7 +34,7 @@ class PaginatorView(ui.View):
         self.current = 0
 
     @ui.button(emoji="◀️")
-    async def previous(self: Self, interaction: discord.Interaction, _) -> None:  # noqa: ANN001 -- What is this?
+    async def previous(self: Self, interaction: discord.Interaction, _) -> None:  # type: ignore[no-untyped-def, type-arg] # noqa: ANN001 -- What is this?
         """Go to the previous page."""
         if self.current == 0:
             self.current = len(self.embeds) - 1
@@ -44,7 +44,7 @@ class PaginatorView(ui.View):
         await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
 
     @ui.button(emoji="⏹️")
-    async def stop(self: Self, interaction: discord.Interaction, button: ui.Button) -> None:
+    async def stop(self: Self, interaction: discord.Interaction, button: ui.Button) -> None:  # type: ignore[override, type-arg]
         """Stop the paginator."""
         self.previous.disabled = True
         button.disabled = True
@@ -53,7 +53,7 @@ class PaginatorView(ui.View):
         await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
 
     @ui.button(emoji="▶️")
-    async def next(self: Self, interaction: discord.Interaction, _) -> None:  # noqa: ANN001,A003
+    async def next(self: Self, interaction: discord.Interaction, _) -> None:  # type: ignore[no-untyped-def, type-arg] # noqa: ANN001
         """Go to the next page."""
         if self.current == len(self.embeds) - 1:
             self.current = 0
@@ -62,7 +62,7 @@ class PaginatorView(ui.View):
 
         await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
 
-    async def interaction_check(self: Self, interaction: discord.Interaction) -> bool:
+    async def interaction_check(self: Self, interaction: discord.Interaction) -> bool:  # type: ignore[type-arg]
         """Check if the interaction is from the member."""
         if interaction.user == self.member:
             return True
@@ -97,8 +97,8 @@ class Audit(commands.Cog):
         """Initialize the cog."""
         self.bot = bot
 
-    @app_commands.command(name="audit", description="Randomly pick packages and display them")
-    async def audit(self: Self, interaction: discord.Interaction, hours: int, amount: int) -> None:
+    @app_commands.command(name="audit", description="Randomly pick packages and display them")  # type: ignore[arg-type]
+    async def audit(self: Self, interaction: discord.Interaction, hours: int, amount: int) -> None:  # type: ignore[type-arg]
         """
         Recalls for scanned packages within a given time frame and amount.
 

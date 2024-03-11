@@ -22,7 +22,7 @@ intents.message_content = True
 def get_prefix(bot_: Bot, message_: discord.Message) -> Callable[[Bot, discord.Message], list[str]]:
     """Return a callable to check for the bot's prefix."""
     extras = constants.Bot.prefix.split(",")
-    return commands.when_mentioned_or(*extras)(bot_, message_)
+    return commands.when_mentioned_or(*extras)(bot_, message_)  # type: ignore[return-value]
 
 
 async def main() -> None:

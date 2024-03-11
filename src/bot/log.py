@@ -19,10 +19,10 @@ TRACE_LEVEL = 5
 LoggerClass = Logger if TYPE_CHECKING else logging.getLoggerClass()
 
 
-class CustomLogger(LoggerClass):
+class CustomLogger(LoggerClass):  # type: ignore[misc, valid-type]
     """Custom implementation of the `Logger` class with an added `trace` method."""
 
-    def trace(self: Self, msg: str, *args: tuple, **kwargs: dict) -> None:
+    def trace(self: Self, msg: str, *args: tuple, **kwargs: dict) -> None:  # type: ignore[type-arg]
         """
         Log 'msg % args' with severity 'TRACE'.
 
@@ -42,7 +42,7 @@ def get_logger(name: str | None = None) -> CustomLogger:
 
 def setup() -> None:
     """Set up loggers."""
-    logging.TRACE = TRACE_LEVEL
+    logging.TRACE = TRACE_LEVEL  # type: ignore[attr-defined]
     logging.addLevelName(TRACE_LEVEL, "TRACE")
     logging.setLoggerClass(CustomLogger)
 

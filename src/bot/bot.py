@@ -15,7 +15,7 @@ from bot.dragonfly_services import DragonflyServices
 log = logging.getLogger(__name__)
 
 
-class CommandTree(discord.app_commands.CommandTree):
+class CommandTree(discord.app_commands.CommandTree):  # type: ignore[type-arg]
     """Custom command tree that handles errors raised by commands."""
 
     def __init__(self: Self, bot: commands.Bot) -> None:
@@ -23,7 +23,7 @@ class CommandTree(discord.app_commands.CommandTree):
 
     async def on_error(
         self: Self,
-        interaction: discord.Interaction,
+        interaction: discord.Interaction,  # type: ignore[type-arg]
         error: discord.app_commands.AppCommandError,
     ) -> None:
         """Override the default error handler to handle custom errors."""
@@ -51,7 +51,7 @@ class CommandTree(discord.app_commands.CommandTree):
             raise error
 
 
-class Bot(BotBase):
+class Bot(BotBase):  # type: ignore[misc]
     """Bot implementation."""
 
     def __init__(
@@ -86,7 +86,7 @@ class Bot(BotBase):
         log.debug("load_extensions")
         scheduling.create_task(self.load_extensions(exts))
 
-    async def on_error(self: Self, event: str, *args: tuple, **kwargs: dict) -> None:
+    async def on_error(self: Self, event: str, *args: tuple, **kwargs: dict) -> None:  # type: ignore[type-arg]
         """Log errors raised in event listeners rather than printing them to stderr."""
         with push_scope() as scope:
             scope.set_tag("event", event)

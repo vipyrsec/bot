@@ -1,7 +1,7 @@
 """Interacting with the Dragonfly API."""
 
-from dataclasses import dataclass
 import dataclasses
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any, Self
@@ -35,7 +35,7 @@ class PackageScanResult:
     score: int
 
     @classmethod
-    def from_dict(cls: type[Self], data: dict) -> Self:
+    def from_dict(cls: type[Self], data: dict) -> Self:  # type: ignore[type-arg]
         """Create a PackageScanResult from a dictionary."""
         return cls(
             status=ScanStatus(data["status"]),
@@ -55,8 +55,11 @@ class PackageScanResult:
         """Return a string representation of the package scan result."""
         return f"{self.name} {self.version}"
 
+
 @dataclass
 class PackageReport:
+    """Represents the payload sent to the report endpoint."""
+
     name: str
     version: str
     inspector_url: str | None
@@ -64,10 +67,11 @@ class PackageReport:
     recipient: str | None
     use_email: bool
 
+
 class DragonflyServices:
     """A class wrapping Dragonfly's API."""
 
-    def __init__(  # noqa: PLR0913 -- Maybe pass the entire constants class?
+    def __init__(  # noqa: PLR0913,PLR0917 -- Maybe pass the entire constants class?
         self: Self,
         session: ClientSession,
         base_url: str,
@@ -104,6 +108,7 @@ class DragonflyServices:
             "password": self.password,
         }
         async with self.session.post(self.auth_url, json=auth_dict) as response:
+            response.raise_for_status()
             data = await response.json()
             self.token = data["access_token"]
             self.token_expires_at = datetime.now(tz=UTC) + timedelta(seconds=data["expires_in"])
@@ -114,7 +119,7 @@ class DragonflyServices:
         path: str,
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
-    ) -> dict:
+    ) -> dict:  # type: ignore[type-arg]
         """Make a request to Dragonfly's API."""
         await self._update_token()
 
@@ -132,8 +137,9 @@ class DragonflyServices:
         if json is not None:
             args["json"] = json
 
-        async with self.session.request(**args) as response:
-            return await response.json()
+        async with self.session.request(**args) as response:  # type: ignore[arg-type]
+            response.raise_for_status()
+            return await response.json()  # type: ignore[no-any-return]
 
     async def get_scanned_packages(
         self: Self,
@@ -150,7 +156,7 @@ class DragonflyServices:
             params["version"] = version
 
         if since:
-            params["since"] = int(since.timestamp())
+            params["since"] = int(since.timestamp())  # type: ignore[assignment]
 
         data = await self.make_request("GET", "/package", params=params)
         return [PackageScanResult.from_dict(dct) for dct in data]
