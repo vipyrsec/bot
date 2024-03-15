@@ -1,5 +1,6 @@
 """Interacting with the Dragonfly API."""
 
+import dataclasses
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -53,6 +54,18 @@ class PackageScanResult:
     def __str__(self: Self) -> str:
         """Return a string representation of the package scan result."""
         return f"{self.name} {self.version}"
+
+
+@dataclass
+class PackageReport:
+    """Represents the payload sent to the report endpoint."""
+
+    name: str
+    version: str
+    inspector_url: str | None
+    additional_information: str | None
+    recipient: str | None
+    use_email: bool
 
 
 class DragonflyServices:
@@ -148,20 +161,10 @@ class DragonflyServices:
         data = await self.make_request("GET", "/package", params=params)
         return [PackageScanResult.from_dict(dct) for dct in data]
 
-    async def report_package(  # noqa: PLR0913
+    async def report_package(
         self: Self,
-        name: str,
-        version: str,
-        inspector_url: str | None,
-        additional_information: str | None,
-        recipient: str | None,
+        report: PackageReport,
     ) -> None:
         """Report a package to Dragonfly."""
-        data = {
-            "name": name,
-            "version": version,
-            "inspector_url": inspector_url,
-            "additional_information": additional_information,
-            "recipient": recipient,
-        }
+        data = dataclasses.asdict(report)
         await self.make_request("POST", "/report", json=data)

@@ -10,6 +10,7 @@ from pydis_core.utils import scheduling
 from sentry_sdk import push_scope
 
 from bot import exts
+from bot.dragonfly_services import DragonflyServices
 
 log = logging.getLogger(__name__)
 
@@ -55,8 +56,9 @@ class Bot(BotBase):  # type: ignore[misc]
 
     def __init__(
         self: Self,
-        *args: tuple,  # type: ignore[type-arg]
-        **kwargs: dict,  # type: ignore[type-arg]
+        dragonfly_services: DragonflyServices,
+        *args: tuple,
+        **kwargs: dict,
     ) -> None:
         """
         Initialise the base bot instance.
@@ -71,6 +73,7 @@ class Bot(BotBase):  # type: ignore[misc]
             **kwargs,
         )
 
+        self.dragonfly_services = dragonfly_services
         self.all_extensions: frozenset[str] | None = None
 
     async def setup_hook(self: Self) -> None:
