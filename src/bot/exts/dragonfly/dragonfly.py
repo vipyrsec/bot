@@ -263,10 +263,13 @@ class ReportView(discord.ui.View):
 
 def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
     """Build the embed that shows the results of a package scan."""
+    condition = scan_result.score >= DragonflyConfig.threshold
+    title, color = "Malicious", 0xF70606 if condition else "Benign", 0x4CBB17
+
     embed = discord.Embed(
-        title=f"Malicious package found: {scan_result.name} @ {scan_result.version}",
+        title=f"{title} package found: {scan_result.name} @ {scan_result.version}",
         description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
-        color=0xF70606,
+        color=color,
     )
 
     embed.add_field(
