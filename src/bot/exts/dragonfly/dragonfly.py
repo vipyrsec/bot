@@ -271,7 +271,7 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
         description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
         color=color,
     )
-    
+
     embed.add_field(
         name="\u200b",
         value=f"[Inspector]({scan_result.inspector_url})",
@@ -283,7 +283,7 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
         value=f"[PyPI](https://pypi.org/project/{scan_result.name}/{scan_result.version})",
         inline=True,
     )
-        
+
     return embed
 
 
