@@ -3,7 +3,7 @@ name: "Python CI"
 on:
   push:
     branches:
-      - main
+    - main
   pull_request:
 
 jobs:
@@ -22,8 +22,8 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
-        python-version: [ "3.11" ]
+        os: [ubuntu-latest]
+        python-version: ["3.11"]
 
     uses: darbiadev/.github/.github/workflows/python-test.yaml@ea97d99e1520c46080c4c9032a69552e491474ac # v13.0.0
     with:
