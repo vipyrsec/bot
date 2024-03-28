@@ -27,7 +27,7 @@ def get_prefix(bot_: Bot, message_: discord.Message) -> Callable[[Bot, discord.M
 
 async def main() -> None:
     """Run the bot."""
-    async with ClientSession(headers={"Content-Type": "application/json"}, timeout=ClientTimeout(total=10)) as session:
+    async with ClientSession(headers={"Content-Type": "application/json"}, timeout=ClientTimeout(total=30)) as session:
         dragonfly_services = DragonflyServices(
             session=session,
             base_url=constants.Dragonfly.base_url,
