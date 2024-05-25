@@ -38,7 +38,7 @@ class _ThreatIntelFeed(EnvConfig, env_prefix="tif_"):
     """Threat Intelligence Feed Configuration."""
 
     repository: str = "pypi/pypi-observation-reports-private"
-    interval: int = 10 * 60  # 10 minutes
+    interval: int = 60 * 60  # 1 hour
     access_token: str = ""
     channel_id: int = 1121471544355455058
 
