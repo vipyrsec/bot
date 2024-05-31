@@ -132,9 +132,7 @@ class ConfirmEmailReportModal(discord.ui.Modal):
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
             return await interaction.response.send_message(message, view=view, ephemeral=True)
 
-        await interaction.response.send_message(
-            "An unexpected error occured.", ephemeral=True,
-        )
+        await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
         raise error
 
     async def on_submit(self: Self, interaction: discord.Interaction) -> None:
@@ -551,9 +549,7 @@ class Dragonfly(commands.Cog):
     @commands.hybrid_command(name="username")  # type: ignore [arg-type]
     async def get_username_command(self, ctx: commands.Context[Bot]) -> None:
         """Get the username of the currently logged in user to the PyPI Observation API."""
-        async with ctx.bot.http_session.get(
-            DragonflyConfig.reporter_url + "/echo",
-        ) as res:
+        async with ctx.bot.http_session.get(DragonflyConfig.reporter_url + "/echo") as res:
             json = await res.json()
             username = json["username"]
 
@@ -615,16 +611,12 @@ class Dragonfly(commands.Cog):
     @discord.app_commands.command(name="lookup", description="Scans a package")
     async def lookup(self: Self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:  # type: ignore[type-arg]
         """Pull the scan results for a package."""
-        scan_results = await self.bot.dragonfly_services.get_scanned_packages(
-            name=name, version=version,
-        )
+        scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
         if scan_results:
             embed = _build_package_scan_result_embed(scan_results[0])
             await interaction.response.send_message(embed=embed)
         else:
-            await interaction.response.send_message(
-                "No entries were found with the specified filters.",
-            )
+            await interaction.response.send_message("No entries were found with the specified filters.")
 
     @commands.group()
     async def threshold(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
