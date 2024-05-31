@@ -1,5 +1,7 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware."""
 
+from __future__ import annotations
+
 import logging
 from datetime import UTC, datetime, timedelta
 from logging import getLogger
@@ -128,9 +130,7 @@ class ConfirmEmailReportModal(discord.ui.Modal):
                 f"Retry using Observation API instead?"
             )
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
-            return await interaction.response.send_message(
-                message, view=view, ephemeral=True,
-            )
+            return await interaction.response.send_message(message, view=view, ephemeral=True)
 
         await interaction.response.send_message(
             "An unexpected error occured.", ephemeral=True,
@@ -148,11 +148,7 @@ class ConfirmEmailReportModal(discord.ui.Modal):
             use_email=True,
         )
 
-        await handle_submit(
-            report=report,
-            interaction=interaction,
-            dragonfly_services=self.bot.dragonfly_services,
-        )
+        await handle_submit(report=report, interaction=interaction, dragonfly_services=self.bot.dragonfly_services)
 
 
 class ConfirmReportModal(discord.ui.Modal):
@@ -184,20 +180,14 @@ class ConfirmReportModal(discord.ui.Modal):
 
         super().__init__()
 
-    async def on_error(
-        self: Self, interaction: discord.Interaction, error: Exception,
-    ) -> None:
+    async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:
         """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
             message = f"Error from upstream: {error.status}\n```{error.message}```\nRetry using email instead?"
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
-            return await interaction.response.send_message(
-                message, view=view, ephemeral=True,
-            )
+            return await interaction.response.send_message(message, view=view, ephemeral=True)
 
-        await interaction.response.send_message(
-            "An unexpected error occured.", ephemeral=True,
-        )
+        await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
         raise error
 
     async def on_submit(self: Self, interaction: discord.Interaction) -> None:
@@ -211,11 +201,7 @@ class ConfirmReportModal(discord.ui.Modal):
             use_email=False,
         )
 
-        await handle_submit(
-            report=report,
-            interaction=interaction,
-            dragonfly_services=self.bot.dragonfly_services,
-        )
+        await handle_submit(report=report, interaction=interaction, dragonfly_services=self.bot.dragonfly_services)
 
 
 class ReportMethodSwitchConfirmationView(discord.ui.View):
@@ -225,18 +211,14 @@ class ReportMethodSwitchConfirmationView(discord.ui.View):
     user if they want to switch to another method of sending reports.
     """
 
-    def __init__(
-        self: Self, previous_modal: ConfirmReportModal | ConfirmEmailReportModal,
-    ) -> None:
+    def __init__(self: Self, previous_modal: ConfirmReportModal | ConfirmEmailReportModal) -> None:
         super().__init__()
         self.previous_modal = previous_modal
         self.package = previous_modal.package
         self.bot = previous_modal.bot
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
-    async def confirm(
-        self: Self, interaction: discord.Interaction, _button: discord.ui.Button,
-    ) -> None:
+    async def confirm(self: Self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
         """Confirm button callback."""
         if isinstance(self.previous_modal, ConfirmReportModal):
             modal = ConfirmEmailReportModal(package=self.package, bot=self.bot)
@@ -249,9 +231,7 @@ class ReportMethodSwitchConfirmationView(discord.ui.View):
         await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="No, retry the operation", style=discord.ButtonStyle.red)
-    async def cancel(
-        self: Self, interaction: discord.Interaction, _button: discord.ui.Button,
-    ) -> None:
+    async def cancel(self: Self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
         """Cancel button callback."""
         modal = type(self.previous_modal)(package=self.package, bot=self.bot)
 
@@ -526,9 +506,7 @@ def _build_package_scan_result_triage_embed(
     return embed
 
 
-def _build_all_packages_scanned_embed(
-    scan_results: list[PackageScanResult],
-) -> discord.Embed:
+def _build_all_packages_scanned_embed(scan_results: list[PackageScanResult]) -> discord.Embed:
     """Build the embed that shows a list of all packages scanned."""
     if scan_results:
         description = "\n".join(map(str, scan_results))
