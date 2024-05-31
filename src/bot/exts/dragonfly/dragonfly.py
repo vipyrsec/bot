@@ -1,20 +1,19 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware."""
 
-from __future__ import annotations
-
 import logging
 from datetime import UTC, datetime, timedelta
 from logging import getLogger
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import aiohttp
 import discord
 import sentry_sdk
-from discord.ext import commands, tasks
-
-from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
 from bot.dragonfly_services import DragonflyServices, PackageReport, PackageScanResult
+from discord.ext import commands, tasks
+
+if TYPE_CHECKING:
+    from bot.bot import Bot
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -130,11 +129,11 @@ class ConfirmEmailReportModal(discord.ui.Modal):
             )
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
             return await interaction.response.send_message(
-                message, view=view, ephemeral=True
+                message, view=view, ephemeral=True,
             )
 
         await interaction.response.send_message(
-            "An unexpected error occured.", ephemeral=True
+            "An unexpected error occured.", ephemeral=True,
         )
         raise error
 
@@ -186,18 +185,18 @@ class ConfirmReportModal(discord.ui.Modal):
         super().__init__()
 
     async def on_error(
-        self: Self, interaction: discord.Interaction, error: Exception
+        self: Self, interaction: discord.Interaction, error: Exception,
     ) -> None:
         """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
             message = f"Error from upstream: {error.status}\n```{error.message}```\nRetry using email instead?"
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
             return await interaction.response.send_message(
-                message, view=view, ephemeral=True
+                message, view=view, ephemeral=True,
             )
 
         await interaction.response.send_message(
-            "An unexpected error occured.", ephemeral=True
+            "An unexpected error occured.", ephemeral=True,
         )
         raise error
 
@@ -227,7 +226,7 @@ class ReportMethodSwitchConfirmationView(discord.ui.View):
     """
 
     def __init__(
-        self: Self, previous_modal: ConfirmReportModal | ConfirmEmailReportModal
+        self: Self, previous_modal: ConfirmReportModal | ConfirmEmailReportModal,
     ) -> None:
         super().__init__()
         self.previous_modal = previous_modal
@@ -236,7 +235,7 @@ class ReportMethodSwitchConfirmationView(discord.ui.View):
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
     async def confirm(
-        self: Self, interaction: discord.Interaction, _button: discord.ui.Button
+        self: Self, interaction: discord.Interaction, _button: discord.ui.Button,
     ) -> None:
         """Confirm button callback."""
         if isinstance(self.previous_modal, ConfirmReportModal):
@@ -251,7 +250,7 @@ class ReportMethodSwitchConfirmationView(discord.ui.View):
 
     @discord.ui.button(label="No, retry the operation", style=discord.ButtonStyle.red)
     async def cancel(
-        self: Self, interaction: discord.Interaction, _button: discord.ui.Button
+        self: Self, interaction: discord.Interaction, _button: discord.ui.Button,
     ) -> None:
         """Cancel button callback."""
         modal = type(self.previous_modal)(package=self.package, bot=self.bot)
@@ -288,7 +287,7 @@ class ReportView(discord.ui.View):
 
 
 class NoteModal(discord.ui.Modal, title="Add a note"):
-    """A modal that allows users to add a note to a package"""
+    """A modal that allows users to add a note to a package."""
 
     _interaction: discord.Interaction | None = None
     note_content = discord.ui.TextInput(
@@ -298,13 +297,14 @@ class NoteModal(discord.ui.Modal, title="Add a note"):
         max_length=1000,  # Don't want to overfill the embed
     )
 
-    def __init__(self, embed: discord.Embed, view: discord.ui.View):
+    def __init__(self, embed: discord.Embed, view: discord.ui.View) -> None:
         super().__init__()
 
         self.embed = embed
         self.view = view
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        """Modal submit callback."""
         if not interaction.response.is_done():
             await interaction.response.defer()
         self._interaction = interaction
@@ -345,26 +345,27 @@ class NoteModal(discord.ui.Modal, title="Add a note"):
         await interaction.message.edit(embed=self.embed, view=self.view)
 
     async def on_error(
-        self, interaction: discord.Interaction, error: Exception
+        self, interaction: discord.Interaction, error: Exception,
     ) -> None:
-
+        """Handle errors that occur in the modal."""
         await interaction.response.send_message(
-            "An unexpected error occured.", ephemeral=True
+            "An unexpected error occured.", ephemeral=True,
         )
         raise error
 
     @property
     def interaction(self) -> discord.Interaction | None:
+        """Get the interaction that triggered the modal."""
         return self._interaction
 
 
 class MalwareView(discord.ui.View):
-    """View for the malware triage system"""
+    """View for the malware triage system."""
 
     message: discord.Message | None = None
 
     def __init__(
-        self: Self, embed: discord.Embed, bot: Bot, payload: PackageScanResult
+        self: Self, embed: discord.Embed, bot: Bot, payload: PackageScanResult,
     ) -> None:
         self.embed = embed
         self.bot = bot
@@ -374,11 +375,13 @@ class MalwareView(discord.ui.View):
         super().__init__()
 
     async def enable_button(self, button_label: str) -> None:
+        """Enables a button by its label."""
         for button in self.children:
             if button.label == button_label:
                 button.disabled = False
 
     async def add_event(self, message: str) -> None:
+        """Add an event to the event log."""
         # Much like earlier, we need to check the fields of the embed to determine where to add the event log
         match len(self.embed.fields):
             case 0:
@@ -393,43 +396,35 @@ class MalwareView(discord.ui.View):
                     self.embed.remove_field(1)
 
         self.event_log.append(
-            message
+            message,
         )  # For future reference, we save the event log in a variable
         self.embed.add_field(
-            name="Event log", value="\n".join(self.event_log), inline=False
+            name="Event log", value="\n".join(self.event_log), inline=False,
         )
 
     async def update_status(self, status: str) -> None:
+        """Update the status of the package in the embed."""
         self.embed.set_footer(text=status)
 
     def get_timestamp(
         self,
     ) -> (
         int
-    ):  # This function returns the current timestamp in Discord's timestamp format
-        return f"<t:{int(datetime.now().timestamp())}:R>"
-
-    @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
-    async def report(self: Self, interaction: discord.Interaction, button: discord.ui.Button) -> None:  # type: ignore[type-arg]
-        """Report a package."""
-        modal = ConfirmReportModal(package=self.payload, bot=self.bot)
-        await interaction.response.send_modal(modal)
-
-        timed_out = await modal.wait()
-        if not timed_out:
-            button.disabled = True
-            await interaction.edit_original_response(view=self)
+    ):
+        """Returns the current timestamp in seconds."""
+        return f"<t:{int(datetime.now(UTC).timestamp())}:R>"
 
     @discord.ui.button(
         label="Report",
         style=discord.ButtonStyle.red,
     )
     async def report(
-        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView]
+        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView],
     ) -> None:
+        """Report package and update the embed."""
         await self.enable_button("Approve")
         await self.add_event(
-            f"Reported by {interaction.user.mention} • {self.get_timestamp()}"
+            f"Reported by {interaction.user.mention} • {self.get_timestamp()}",
         )
         await self.update_status("Flagged as malicious")
 
@@ -448,11 +443,12 @@ class MalwareView(discord.ui.View):
         style=discord.ButtonStyle.green,
     )
     async def approve(
-        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView]
+        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView],
     ) -> None:
+        """Approve package and update the embed."""
         await self.enable_button("Report")
         await self.add_event(
-            f"Approved by {interaction.user.mention} • {self.get_timestamp()}"
+            f"Approved by {interaction.user.mention} • {self.get_timestamp()}",
         )
         await self.update_status("Flagged as benign")
 
@@ -466,8 +462,9 @@ class MalwareView(discord.ui.View):
         style=discord.ButtonStyle.grey,
     )
     async def add_note(
-        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView]
+        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView],
     ) -> None:
+        """Add note to the embed."""
         await interaction.response.send_modal(NoteModal(embed=self.embed, view=self))
 
     async def on_error(
@@ -475,9 +472,9 @@ class MalwareView(discord.ui.View):
         interaction: discord.Interaction[discord.Client],
         error: Exception,
     ) -> None:
-
+        """Handle errors that occur in the view."""
         await interaction.response.send_message(
-            "An unexpected error occured.", ephemeral=True
+            "An unexpected error occured.", ephemeral=True,
         )
         raise error
 
@@ -511,8 +508,7 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
 def _build_package_scan_result_triage_embed(
     scan_result: PackageScanResult,
 ) -> discord.Embed:
-    """Build the embed for the malware triage system"""
-
+    """Build the embed for the malware triage system."""
     embed = discord.Embed(
         title="View on Inspector",
         description="\n".join(scan_result.rules),
@@ -552,14 +548,6 @@ async def run(
     scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
     for result in scan_results:
         if result.score >= score:
-            """
-            embed = _build_package_scan_result_embed(result)
-            await alerts_channel.send(
-                f"<@&{DragonflyConfig.alerts_role_id}>",
-                embed=embed,
-                view=ReportView(bot, result),
-            )
-            """
             embed = _build_package_scan_result_triage_embed(result)
             view = MalwareView(embed=embed, bot=bot, payload=result)
 
@@ -586,7 +574,7 @@ class Dragonfly(commands.Cog):
     async def get_username_command(self, ctx: commands.Context[Bot]) -> None:
         """Get the username of the currently logged in user to the PyPI Observation API."""
         async with ctx.bot.http_session.get(
-            DragonflyConfig.reporter_url + "/echo"
+            DragonflyConfig.reporter_url + "/echo",
         ) as res:
             json = await res.json()
             username = json["username"]
@@ -650,14 +638,14 @@ class Dragonfly(commands.Cog):
     async def lookup(self: Self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:  # type: ignore[type-arg]
         """Pull the scan results for a package."""
         scan_results = await self.bot.dragonfly_services.get_scanned_packages(
-            name=name, version=version
+            name=name, version=version,
         )
         if scan_results:
             embed = _build_package_scan_result_embed(scan_results[0])
             await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message(
-                "No entries were found with the specified filters."
+                "No entries were found with the specified filters.",
             )
 
     @commands.group()
