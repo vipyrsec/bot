@@ -1,7 +1,5 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware."""
 
-from __future__ import annotations
-
 import logging
 from datetime import UTC, datetime, timedelta
 from logging import getLogger
