@@ -6,9 +6,9 @@
       "integrity": "sha256:c11122f0fc8352fcf3a1c2eab1023daab9db7982a83725af803307fd18fb64f4"
     },
     "ghcr.io/devcontainers/features/python:1": {
-      "version": "1.4.1",
-      "resolved": "ghcr.io/devcontainers/features/python@sha256:d7e393af2440444dddb3c275cf7f90c899a24f8e853e4d6315e1be3be7e1d49f",
-      "integrity": "sha256:d7e393af2440444dddb3c275cf7f90c899a24f8e853e4d6315e1be3be7e1d49f"
+      "version": "1.6.1",
+      "resolved": "ghcr.io/devcontainers/features/python@sha256:d449aea663ea23ac4a7968719d5920dd57128f0429cd8e216849d5afe67651fb",
+      "integrity": "sha256:d449aea663ea23ac4a7968719d5920dd57128f0429cd8e216849d5afe67651fb"
     }
   }
 }
