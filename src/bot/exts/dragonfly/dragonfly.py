@@ -387,7 +387,7 @@ class MalwareView(discord.ui.View):
     ) -> (
         int
     ):
-        """Returns the current timestamp in seconds."""
+        """Returns the current timestamp, formatted in Discord's relative style"""
         return f"<t:{int(datetime.now(UTC).timestamp())}:R>"
 
     @discord.ui.button(
