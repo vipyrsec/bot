@@ -329,11 +329,6 @@ class NoteModal(discord.ui.Modal, title="Add a note"):
         )
         raise error
 
-    @property
-    def interaction(self) -> discord.Interaction | None:
-        """Get the interaction that triggered the modal."""
-        return self._interaction
-
 
 class MalwareView(discord.ui.View):
     """View for the malware triage system."""
@@ -422,7 +417,7 @@ class MalwareView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView],
     ) -> None:
         """Approve package and update the embed."""
-        await self.enable_button("Report")
+        self.report.disabled = False
         await self.add_event(
             f"Approved by {interaction.user.mention} • {self.get_timestamp()}",
         )
