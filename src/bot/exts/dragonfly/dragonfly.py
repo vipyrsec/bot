@@ -11,6 +11,7 @@ import sentry_sdk
 from bot.constants import Channels, DragonflyConfig, Roles
 from bot.dragonfly_services import DragonflyServices, PackageReport, PackageScanResult
 from discord.ext import commands, tasks
+from discord.utils import format_dt
 
 if TYPE_CHECKING:
     from bot.bot import Bot
@@ -383,7 +384,7 @@ class MalwareView(discord.ui.View):
         int
     ):
         """Returns the current timestamp, formatted in Discord's relative style"""
-        return f"<t:{int(datetime.now(UTC).timestamp())}:R>"
+        return format_dt(datetime.now(UTC), style="R")
 
     @discord.ui.button(
         label="Report",
