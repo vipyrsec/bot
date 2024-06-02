@@ -3,18 +3,17 @@
 import logging
 from datetime import UTC, datetime, timedelta
 from logging import getLogger
-from typing import TYPE_CHECKING, Self
+from typing import Self
 
 import aiohttp
 import discord
 import sentry_sdk
-from bot.constants import Channels, DragonflyConfig, Roles
-from bot.dragonfly_services import DragonflyServices, PackageReport, PackageScanResult
 from discord.ext import commands, tasks
 from discord.utils import format_dt
 
-if TYPE_CHECKING:
-    from bot.bot import Bot
+from bot.bot import Bot
+from bot.constants import Channels, DragonflyConfig, Roles
+from bot.dragonfly_services import DragonflyServices, PackageReport, PackageScanResult
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -322,11 +321,14 @@ class NoteModal(discord.ui.Modal, title="Add a note"):
         await interaction.message.edit(embed=self.embed, view=self.view)
 
     async def on_error(
-        self, interaction: discord.Interaction, error: Exception,
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
     ) -> None:
         """Handle errors that occur in the modal."""
         await interaction.response.send_message(
-            "An unexpected error occured.", ephemeral=True,
+            "An unexpected error occured.",
+            ephemeral=True,
         )
         raise error
 
@@ -337,7 +339,10 @@ class MalwareView(discord.ui.View):
     message: discord.Message | None = None
 
     def __init__(
-        self: Self, embed: discord.Embed, bot: Bot, payload: PackageScanResult,
+        self: Self,
+        embed: discord.Embed,
+        bot: Bot,
+        payload: PackageScanResult,
     ) -> None:
         self.embed = embed
         self.bot = bot
@@ -345,12 +350,6 @@ class MalwareView(discord.ui.View):
         self.event_log = []
 
         super().__init__()
-
-    async def enable_button(self, button_label: str) -> None:
-        """Enables a button by its label."""
-        for button in self.children:
-            if button.label == button_label:
-                button.disabled = False
 
     async def add_event(self, message: str) -> None:
         """Add an event to the event log."""
@@ -371,7 +370,9 @@ class MalwareView(discord.ui.View):
             message,
         )  # For future reference, we save the event log in a variable
         self.embed.add_field(
-            name="Event log", value="\n".join(self.event_log), inline=False,
+            name="Event log",
+            value="\n".join(self.event_log),
+            inline=False,
         )
 
     async def update_status(self, status: str) -> None:
@@ -379,7 +380,7 @@ class MalwareView(discord.ui.View):
         self.embed.set_footer(text=status)
 
     def get_timestamp(self) -> str:
-        """Returns the current timestamp, formatted in Discord's relative style"""
+        """Return the current timestamp, formatted in Discord's relative style."""
         return format_dt(datetime.now(UTC), style="R")
 
     @discord.ui.button(
@@ -387,7 +388,9 @@ class MalwareView(discord.ui.View):
         style=discord.ButtonStyle.red,
     )
     async def report(
-        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView],
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ) -> None:
         """Report package and update the embed."""
         self.approve.disabled = False
@@ -411,7 +414,9 @@ class MalwareView(discord.ui.View):
         style=discord.ButtonStyle.green,
     )
     async def approve(
-        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView],
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ) -> None:
         """Approve package and update the embed."""
         self.report.disabled = False
@@ -430,7 +435,9 @@ class MalwareView(discord.ui.View):
         style=discord.ButtonStyle.grey,
     )
     async def add_note(
-        self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView],
+        self,
+        interaction: discord.Interaction,
+        _button: discord.ui.Button,
     ) -> None:
         """Add note to the embed."""
         await interaction.response.send_modal(NoteModal(embed=self.embed, view=self))
@@ -439,10 +446,12 @@ class MalwareView(discord.ui.View):
         self,
         interaction: discord.Interaction[discord.Client],
         error: Exception,
+        _item: discord.ui.Item,
     ) -> None:
         """Handle errors that occur in the view."""
         await interaction.response.send_message(
-            "An unexpected error occured.", ephemeral=True,
+            "An unexpected error occured.",
+            ephemeral=True,
         )
         raise error
 
