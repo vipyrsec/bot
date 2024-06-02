@@ -378,11 +378,7 @@ class MalwareView(discord.ui.View):
         """Update the status of the package in the embed."""
         self.embed.set_footer(text=status)
 
-    def get_timestamp(
-        self,
-    ) -> (
-        int
-    ):
+    def get_timestamp(self) -> str:
         """Returns the current timestamp, formatted in Discord's relative style"""
         return format_dt(datetime.now(UTC), style="R")
 
