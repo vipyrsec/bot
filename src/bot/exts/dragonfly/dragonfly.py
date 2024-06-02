@@ -398,7 +398,7 @@ class MalwareView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button[MalwareView],
     ) -> None:
         """Report package and update the embed."""
-        await self.enable_button("Approve")
+        self.approve.disabled = False
         await self.add_event(
             f"Reported by {interaction.user.mention} • {self.get_timestamp()}",
         )
