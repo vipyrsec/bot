@@ -14,7 +14,7 @@ from discord.ext import commands, tasks
 
 from bot import constants
 from bot.bot import Bot
-from bot.dragonfly_services import PackageScanResult
+from bot.dragonfly_services import Package
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -53,7 +53,7 @@ def search(d: dict, key: Any) -> Any | None:  # noqa: ANN401 - we can't know the
     return None
 
 
-def build_embed(package: PackageScanResult, path: str, inspector_url: str) -> discord.Embed:
+def build_embed(package: Package, path: str, inspector_url: str) -> discord.Embed:
     """Return the embed to be sent in the threat intelligence feed."""
     if package.reported_at:
         ts = discord.utils.format_dt(package.reported_at, style="F")

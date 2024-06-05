@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any, Self
 
 from aiohttp import ClientSession
+from pydantic import BaseModel
 
 
 class ScanStatus(Enum):
@@ -18,41 +19,29 @@ class ScanStatus(Enum):
     FAILED = "failed"
 
 
-@dataclass
-class PackageScanResult:
-    """A package scan result."""
+class Package(BaseModel):
+    """Model representing a package queried from the database."""
 
-    status: ScanStatus
-    inspector_url: str
-    queued_at: datetime
-    pending_at: datetime | None
-    finished_at: datetime | None
-    reported_at: datetime | None
-    version: str
+    scan_id: str
     name: str
-    package_id: str
-    rules: list[str]
-    score: int
+    version: str
+    status: ScanStatus | None
+    score: int | None
+    inspector_url: str | None
+    rules: list[str] = []
+    download_urls: list[str] = []
+    queued_at: datetime | None
+    queued_by: str | None
+    reported_at: datetime | None
+    reported_by: str | None
+    pending_at: datetime | None
+    pending_by: str | None
+    finished_at: datetime | None
+    finished_by: str | None
+    commit_hash: str | None
 
-    @classmethod
-    def from_dict(cls: type[Self], data: dict) -> Self:  # type: ignore[type-arg]
-        """Create a PackageScanResult from a dictionary."""
-        return cls(
-            status=ScanStatus(data["status"]),
-            inspector_url=data["inspector_url"],
-            queued_at=datetime.fromisoformat(data["queued_at"]),
-            pending_at=datetime.fromisoformat(p) if (p := data["pending_at"]) else None,
-            finished_at=datetime.fromisoformat(p) if (p := data["finished_at"]) else None,
-            reported_at=datetime.fromisoformat(p) if (p := data["reported_at"]) else None,
-            version=data["version"],
-            name=data["name"],
-            package_id=data["scan_id"],
-            rules=[d["name"] for d in data["rules"]],
-            score=int(data["score"]),
-        )
-
-    def __str__(self: Self) -> str:
-        """Return a string representation of the package scan result."""
+    def __str__(self) -> str:
+        """Return package name and version."""
         return f"{self.name} {self.version}"
 
 
@@ -146,7 +135,7 @@ class DragonflyServices:
         name: str | None = None,
         version: str | None = None,
         since: datetime | None = None,
-    ) -> list[PackageScanResult]:
+    ) -> list[Package]:
         """Get a list of scanned packages."""
         params = {}
         if name:
@@ -159,7 +148,7 @@ class DragonflyServices:
             params["since"] = int(since.timestamp())  # type: ignore[assignment]
 
         data = await self.make_request("GET", "/package", params=params)
-        return [PackageScanResult.from_dict(dct) for dct in data]
+        return list(map(Package.model_validate, data))
 
     async def report_package(
         self: Self,
