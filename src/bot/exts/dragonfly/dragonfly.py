@@ -13,7 +13,7 @@ from discord.utils import format_dt
 
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
-from bot.dragonfly_services import DragonflyServices, PackageReport, PackageScanResult
+from bot.dragonfly_services import DragonflyServices, Package, PackageReport
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -108,7 +108,7 @@ class ConfirmEmailReportModal(discord.ui.Modal):
         style=discord.TextStyle.short,
     )
 
-    def __init__(self: Self, *, package: PackageScanResult, bot: Bot) -> None:
+    def __init__(self: Self, *, package: Package, bot: Bot) -> None:
         """Initialize the modal."""
         self.package = package
         self.bot = bot
@@ -164,7 +164,7 @@ class ConfirmReportModal(discord.ui.Modal):
         style=discord.TextStyle.short,
     )
 
-    def __init__(self: Self, *, package: PackageScanResult, bot: Bot) -> None:
+    def __init__(self: Self, *, package: Package, bot: Bot) -> None:
         """Initialize the modal."""
         self.package = package
         self.bot = bot
@@ -245,7 +245,7 @@ class ReportMethodSwitchConfirmationView(discord.ui.View):
 class ReportView(discord.ui.View):
     """Report view."""
 
-    def __init__(self: Self, bot: Bot, payload: PackageScanResult) -> None:
+    def __init__(self: Self, bot: Bot, payload: Package) -> None:
         self.bot = bot
         self.payload = payload
         super().__init__(timeout=None)
@@ -342,7 +342,7 @@ class MalwareView(discord.ui.View):
         self: Self,
         embed: discord.Embed,
         bot: Bot,
-        payload: PackageScanResult,
+        payload: Package,
     ) -> None:
         self.embed = embed
         self.bot = bot
@@ -456,9 +456,9 @@ class MalwareView(discord.ui.View):
         raise error
 
 
-def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.Embed:
+def _build_package_scan_result_embed(scan_result: Package) -> discord.Embed:
     """Build the embed that shows the results of a package scan."""
-    condition = scan_result.score >= DragonflyConfig.threshold
+    condition = (scan_result.score or 0) >= DragonflyConfig.threshold
     title, color = ("Malicious", 0xF70606) if condition else ("Benign", 0x4CBB17)
 
     embed = discord.Embed(
@@ -483,7 +483,7 @@ def _build_package_scan_result_embed(scan_result: PackageScanResult) -> discord.
 
 
 def _build_package_scan_result_triage_embed(
-    scan_result: PackageScanResult,
+    scan_result: Package,
 ) -> discord.Embed:
     """Build the embed for the malware triage system."""
     embed = discord.Embed(
@@ -503,7 +503,7 @@ def _build_package_scan_result_triage_embed(
     return embed
 
 
-def _build_all_packages_scanned_embed(scan_results: list[PackageScanResult]) -> discord.Embed:
+def _build_all_packages_scanned_embed(scan_results: list[Package]) -> discord.Embed:
     """Build the embed that shows a list of all packages scanned."""
     if scan_results:
         description = "\n".join(map(str, scan_results))
