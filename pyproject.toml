@@ -1,6 +1,6 @@
 [project]
 name = "bot"
-version = "4.1.0"
+version = "5.0.0"
 dynamic = ["dependencies", "optional-dependencies"]
 
 [project.urls]
@@ -19,20 +19,22 @@ dev = { file = ["requirements/requirements-dev.txt"] }
 tests = { file = ["requirements/requirements-tests.txt"] }
 docs = { file = ["requirements/requirements-docs.txt"] }
 
-[tool.black]
-target-version = ["py311"]
-line-length = 120
-
 [tool.ruff]
+preview = true
+unsafe-fixes = true
 target-version = "py311"
 line-length = 120
+
+[tool.ruff.lint]
 select = ["ALL"]
 ignore = [
+    "CPY001", # (Missing copyright notice at top of file)
     "G004", # (Logging statement uses f-string) - Developer UX
     "S101", # (Use of `assert` detected) - This should probably be changed
+    "PLR6301", # (Method `x` could be a function, class method, or static method) - false positives
 ]
 
-[tool.ruff.extend-per-file-ignores]
+[tool.ruff.lint.extend-per-file-ignores]
 "docs/*" = [
     "INP001", # (File `tests/*.py` is part of an implicit namespace package. Add an `__init__.py`.) - Docs are not modules
 ]
@@ -41,5 +43,17 @@ ignore = [
     "S101", # (Use of `assert` detected) - Yes, that's the point
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[[tool.mypy.overrides]]
+module = [
+    "coloredlogs",
+    "pydis_core.*"
+]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = [
+    "bot",
+]

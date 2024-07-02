@@ -27,28 +27,28 @@ class CommandErrorHandler(commands.Cog):
         self.bot = bot
 
     @staticmethod
-    def revert_cooldown_counter(command: commands.Command, message: Message) -> None:
+    def revert_cooldown_counter(command: commands.Command, message: Message) -> None:  # type: ignore[type-arg]
         """Undoes the last cooldown counter for user-error cases."""
         if command._buckets.valid:  # noqa: SLF001 -- Underscored attribute
-            bucket = command._buckets.get_bucket(message)  # noqa: SLF001 -- Underscored attribute
-            bucket._tokens = min(bucket.rate, bucket._tokens + 1)  # noqa: SLF001 -- Underscored attribute
+            bucket = command._buckets.get_bucket(message)  # type: ignore[arg-type] # noqa: SLF001 -- Underscored attribute
+            bucket._tokens = min(bucket.rate, bucket._tokens + 1)  # type: ignore[union-attr] # noqa: SLF001 -- Underscored attribute
             logging.debug("Cooldown counter reverted as the command was not used correctly.")
 
     @staticmethod
-    def error_embed(message: str, title: Iterable | str = NEGATIVE_REPLIES) -> Embed:
+    def error_embed(message: str, title: Iterable | str = NEGATIVE_REPLIES) -> Embed:  # type: ignore[type-arg]
         """Build a basic embed with red colour and either a random error title or a title provided."""
         embed = Embed(colour=Colours.soft_red)
         if isinstance(title, str):
             embed.title = title
         else:
-            embed.title = random.choice(title)  # noqa: S311 -- wat
+            embed.title = random.choice(title)  # type: ignore[arg-type] # noqa: S311 -- wat
         embed.description = message
         return embed
 
     @commands.Cog.listener()
     async def on_command_error(  # noqa: C901,PLR0911 -- Probably refactor this?
         self: Self,
-        ctx: commands.Context,
+        ctx: commands.Context,  # type: ignore[type-arg]
         error: commands.CommandError,
     ) -> None:
         """Activates when a command raises an error."""
@@ -70,12 +70,12 @@ class CommandErrorHandler(commands.Cog):
         )
 
         if isinstance(error, commands.CommandNotFound):
-            await self.send_command_suggestion(ctx, ctx.invoked_with)
+            await self.send_command_suggestion(ctx, ctx.invoked_with)  # type: ignore[arg-type]
             return
 
         if isinstance(error, commands.UserInputError):
-            self.revert_cooldown_counter(ctx.command, ctx.message)
-            usage = f"```\n{ctx.prefix}{parent_command}{ctx.command} {ctx.command.signature}\n```"
+            self.revert_cooldown_counter(ctx.command, ctx.message)  # type: ignore[arg-type]
+            usage = f"```\n{ctx.prefix}{parent_command}{ctx.command} {ctx.command.signature}\n```"  # type: ignore[union-attr]
             embed = self.error_embed(f"Your input was invalid: {error}\n\nUsage:{usage}")
             await ctx.send(embed=embed)
             return
@@ -98,9 +98,9 @@ class CommandErrorHandler(commands.Cog):
             return
 
         if isinstance(error, commands.BadArgument):
-            self.revert_cooldown_counter(ctx.command, ctx.message)
+            self.revert_cooldown_counter(ctx.command, ctx.message)  # type: ignore[arg-type]
             embed = self.error_embed(
-                "The argument you provided was invalid: "
+                "The argument you provided was invalid: "  # type: ignore[union-attr]
                 f"{error}\n\nUsage:\n```\n{ctx.prefix}{parent_command}{ctx.command} {ctx.command.signature}\n```",
             )
             await ctx.send(embed=embed)
@@ -113,7 +113,7 @@ class CommandErrorHandler(commands.Cog):
         if isinstance(error, APIError):
             await ctx.send(
                 embed=self.error_embed(
-                    f"There was an error when communicating with the {error.api}",
+                    f"There was an error when communicating with the {error.api}",  # type: ignore[attr-defined]
                     NEGATIVE_REPLIES,
                 ),
             )
@@ -121,7 +121,7 @@ class CommandErrorHandler(commands.Cog):
 
         if isinstance(error, MovedCommandError):
             description = (
-                f"This command, `{ctx.prefix}{ctx.command.qualified_name}` has moved to `{error.new_command_name}`.\n"
+                f"This command, `{ctx.prefix}{ctx.command.qualified_name}` has moved to `{error.new_command_name}`.\n"  # type: ignore[attr-defined, union-attr]
                 f"Please use `{error.new_command_name}` instead."
             )
             await ctx.send(embed=self.error_embed(description, NEGATIVE_REPLIES))
@@ -130,7 +130,7 @@ class CommandErrorHandler(commands.Cog):
         with push_scope() as scope:
             scope.user = {"id": ctx.author.id, "username": str(ctx.author)}
 
-            scope.set_tag("command", ctx.command.qualified_name)
+            scope.set_tag("command", ctx.command.qualified_name)  # type: ignore[union-attr]
             scope.set_tag("message_id", ctx.message.id)
             scope.set_tag("channel_id", ctx.channel.id)
 
@@ -141,7 +141,7 @@ class CommandErrorHandler(commands.Cog):
 
             log.exception(f"Unhandled command error: {error!s}", exc_info=error)
 
-    async def send_command_suggestion(self: Self, ctx: commands.Context, command_name: str) -> None:
+    async def send_command_suggestion(self: Self, ctx: commands.Context, command_name: str) -> None:  # type: ignore[type-arg]
         """Send user similar commands if any can be found."""
         command_suggestions = []
         if similar_command_names := get_command_suggestions(list(self.bot.all_commands.keys()), command_name):

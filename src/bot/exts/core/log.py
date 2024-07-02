@@ -19,7 +19,7 @@ class Log(Cog):
     def __init__(self: Self, bot: Bot) -> None:
         self.bot = bot
 
-    async def send_log_message(  # noqa: PLR0913 -- Maybe refactor this?
+    async def send_log_message(  # noqa: PLR0913,PLR0917 -- Maybe refactor this?
         self: Self,
         icon_url: str | None,
         colour: discord.Colour | int,
@@ -33,7 +33,7 @@ class Log(Cog):
         additional_embeds: list[discord.Embed] | None = None,
         timestamp_override: datetime | None = None,
         footer: str | None = None,
-    ) -> Context:
+    ) -> Context:  # type: ignore[type-arg]
         """Generate log embed and send to logging channel."""
         # Truncate string directly here to avoid removing newlines
         embed = discord.Embed(description=text[:4093] + "..." if len(text) > 4096 else text)  # noqa: PLR2004
@@ -41,7 +41,7 @@ class Log(Cog):
         if title and icon_url:
             embed.set_author(name=title, icon_url=icon_url)
 
-        embed.colour = colour
+        embed.colour = colour  # type: ignore[assignment]
         embed.timestamp = timestamp_override or datetime.now(tz=UTC)
 
         if footer:
@@ -64,7 +64,7 @@ class Log(Cog):
             for additional_embed in additional_embeds:
                 await channel.send(embed=additional_embed)
 
-        return await self.bot.get_context(log_message)  # Optionally return for use with antispam
+        return await self.bot.get_context(log_message)  # type: ignore[no-any-return] # Optionally return for use with antispam
 
 
 async def setup(bot: Bot) -> None:

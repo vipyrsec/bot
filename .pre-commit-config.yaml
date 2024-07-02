@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       - id: check-case-conflict
       - id: check-merge-conflict
@@ -13,7 +13,7 @@ repos:
         args: [ --fix=lf ]
       - id: end-of-file-fixer
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.1.4"
+    rev: "v0.2.0"
     hooks:
       - id: ruff
       - id: ruff-format
