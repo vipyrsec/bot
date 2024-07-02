@@ -1,17 +1,19 @@
-FROM python:3.11-slim@sha256:edaf703dce209d774af3ff768fc92b1e3b60261e7602126276f9ceb0e3a96874
+FROM --platform=amd64 python:3.11-slim as builder
 
-# Define Git SHA build argument for Sentry
-ARG git_sha="development"
-ENV GIT_SHA=$git_sha
+RUN pip install -U pip setuptools wheel
+RUN pip install pdm
 
-COPY requirements/requirements.txt .
-RUN python -m pip install --requirement requirements.txt
+COPY pyproject.toml pdm.lock /project/
+COPY bot/ /project/bot
 
-COPY pyproject.toml pyproject.toml
-COPY src/ src/
-RUN python -m pip install .
+WORKDIR /project
+RUN mkdir __pypackages__ && pdm sync --prod --no-editable
 
-RUN adduser --disabled-password bot
-USER bot
+FROM python:3.11-slim
 
-CMD [ "python", "-m", "bot" ]
+ENV PYTHONPATH=/project/pkgs
+COPY --from=builder /project/__pypackages__/3.11/lib /project/pkgs
+COPY --from=builder /project/__pypackages__/3.11/bin/* /bin/
+
+ENTRYPOINT ["python3", "-m"]
+CMD ["bot"]
