@@ -10,7 +10,7 @@ from discord import app_commands, ui
 from discord.ext import commands
 
 from bot.bot import Bot
-from bot.dragonfly_services import PackageScanResult
+from bot.dragonfly_services import Package
 
 
 class PaginatorView(ui.View):
@@ -20,7 +20,7 @@ class PaginatorView(ui.View):
         self: Self,
         *,
         member: discord.Member | discord.User,
-        packages: list[PackageScanResult],
+        packages: list[Package],
         per: int = 15,
     ) -> None:
         """Initialize the paginator view."""
@@ -70,7 +70,7 @@ class PaginatorView(ui.View):
         await interaction.response.send_message("This paginator is not for you!", ephemeral=True)
         return False
 
-    def _build_embed(self: Self, packages: list[PackageScanResult], page: int, total: int) -> discord.Embed:
+    def _build_embed(self: Self, packages: list[Package], page: int, total: int) -> discord.Embed:
         """Build an embed for the given packages."""
         embed = discord.Embed(
             title="Package Audit",
