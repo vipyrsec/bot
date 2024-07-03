@@ -597,7 +597,7 @@ class Dragonfly(commands.Cog):
                 await ctx.send(f"Package `{name} v{version}` was not found on PyPI")
 
             if status_code == HTTPStatus.CONFLICT:
-                scan_results: list[Package] = await self.bot.dragonfly_services.get_scanned_packages(
+                scan_results = await self.bot.dragonfly_services.get_scanned_packages(
                     name=name,
                     version=version,
                 )
