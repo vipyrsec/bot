@@ -349,7 +349,7 @@ class MalwareView(discord.ui.View):
         self.payload = payload
         self.event_log = []
 
-        super().__init__()
+        super().__init__(timeout=None)
 
     async def add_event(self, message: str) -> None:
         """Add an event to the event log."""
