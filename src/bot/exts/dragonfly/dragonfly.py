@@ -601,9 +601,8 @@ class Dragonfly(commands.Cog):
                     name=name,
                     version=version,
                 )
-                package = scan_results[0] if scan_results else None
 
-                if package:
+                if scan_results:
                     embed = _build_package_scan_result_embed(scan_results[0])
                     await ctx.send(f"Package `{name} v{version}` has already been scanned.", embed=embed)
                 else:
