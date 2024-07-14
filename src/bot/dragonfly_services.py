@@ -157,3 +157,12 @@ class DragonflyServices:
         """Report a package to Dragonfly."""
         data = dataclasses.asdict(report)
         await self.make_request("POST", "/report", json=data)
+
+    async def queue_package(self: Self, name: str, version: str) -> None:
+        """Add a package to the Dragonfly scan queue."""
+        data = {
+            "name": name,
+            "version": version,
+        }
+
+        await self.make_request("POST", "/package", json=data)
