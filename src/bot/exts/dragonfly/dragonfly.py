@@ -271,6 +271,7 @@ def _build_package_scan_result_embed(scan_result: Package) -> discord.Embed:
         title=f"{title} package found: {scan_result.name} @ {scan_result.version}",
         description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
         color=color,
+        timestamp=scan_result.queued_at,
     )
 
     embed.add_field(
