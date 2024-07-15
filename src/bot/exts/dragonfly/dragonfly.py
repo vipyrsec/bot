@@ -268,7 +268,7 @@ def _build_package_scan_result_embed(scan_result: Package) -> discord.Embed:
     title, color = ("Malicious", 0xF70606) if condition else ("Benign", 0x4CBB17)
 
     embed = discord.Embed(
-        title=f"{title} package found: {scan_result.name} @ {scan_result.version}",
+        title=f"{title} package found: {scan_result.name} @ {scan_result.version} - scan date: {scan_result.queued_at]",
         description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
         color=color,
     )
