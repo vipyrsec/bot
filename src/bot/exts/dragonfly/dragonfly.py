@@ -488,7 +488,7 @@ def _build_package_scan_result_triage_embed(
     """Build the embed for the malware triage system."""
     embed = discord.Embed(
         title="View on Inspector",
-        description="\n".join(scan_result.rules),
+        description=f"```{', '.join(scan_result.rules)}```",
         url=scan_result.inspector_url,
         color=discord.Color.orange(),
         timestamp=datetime.now(UTC),
