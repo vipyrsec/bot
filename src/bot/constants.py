@@ -34,6 +34,15 @@ class _Miscellaneous(EnvConfig):
 Miscellaneous = _Miscellaneous()
 
 
+class _Pastebin(EnvConfig, env_prefix="pastebin_"):
+    """Pastebin configuration for large contents that don't fit in Discord."""
+
+    base_url: str | None = None
+
+
+Pastebin = _Pastebin()
+
+
 class _ThreatIntelFeed(EnvConfig, env_prefix="tif_"):
     """Threat Intelligence Feed Configuration."""
 
