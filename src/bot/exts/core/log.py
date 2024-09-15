@@ -19,7 +19,7 @@ class Log(Cog):
     def __init__(self: Self, bot: Bot) -> None:
         self.bot = bot
 
-    async def send_log_message(  # noqa: PLR0913,PLR0917 -- Maybe refactor this?
+    async def send_log_message(  # noqa: PLR0913 -- Maybe refactor this?
         self: Self,
         icon_url: str | None,
         colour: discord.Colour | int,

@@ -20,7 +20,7 @@ tests = { file = ["requirements/requirements-tests.txt"] }
 docs = { file = ["requirements/requirements-docs.txt"] }
 
 [tool.ruff]
-preview = true
+preview = false
 unsafe-fixes = true
 target-version = "py311"
 line-length = 120
@@ -32,6 +32,7 @@ ignore = [
     "G004", # (Logging statement uses f-string) - Developer UX
     "S101", # (Use of `assert` detected) - This should probably be changed
     "PLR6301", # (Method `x` could be a function, class method, or static method) - false positives
+    "ANN101", # (Missing type annotation for `cls` in method) - Also for `self`; this just adds noise
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]

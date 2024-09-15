@@ -60,9 +60,9 @@ def linkcode_resolve(domain: str, info: dict) -> str:
     if not info["module"]:
         return None
 
-    import importlib  # noqa: PLC0415
-    import inspect  # noqa: PLC0415
-    import types  # noqa: PLC0415
+    import importlib
+    import inspect
+    import types
 
     mod = importlib.import_module(info["module"])
 

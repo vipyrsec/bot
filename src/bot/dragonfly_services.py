@@ -60,7 +60,7 @@ class PackageReport:
 class DragonflyServices:
     """A class wrapping Dragonfly's API."""
 
-    def __init__(  # noqa: PLR0913,PLR0917 -- Maybe pass the entire constants class?
+    def __init__(  # noqa: PLR0913 -- Maybe pass the entire constants class?
         self: Self,
         session: ClientSession,
         base_url: str,
