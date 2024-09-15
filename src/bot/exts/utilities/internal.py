@@ -56,7 +56,7 @@ class Internal(Cog):
         res = ""
 
         # Erase temp input we made
-        if inp.startswith("_ = "):
+        if inp.startswith("_ = "):  # noqa: FURB188
             inp = inp[4:]
 
         # Get all non-empty lines
