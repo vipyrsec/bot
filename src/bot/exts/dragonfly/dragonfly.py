@@ -437,8 +437,9 @@ class Dragonfly(commands.Cog):
         """Pull the scan results for a package."""
         scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
         if scan_results:
-            embed = _build_package_scan_result_embed(scan_results[0])
-            await interaction.response.send_message(embed=embed)
+            package = scan_results[0]
+            embed = _build_package_scan_result_embed(package)
+            await interaction.response.send_message(embed=embed, view=ReportView(self.bot, package))
         else:
             await interaction.response.send_message("No entries were found with the specified filters.")
 
