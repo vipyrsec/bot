@@ -257,7 +257,7 @@ class ReportView(discord.ui.View):
             return constants.Roles.vipyr_security in {role.id for role in interaction.user.roles}
 
         await interaction.response.send_message(
-            f"No permissions: <@&{constants.Roles.vipyr_security}> is required",
+            f"No permissions: <@&{constants.Roles.vipyr_internal}> is required",
             ephemeral=True,
         )
 
