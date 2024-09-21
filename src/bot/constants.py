@@ -132,6 +132,8 @@ class _Roles(EnvConfig, env_prefix="roles_"):
 
     vipyr_security: int = 1121472420755275776
 
+    vipyr_internal: int = 1261026219739189289
+
     core_developers: int = 1121472691740880998
 
 
