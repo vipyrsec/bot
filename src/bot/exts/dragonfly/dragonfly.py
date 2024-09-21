@@ -11,6 +11,7 @@ import discord
 import sentry_sdk
 from discord.ext import commands, tasks
 
+from bot import constants
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
 from bot.dragonfly_services import DragonflyServices, Package, PackageReport
@@ -250,6 +251,18 @@ class ReportView(discord.ui.View):
         self.payload = payload
         super().__init__(timeout=None)
 
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Check that only those with the 'Vipyr Security' role can use this view."""
+        if isinstance(interaction.user, discord.Member):
+            return constants.Roles.vipyr_security in {role.id for role in interaction.user.roles}
+
+        await interaction.response.send_message(
+            f"No permissions: <@&{constants.Roles.vipyr_internal}> is required",
+            ephemeral=True,
+        )
+
+        return False
+
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
     async def report(self: Self, interaction: discord.Interaction, button: discord.ui.Button) -> None:  # type: ignore[type-arg]
         """Report a package."""
@@ -424,8 +437,9 @@ class Dragonfly(commands.Cog):
         """Pull the scan results for a package."""
         scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
         if scan_results:
-            embed = _build_package_scan_result_embed(scan_results[0])
-            await interaction.response.send_message(embed=embed)
+            package = scan_results[0]
+            embed = _build_package_scan_result_embed(package)
+            await interaction.response.send_message(embed=embed, view=ReportView(self.bot, package))
         else:
             await interaction.response.send_message("No entries were found with the specified filters.")
 
