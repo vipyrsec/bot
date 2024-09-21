@@ -11,6 +11,7 @@ import discord
 import sentry_sdk
 from discord.ext import commands, tasks
 
+from bot import constants
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
 from bot.dragonfly_services import DragonflyServices, Package, PackageReport
@@ -249,6 +250,18 @@ class ReportView(discord.ui.View):
         self.bot = bot
         self.payload = payload
         super().__init__(timeout=None)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Check that only those with the 'Vipyr Security' role can use this view."""
+        if isinstance(interaction.user, discord.Member):
+            return constants.Roles.vipyr_security in {role.id for role in interaction.user.roles}
+
+        await interaction.response.send_message(
+            f"No permissions: <@&{constants.Roles.vipyr_security}> is required",
+            ephemeral=True,
+        )
+
+        return False
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
     async def report(self: Self, interaction: discord.Interaction, button: discord.ui.Button) -> None:  # type: ignore[type-arg]
