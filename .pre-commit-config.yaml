@@ -1,48 +1,96 @@
+---
+default_language_version:
+  python: python3
+  node: system
+
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.5.0
-  hooks:
-  - id: check-case-conflict
-  - id: check-merge-conflict
-  - id: check-toml
-  - id: check-yaml
-  - id: check-json
-  - id: trailing-whitespace
-    args: [--markdown-linebreak-ext=md]
-  - id: mixed-line-ending
-    args: [--fix=lf]
-  - id: end-of-file-fixer
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
 
-- repo: https://github.com/pre-commit/pygrep-hooks
-  rev: v1.10.0
-  hooks:
-  - id: python-check-blanket-noqa
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # frozen: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: name-tests-test
+        args:
+          - --pytest-test-first
+      - id: trailing-whitespace
+        args:
+          - --markdown-linebreak-ext=md
+        exclude: \.gitignore
 
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.3.3
-  hooks:
-  - id: ruff
-    args: [--fix]
-  - id: ruff-format
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: Ruff (Format)
+        description: Format Python files
+        language: system
+        entry: pdm run format
+        types_or:
+          - python
+          - pyi
 
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.5.0
-  hooks:
-  - id: check-ast
-  - id: trailing-whitespace
-  - id: check-toml
-  - id: end-of-file-fixer
+      - id: ruff-lint
+        name: Ruff (Lint)
+        description: Lint Python files
+        language: system
+        entry: pdm run lint
+        args:
+          - --exit-non-zero-on-fix
+        types_or:
+          - python
+          - pyi
 
-- repo: https://github.com/asottile/add-trailing-comma
-  rev: v3.1.0
-  hooks:
-  - id: add-trailing-comma
+      - id: pyright
+        name: Pyright
+        description: Type-check Python files
+        language: system
+        entry: pdm run type-check
+        types_or:
+          - python
+          - pyi
 
-- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-  rev: v2.12.0
-  hooks:
-  - id: pretty-format-yaml
-    args:
-    - --autofix
-    - --preserve-quotes
-    - --indent=2
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: aa1acdb72677dfbc5f507d2dfd45d8380bbcc2e0  # frozen: 0.29.3
+    hooks:
+      - id: check-github-workflows
+
+  - repo: https://github.com/lyz-code/yamlfix
+    rev: 8072181c0f2eab9f2dd8db2eb3b9556d7cd0bd74  # frozen: 1.17.0
+    hooks:
+      - id: yamlfix
+        args:
+          - --config-file
+          - .yamlfix.toml
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: 81e9f98ffd059efe8aa9c1b1a42e5cce61b640c6  # frozen: v1.35.1
+    hooks:
+      - id: yamllint
+        args:
+          - --strict
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: aa975a18c9a869648007d33864034dbc7481fe5e  # frozen: v0.42.0
+    hooks:
+      - id: markdownlint-fix
+
+  - repo: https://github.com/ComPWA/mirrors-taplo
+    rev: 4ef242b660e0f7c7c953b9d8289e302c3f49bfbc  # frozen: v0.8.1
+    hooks:
+      - id: taplo
+
+  - repo: https://github.com/sirwart/ripsecrets
+    rev: 033ec5192b738b6712701be920cba545c2775050  # frozen: v0.1.8
+    hooks:
+      - id: ripsecrets
+
+  - repo: https://github.com/crate-ci/typos
+    rev: 90477f2eb803a5b93ba2d132dfae945dae790dc7  # frozen: v1.25.0
+    hooks:
+      - id: typos
+        args: []
