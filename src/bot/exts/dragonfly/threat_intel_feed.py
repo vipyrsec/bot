@@ -42,7 +42,7 @@ def parse_package_info_from_inspector_url(inspector_url: str) -> tuple[str, str]
 
 
 def search(d: dict, key: Any) -> Any | None:  # noqa: ANN401 - we can't know the type of the dict ahead of time
-    """Recursively search for the first occurence of a key in a dict. None if not found."""
+    """Recursively search for the first occurrence of a key in a dict. None if not found."""
     for k, v in d.items():
         if k == key:
             return v
