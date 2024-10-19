@@ -101,7 +101,7 @@ class CommandErrorHandler(commands.Cog):
             self.revert_cooldown_counter(ctx.command, ctx.message)  # type: ignore[arg-type]
             embed = self.error_embed(
                 "The argument you provided was invalid: "  # type: ignore[union-attr]
-                f"{error}\n\nUsage:\n```\n{ctx.prefix}{parent_command}{ctx.command} {ctx.command.signature}\n```",
+                f"{error}\n\nUsage:\n```\n{ctx.prefix}{parent_command}{ctx.command} {ctx.command.signature}\n```",  # type: ignore[arg-type]
             )
             await ctx.send(embed=embed)
             return

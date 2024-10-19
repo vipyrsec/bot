@@ -10,7 +10,7 @@ repos:
       - id: check-useless-excludes
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # frozen: v5.0.0
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # frozen: v5.0.0
     hooks:
       - id: check-added-large-files
       - id: check-merge-conflict
@@ -53,14 +53,15 @@ repos:
         types_or:
           - python
           - pyi
+        pass_filenames: false
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: aa1acdb72677dfbc5f507d2dfd45d8380bbcc2e0  # frozen: 0.29.3
+    rev: aa1acdb72677dfbc5f507d2dfd45d8380bbcc2e0 # frozen: 0.29.3
     hooks:
       - id: check-github-workflows
 
   - repo: https://github.com/lyz-code/yamlfix
-    rev: 8072181c0f2eab9f2dd8db2eb3b9556d7cd0bd74  # frozen: 1.17.0
+    rev: 8072181c0f2eab9f2dd8db2eb3b9556d7cd0bd74 # frozen: 1.17.0
     hooks:
       - id: yamlfix
         args:
@@ -68,29 +69,29 @@ repos:
           - .yamlfix.toml
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: 81e9f98ffd059efe8aa9c1b1a42e5cce61b640c6  # frozen: v1.35.1
+    rev: 81e9f98ffd059efe8aa9c1b1a42e5cce61b640c6 # frozen: v1.35.1
     hooks:
       - id: yamllint
         args:
           - --strict
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: aa975a18c9a869648007d33864034dbc7481fe5e  # frozen: v0.42.0
+    rev: aa975a18c9a869648007d33864034dbc7481fe5e # frozen: v0.42.0
     hooks:
       - id: markdownlint-fix
 
   - repo: https://github.com/ComPWA/mirrors-taplo
-    rev: 4ef242b660e0f7c7c953b9d8289e302c3f49bfbc  # frozen: v0.8.1
+    rev: 4ef242b660e0f7c7c953b9d8289e302c3f49bfbc # frozen: v0.8.1
     hooks:
       - id: taplo
 
   - repo: https://github.com/sirwart/ripsecrets
-    rev: 033ec5192b738b6712701be920cba545c2775050  # frozen: v0.1.8
+    rev: 033ec5192b738b6712701be920cba545c2775050 # frozen: v0.1.8
     hooks:
       - id: ripsecrets
 
   - repo: https://github.com/crate-ci/typos
-    rev: 90477f2eb803a5b93ba2d132dfae945dae790dc7  # frozen: v1.25.0
+    rev: 90477f2eb803a5b93ba2d132dfae945dae790dc7 # frozen: v1.25.0
     hooks:
       - id: typos
         args: []

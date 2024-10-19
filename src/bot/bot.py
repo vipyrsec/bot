@@ -70,7 +70,7 @@ class Bot(BotBase):  # type: ignore[misc]
         super().__init__(
             *args,
             tree_cls=CommandTree,
-            **kwargs,
+            **kwargs,  # type: ignore[arg-type]
         )
 
         self.dragonfly_services = dragonfly_services

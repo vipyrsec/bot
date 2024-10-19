@@ -321,7 +321,7 @@ async def run(
     """Script entrypoint."""
     scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
     for result in scan_results:
-        if result.score >= score:
+        if result.score is not None and result.score >= score:
             embed = _build_package_scan_result_embed(result)
             await alerts_channel.send(
                 f"<@&{DragonflyConfig.alerts_role_id}>",
