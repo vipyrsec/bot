@@ -1,4 +1,5 @@
-name: "Sentry release"
+---
+name: Sentry release
 
 on:
   push:
@@ -7,17 +8,15 @@ on:
 
 jobs:
   sentry-release:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
     steps:
-      - name: "Checkout repository"
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871  # v4.2.1
 
-      - name: "Create Sentry release"
-        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
+      - name: Create Sentry release
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7  # v1.7.0
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
         with:
-          version_prefix: "${{ vars.SENTRY_PROJECT }}@"
+          version_prefix: ${{ vars.SENTRY_PROJECT }}@

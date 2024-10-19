@@ -131,7 +131,7 @@ class ConfirmEmailReportModal(discord.ui.Modal):
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
             return await interaction.response.send_message(message, view=view, ephemeral=True)
 
-        await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
+        await interaction.response.send_message("An unexpected error occurred.", ephemeral=True)
         raise error
 
     async def on_submit(self: Self, interaction: discord.Interaction) -> None:
@@ -184,7 +184,7 @@ class ConfirmReportModal(discord.ui.Modal):
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
             return await interaction.response.send_message(message, view=view, ephemeral=True)
 
-        await interaction.response.send_message("An unexpected error occured.", ephemeral=True)
+        await interaction.response.send_message("An unexpected error occurred.", ephemeral=True)
         raise error
 
     async def on_submit(self: Self, interaction: discord.Interaction) -> None:
@@ -321,7 +321,7 @@ async def run(
     """Script entrypoint."""
     scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
     for result in scan_results:
-        if result.score >= score:
+        if result.score is not None and result.score >= score:
             embed = _build_package_scan_result_embed(result)
             await alerts_channel.send(
                 f"<@&{DragonflyConfig.alerts_role_id}>",
@@ -369,7 +369,7 @@ class Dragonfly(commands.Cog):
                 score=self.score_threshold,
             )
         except Exception as e:
-            log.exception("An error occured in the scan loop task. Skipping run.")
+            log.exception("An error occurred in the scan loop task. Skipping run.")
             sentry_sdk.capture_exception(e)
         else:
             self.since = datetime.now(tz=UTC)
