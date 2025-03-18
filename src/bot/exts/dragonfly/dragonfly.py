@@ -68,6 +68,23 @@ async def handle_submit(
     )
 
     log_channel = interaction.client.get_channel(Channels.reporting)
+    try:
+        await dragonfly_services.report_package(report)
+    except aiohttp.ClientResponseError as error:
+        error_message = (
+            f"An error occurred while reporting package {report.name} v{report.version}: {error.status, error.message}"
+        )
+
+        await interaction.response.send_message(error_message)
+        log.exception(
+            "Failed to report package %s v%s: %s (%d)",
+            report.name,
+            report.version,
+            error.message,
+            error.status,
+        )
+        return
+
     if isinstance(log_channel, discord.abc.Messageable):
         embed = _build_package_report_log_embed(
             member=interaction.user,
@@ -78,8 +95,6 @@ async def handle_submit(
         )
 
         await log_channel.send(embed=embed)
-
-    await dragonfly_services.report_package(report)
 
     await interaction.response.send_message("Reported!", ephemeral=True)
 
