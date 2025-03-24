@@ -1,14 +1,14 @@
 {
   "features": {
     "ghcr.io/devcontainers/features/powershell:1": {
-      "version": "1.3.2",
-      "resolved": "ghcr.io/devcontainers/features/powershell@sha256:c11122f0fc8352fcf3a1c2eab1023daab9db7982a83725af803307fd18fb64f4",
-      "integrity": "sha256:c11122f0fc8352fcf3a1c2eab1023daab9db7982a83725af803307fd18fb64f4"
+      "version": "1.5.0",
+      "resolved": "ghcr.io/devcontainers/features/powershell@sha256:dfa9e827931586fdb29e44253b2b17c6f203a948aaba50f8036f6f145e5acc5e",
+      "integrity": "sha256:dfa9e827931586fdb29e44253b2b17c6f203a948aaba50f8036f6f145e5acc5e"
     },
     "ghcr.io/devcontainers/features/python:1": {
-      "version": "1.4.1",
-      "resolved": "ghcr.io/devcontainers/features/python@sha256:d7e393af2440444dddb3c275cf7f90c899a24f8e853e4d6315e1be3be7e1d49f",
-      "integrity": "sha256:d7e393af2440444dddb3c275cf7f90c899a24f8e853e4d6315e1be3be7e1d49f"
+      "version": "1.6.4",
+      "resolved": "ghcr.io/devcontainers/features/python@sha256:046a904b940e1793327369f57f4b0a7d89febbdd9e77086a70feffdfa564f888",
+      "integrity": "sha256:046a904b940e1793327369f57f4b0a7d89febbdd9e77086a70feffdfa564f888"
     }
   }
 }

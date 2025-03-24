@@ -32,7 +32,7 @@ class CustomLogger(LoggerClass):  # type: ignore[misc, valid-type]
         logger.trace("Houston, we have an %s", "interesting problem", exc_info=1)
         """
         if self.isEnabledFor(TRACE_LEVEL):
-            self.log(TRACE_LEVEL, msg, *args, **kwargs)
+            self.log(TRACE_LEVEL, msg, *args, **kwargs)  # type: ignore[arg-type]
 
 
 def get_logger(name: str | None = None) -> CustomLogger:

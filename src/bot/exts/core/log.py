@@ -19,7 +19,7 @@ class Log(Cog):
     def __init__(self: Self, bot: Bot) -> None:
         self.bot = bot
 
-    async def send_log_message(  # noqa: PLR0913,PLR0917 -- Maybe refactor this?
+    async def send_log_message(  # noqa: PLR0913 -- Maybe refactor this?
         self: Self,
         icon_url: str | None,
         colour: discord.Colour | int,
@@ -58,13 +58,18 @@ class Log(Cog):
             content = content[: 2000 - 3] + "..."
 
         channel = self.bot.get_channel(channel_id)
-        log_message = await channel.send(content=content, embed=embed, files=files)
+        log_message = await channel.send(  # type: ignore[attr-defined]
+            content=content,
+            embed=embed,
+            files=files,  # type: ignore[arg-type]
+        )
 
         if additional_embeds:
             for additional_embed in additional_embeds:
-                await channel.send(embed=additional_embed)
+                await channel.send(embed=additional_embed)  # type: ignore[attr-defined]
 
-        return await self.bot.get_context(log_message)  # type: ignore[no-any-return] # Optionally return for use with antispam
+        # Optionally return for use with antispam
+        return await self.bot.get_context(log_message)  # type: ignore[no-any-return]
 
 
 async def setup(bot: Bot) -> None:

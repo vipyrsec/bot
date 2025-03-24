@@ -40,11 +40,11 @@ async def main() -> None:
         )
 
         bot = Bot(
-            guild_id=constants.Guild.id,
-            http_session=session,
-            allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),
-            command_prefix=get_prefix,
-            intents=intents,
+            guild_id=constants.Guild.id,  # type: ignore[arg-type]
+            http_session=session,  # type: ignore[arg-type]
+            allowed_roles=list({discord.Object(id_) for id_ in constants.MODERATION_ROLES}),  # type: ignore[arg-type]
+            command_prefix=get_prefix,  # type: ignore[arg-type]
+            intents=intents,  # type: ignore[arg-type]
             dragonfly_services=dragonfly_services,
         )
 
