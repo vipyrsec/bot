@@ -15,6 +15,7 @@ from bot import constants
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
 from bot.dragonfly_services import DragonflyServices, Package, PackageReport
+from bot.utils.pastebin import PasteFile, PasteRequest, PasteResponse, paste
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -325,6 +326,19 @@ def _build_all_packages_scanned_embed(scan_results: list[Package]) -> discord.Em
     return discord.Embed(description="_No packages scanned_")
 
 
+def _build_pastebin_embed(paste_response: PasteResponse) -> discord.Embed:
+    """Build the embed that links to a pastebin when the output would have otherwise been too long."""
+    return discord.Embed(
+        title="Embed too large",
+        description=(
+            "This embed would have been too large, so the contents were uploaded to a pastebin instead."
+            f"Click [here]({paste_response.link}) to view the pastebin."
+        ),
+        color=discord.Color.orange(),
+        url=paste_response.link,
+    )
+
+
 async def run(
     bot: Bot,
     *,
@@ -344,7 +358,16 @@ async def run(
                 view=ReportView(bot, result),
             )
 
-    await logs_channel.send(embed=_build_all_packages_scanned_embed(scan_results))
+    all_packages_scanned_embed = _build_all_packages_scanned_embed(scan_results)
+    if len(all_packages_scanned_embed) <= 4096:  # noqa: PLR2004
+        await logs_channel.send(embed=all_packages_scanned_embed)
+    else:
+        content = "\n".join(map(str, scan_results))
+        paste_request = PasteRequest(expiry="1day", files=[PasteFile(lexer="text", content=content)])
+        paste_response = await paste(paste_request, session=bot.http_session)
+        embed = _build_pastebin_embed(paste_response)
+        await logs_channel.send(embed=embed)
+        log.info("Package scan log embed would have exceeded size, sent in a pastebin instead")
 
 
 class Dragonfly(commands.Cog):
