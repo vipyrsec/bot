@@ -148,7 +148,7 @@ class DragonflyServices:
             params["since"] = int(since.timestamp())  # type: ignore[assignment]
 
         data = await self.make_request("GET", "/package", params=params)
-        return list(map(Package.model_validate, data))
+        return list(map(Package.model_validate, data["items"]))
 
     async def report_package(
         self: Self,
