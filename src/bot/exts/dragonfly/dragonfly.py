@@ -339,35 +339,13 @@ def _build_pastebin_embed(paste_response: PasteResponse) -> discord.Embed:
     )
 
 
-async def run(
-    bot: Bot,
-    *,
-    since: datetime,
-    alerts_channel: discord.abc.Messageable,
-    logs_channel: discord.abc.Messageable,
-    score: int,
-) -> None:
-    """Script entrypoint."""
-    scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
-    for result in scan_results:
-        if result.score is not None and result.score >= score:
-            embed = _build_package_scan_result_embed(result)
-            await alerts_channel.send(
-                f"<@&{DragonflyConfig.alerts_role_id}>",
-                embed=embed,
-                view=ReportView(bot, result),
-            )
-
-    all_packages_scanned_embed = _build_all_packages_scanned_embed(scan_results)
-    if len(all_packages_scanned_embed) <= 4096:  # noqa: PLR2004
-        await logs_channel.send(embed=all_packages_scanned_embed)
-    else:
-        content = "\n".join(map(str, scan_results))
-        paste_request = PasteRequest(expiry="1day", files=[PasteFile(lexer="text", content=content)])
-        paste_response = await paste(paste_request, session=bot.http_session)
-        embed = _build_pastebin_embed(paste_response)
-        await logs_channel.send(embed=embed)
-        log.info("Package scan log embed would have exceeded size, sent in a pastebin instead")
+def _build_inactivity_embed(last_seen_package: datetime) -> discord.Embed:
+    """Build the embed that indicates that we haven't seen a package in a while."""
+    return discord.Embed(
+        title="Inactivity threshold reached",
+        description="Last package was scanned " + discord.utils.format_dt(last_seen_package, "R"),
+        color=discord.Color.yellow(),
+    )
 
 
 class Dragonfly(commands.Cog):
@@ -378,6 +356,8 @@ class Dragonfly(commands.Cog):
         self.bot = bot
         self.score_threshold = DragonflyConfig.threshold
         self.since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
+        self.last_seen_package = datetime.now(tz=UTC)
+        self.inactivity_alert_fired = False
         super().__init__()
 
     @commands.hybrid_command(name="username")  # type: ignore [arg-type]
@@ -398,19 +378,47 @@ class Dragonfly(commands.Cog):
         alerts_channel = self.bot.get_channel(DragonflyConfig.alerts_channel_id)
         assert isinstance(alerts_channel, discord.abc.Messageable)
 
-        try:
-            await run(
-                self.bot,
-                since=self.since,
-                logs_channel=logs_channel,
-                alerts_channel=alerts_channel,
-                score=self.score_threshold,
-            )
-        except Exception as e:
-            log.exception("An error occurred in the scan loop task. Skipping run.")
-            sentry_sdk.capture_exception(e)
+        scan_results = await self.bot.dragonfly_services.get_scanned_packages(since=self.since)
+        if scan_results:
+            self.last_seen_package = datetime.now(tz=UTC)
+            self.inactivity_alert_fired = False
+
+        if (
+            datetime.now(tz=UTC) - self.last_seen_package > timedelta(seconds=DragonflyConfig.inactivity_threshold)
+            and not self.inactivity_alert_fired
+        ):
+            embed = _build_inactivity_embed(self.last_seen_package)
+            await alerts_channel.send(f"<@&{Roles.core_developers}>", embed=embed)
+
+            self.inactivity_alert_fired = True
+
+        for result in scan_results:
+            if result.score is not None and result.score >= self.score_threshold:
+                embed = _build_package_scan_result_embed(result)
+                await alerts_channel.send(
+                    f"<@&{DragonflyConfig.alerts_role_id}>",
+                    embed=embed,
+                    view=ReportView(self.bot, result),
+                )
+
+        all_packages_scanned_embed = _build_all_packages_scanned_embed(scan_results)
+        if len(all_packages_scanned_embed) <= 4096:  # noqa: PLR2004
+            await logs_channel.send(embed=all_packages_scanned_embed)
         else:
-            self.since = datetime.now(tz=UTC)
+            content = "\n".join(map(str, scan_results))
+            paste_request = PasteRequest(expiry="1day", files=[PasteFile(lexer="text", content=content)])
+            paste_response = await paste(paste_request, session=self.bot.http_session)
+            embed = _build_pastebin_embed(paste_response)
+            await logs_channel.send(embed=embed)
+            log.info("Package scan log embed would have exceeded size, sent in a pastebin instead")
+
+        self.since = datetime.now(tz=UTC)
+
+    @scan_loop.error
+    async def scan_loop_error(self, err: BaseException) -> None:
+        """Handle errors in the task."""
+        log.exception("An error occurred in the scan loop task. Skipping run.")
+        sentry_sdk.capture_exception(err)
 
     @scan_loop.before_loop
     async def before_scan_loop(self: Self) -> None:
