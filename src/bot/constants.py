@@ -83,6 +83,7 @@ class _DragonflyConfig(EnvConfig, env_prefix="dragonfly_"):
     interval: int = 60
     threshold: int = 8
     timeout: int = 25
+    inactivity_threshold: int = 60 * 10  # 10 minutes
 
     reporter_url: str = ""
 
