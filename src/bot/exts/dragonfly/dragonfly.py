@@ -417,7 +417,7 @@ class Dragonfly(commands.Cog):
     @scan_loop.error
     async def scan_loop_error(self, err: BaseException) -> None:
         """Handle errors in the task."""
-        log.exception("An error occurred in the scan loop task. Skipping run.")
+        log.exception("An error occurred in the scan loop task. Stopping loop.")
         sentry_sdk.capture_exception(err)
 
     @scan_loop.before_loop
