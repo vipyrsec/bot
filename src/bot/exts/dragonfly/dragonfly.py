@@ -420,6 +420,16 @@ class Dragonfly(commands.Cog):
         log.exception("An error occurred in the scan loop task. Stopping loop.")
         sentry_sdk.capture_exception(err)
 
+        embed = discord.Embed(
+            title="An error occurred in the scan loop",
+            description=f"```{err}```",
+            color=discord.Color.red(),
+        )
+
+        alerts_channel = self.bot.get_channel(DragonflyConfig.alerts_channel_id)
+        assert isinstance(alerts_channel, discord.abc.Messageable)
+        await alerts_channel.send(f"<@&{Roles.core_developers}>", embed=embed)
+
     @scan_loop.before_loop
     async def before_scan_loop(self: Self) -> None:
         """Wait until the bot is ready."""
