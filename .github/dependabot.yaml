@@ -1,35 +1,44 @@
 ---
 version: 2
+enable-beta-ecosystems: true
 
 updates:
-  - package-ecosystem: devcontainers
-    directory: /
-    schedule:
-      interval: monthly
-
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
-    groups:
-      ci-dependencies:
-        patterns:
-          - '*'
-
-  - package-ecosystem: pip
-    directory: /
-    schedule:
-      interval: monthly
-    groups:
-      python-dependencies:
-        patterns:
-          - '*'
+    commit-message:
+      prefix: ci
+    reviewers:
+      - vipyrsec/devops
+    assignees:
+      - vipyrsec/devops
 
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: monthly
+    commit-message:
+      prefix: deps(docker)
+    reviewers:
+      - vipyrsec/devops
+    assignees:
+      - vipyrsec/devops
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: deps(python)
+    reviewers:
+      - vipyrsec/devops
+    assignees:
+      - vipyrsec/devops
     groups:
-      docker-dependencies:
-        patterns:
-          - '*'
+      prod:
+        dependency-type: production
+        applies-to: version-updates
+      dev:
+        dependency-type: development
+        applies-to: version-updates

@@ -1,2 +1,4 @@
-# Require DevOps signoff on CI changes
-.github @vipyrsec/devops
+*             @vipyrsec/core-developers @vipyrsec/security-reviewers
+.dockerignore @vipyrsec/devops
+Dockerfile    @vipyrsec/devops
+/.github/     @vipyrsec/devops
