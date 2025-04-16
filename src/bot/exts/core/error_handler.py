@@ -32,7 +32,7 @@ class CommandErrorHandler(commands.Cog):
         if command._buckets.valid:  # noqa: SLF001 -- Underscored attribute
             bucket = command._buckets.get_bucket(message)  # type: ignore[arg-type] # noqa: SLF001 -- Underscored attribute
             bucket._tokens = min(bucket.rate, bucket._tokens + 1)  # type: ignore[union-attr] # noqa: SLF001 -- Underscored attribute
-            logging.debug("Cooldown counter reverted as the command was not used correctly.")
+            log.debug("Cooldown counter reverted as the command was not used correctly.")
 
     @staticmethod
     def error_embed(message: str, title: Iterable | str = NEGATIVE_REPLIES) -> Embed:  # type: ignore[type-arg]
@@ -53,7 +53,7 @@ class CommandErrorHandler(commands.Cog):
     ) -> None:
         """Activates when a command raises an error."""
         if getattr(error, "handled", False):
-            logging.debug(f"Command {ctx.command} had its error already handled locally; ignoring.")
+            log.debug(f"Command {ctx.command} had its error already handled locally; ignoring.")
             return
 
         parent_command = ""
@@ -62,7 +62,7 @@ class CommandErrorHandler(commands.Cog):
             ctx = subctx
 
         error = getattr(error, "original", error)
-        logging.debug(
+        log.debug(
             f"Error Encountered: {type(error).__name__} - {error!s}, "
             f"Command: {ctx.command}, "
             f"Author: {ctx.author}, "
