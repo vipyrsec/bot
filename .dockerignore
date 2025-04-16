@@ -1,0 +1,10 @@
+# Ignore everything...
+*
+
+# ...except what we need
+!/src/
+!/tests/
+!/LICENSE
+!/Makefile
+!/pyproject.toml
+!/uv.lock
