@@ -140,9 +140,7 @@ class ConfirmEmailReportModal(discord.ui.Modal):
         """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
             message = (
-                f"Error from upstream: {error.status}\n"
-                f"```{error.message}```\n"
-                f"Retry using Observation API instead?"
+                f"Error from upstream: {error.status}\n```{error.message}```\nRetry using Observation API instead?"
             )
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
             return await interaction.response.send_message(message, view=view, ephemeral=True)

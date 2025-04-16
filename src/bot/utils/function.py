@@ -22,8 +22,7 @@ class GlobalNameConflictError(Exception):
 
 
 def get_arg_value(name_or_pos: Argument, arguments: BoundArgs) -> Any:  # noqa: ANN401
-    """
-    Return a value from `arguments` based on a name or position.
+    """Return a value from `arguments` based on a name or position.
 
     `arguments` is an ordered mapping of parameter names to argument values.
 
@@ -59,8 +58,7 @@ def get_arg_value_wrapper(
     name_or_pos: Argument,
     func: Callable[[Any], Any] | None = None,
 ) -> Decorator:
-    """
-    Call `decorator_func` with the value of the arg at the given name/position.
+    """Call `decorator_func` with the value of the arg at the given name/position.
 
     `decorator_func` must accept a callable as a parameter to which it will pass a mapping of
     parameter names to argument values of the function it's decorating.
@@ -80,8 +78,7 @@ def get_arg_value_wrapper(
 
 
 def get_bound_args(func: Callable, args: tuple, kwargs: dict[str, Any]) -> BoundArgs:  # type: ignore[type-arg]
-    """
-    Bind `args` and `kwargs` to `func` and return a mapping of parameter names to argument values.
+    """Bind `args` and `kwargs` to `func` and return a mapping of parameter names to argument values.
 
     Default parameter values are also set.
     """
@@ -98,8 +95,7 @@ def update_wrapper_globals(
     *,
     ignored_conflict_names: set[str] = frozenset(),  # type: ignore[assignment]
 ) -> types.FunctionType:
-    """
-    Update globals of `wrapper` with the globals from `wrapped`.
+    """Update globals of `wrapper` with the globals from `wrapped`.
 
     For forwardrefs in command annotations discordpy uses the __global__ attribute of the function
     to resolve their values, with decorators that replace the function this breaks because they have

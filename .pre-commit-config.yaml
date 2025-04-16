@@ -1,8 +1,4 @@
 ---
-default_language_version:
-  python: python3
-  node: system
-
 repos:
   - repo: meta
     hooks:
@@ -25,40 +21,44 @@ repos:
 
   - repo: local
     hooks:
-      - id: ruff-format
-        name: Ruff (Format)
+      - id: python-format
+        name: Format Python files
         description: Format Python files
         language: system
-        entry: pdm run format
+        entry: make format
         types_or:
           - python
           - pyi
 
-      - id: ruff-lint
-        name: Ruff (Lint)
+      - id: python-lint
+        name: Lint Python files
         description: Lint Python files
         language: system
-        entry: pdm run lint
+        entry: make lint
         args:
-          - --exit-non-zero-on-fix
+          - LINT_OPTIONS=--fix --exit-non-zero-on-fix
         types_or:
           - python
           - pyi
 
-      - id: pyright
-        name: Pyright
-        description: Type-check Python files
-        language: system
-        entry: pdm run type-check
-        types_or:
-          - python
-          - pyi
-        pass_filenames: false
+  - repo: https://github.com/hadolint/hadolint
+    rev: c3dc18df7a501f02a560a2cc7ba3c69a85ca01d3  # frozen: v2.13.1-beta
+    hooks:
+      - id: hadolint-docker
+        args:
+          - --failure-threshold
+          - error
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: aa1acdb72677dfbc5f507d2dfd45d8380bbcc2e0  # frozen: 0.29.3
+    rev: 54da05914997e6b04e4db33ed6757d744984c68b  # frozen: 0.33.2
     hooks:
       - id: check-github-workflows
+
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: 23eab0f0eedcbedebff420f5fdfb284744adc7b3  # frozen: v0.9.3
+    hooks:
+      - id: taplo-format
+      - id: taplo-lint
 
   - repo: https://github.com/lyz-code/yamlfix
     rev: 8072181c0f2eab9f2dd8db2eb3b9556d7cd0bd74  # frozen: 1.17.0
@@ -69,29 +69,24 @@ repos:
           - .yamlfix.toml
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: 81e9f98ffd059efe8aa9c1b1a42e5cce61b640c6  # frozen: v1.35.1
+    rev: 79a6b2b1392eaf49cdd32ac4f14be1a809bbd8f7  # frozen: v1.37.1
     hooks:
       - id: yamllint
         args:
           - --strict
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: aa975a18c9a869648007d33864034dbc7481fe5e  # frozen: v0.42.0
+    rev: 192ad822316c3a22fb3d3cc8aa6eafa0b8488360  # frozen: v0.45.0
     hooks:
       - id: markdownlint-fix
 
-  - repo: https://github.com/ComPWA/mirrors-taplo
-    rev: 4ef242b660e0f7c7c953b9d8289e302c3f49bfbc  # frozen: v0.8.1
-    hooks:
-      - id: taplo
-
   - repo: https://github.com/sirwart/ripsecrets
-    rev: 033ec5192b738b6712701be920cba545c2775050  # frozen: v0.1.8
+    rev: 7d94620933e79b8acaa0cd9e60e9864b07673d86  # frozen: v0.1.11
     hooks:
       - id: ripsecrets
 
   - repo: https://github.com/crate-ci/typos
-    rev: 90477f2eb803a5b93ba2d132dfae945dae790dc7  # frozen: v1.25.0
+    rev: 3d97dc5b9833a60a62e70d5b56af2cc7ddd522f6  # frozen: v1
     hooks:
       - id: typos
         args: []

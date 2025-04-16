@@ -22,10 +22,9 @@ class MovedCommandError(Exception):
 
 
 class LockedResourceError(RuntimeError):
-    """
-    Exception raised when an operation is attempted on a locked resource.
+    """Exception raised when an operation is attempted on a locked resource.
 
-    Attributes
+    Attributes:
     ----------
         `type` -- name of the locked resource's type
         `id` -- ID of the locked resource

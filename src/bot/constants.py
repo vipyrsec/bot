@@ -1,5 +1,4 @@
-"""
-Loads bot configuration from environment variables and `.env` files.
+"""Loads bot configuration from environment variables and `.env` files.
 
 By default, the values defined in the classes are used, these can be overridden by an env var with the same name.
 

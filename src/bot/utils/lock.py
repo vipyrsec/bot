@@ -24,8 +24,7 @@ ResourceId = Hashable | _IdCallable
 
 
 class SharedEvent:
-    """
-    Context manager managing an internal event exposed through the wait coro.
+    """Context manager managing an internal event exposed through the wait coro.
 
     While any code is executing in this context manager, the underlying event will not be set;
     when all of the holders finish the event will be set.
@@ -59,8 +58,7 @@ def lock(
     raise_error: bool = False,
     wait: bool = False,
 ) -> Callable:  # type: ignore[type-arg]
-    """
-    Turn the decorated coroutine function into a mutually exclusive operation on a `resource_id`.
+    """Turn the decorated coroutine function into a mutually exclusive operation on a `resource_id`.
 
     If `wait` is True, wait until the lock becomes available. Otherwise, if any other mutually
     exclusive function currently holds the lock for a resource, do not run the decorated function
@@ -130,8 +128,7 @@ def lock_arg(
     raise_error: bool = False,
     wait: bool = False,
 ) -> Callable:  # type: ignore[type-arg]
-    """
-    Apply the `lock` decorator using the value of the arg at the given name/position as the ID.
+    """Apply the `lock` decorator using the value of the arg at the given name/position as the ID.
 
     `func` is an optional callable or awaitable which will return the ID given the argument value.
     See `lock` docs for more information.
