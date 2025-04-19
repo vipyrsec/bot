@@ -60,8 +60,7 @@ class Bot(BotBase):  # type: ignore[misc]
         *args: tuple,
         **kwargs: dict,
     ) -> None:
-        """
-        Initialise the base bot instance.
+        """Initialise the base bot instance.
 
         Args:
             allowed_roles: A list of role IDs that the bot is allowed to mention.
@@ -77,7 +76,7 @@ class Bot(BotBase):  # type: ignore[misc]
         self.all_extensions: frozenset[str] | None = None
 
     async def setup_hook(self: Self) -> None:
-        """Default async initialisation method for discord.py."""  # noqa: D401
+        """Default async initialisation method for discord.py."""
         log.debug("setup_hook")
         await super().setup_hook()
 

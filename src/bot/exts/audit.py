@@ -99,8 +99,7 @@ class Audit(commands.Cog):
 
     @app_commands.command(name="audit", description="Randomly pick packages and display them")  # type: ignore[arg-type]
     async def audit(self: Self, interaction: discord.Interaction, hours: int, amount: int) -> None:  # type: ignore[type-arg]
-        """
-        Recalls for scanned packages within a given time frame and amount.
+        """Recalls for scanned packages within a given time frame and amount.
 
         Parameters
         ----------
