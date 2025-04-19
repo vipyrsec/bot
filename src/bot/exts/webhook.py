@@ -5,13 +5,14 @@ import logging
 import re
 from http import HTTPStatus
 from re import Match
-from typing import Self
+from typing import Self, cast
 
+import discord
 from discord import Colour, Message, NotFound
 from discord.ext.commands import Cog
 
 from bot.bot import Bot
-from bot.constants import Channels, Colours, Icons, Roles
+from bot.constants import Channels, Colours, Roles
 from bot.exts.core.log import Log
 from bot.utils.messages import format_user
 
@@ -39,11 +40,9 @@ class WebhookRemover(Cog):
     @property
     def log(self: Self) -> Log | None:
         """Get current instance of `Log`."""
-        return self.bot.get_cog("Log")
+        return cast(Log, self.bot.get_cog("Log"))
 
-    async def delete_and_respond(
-        self: Self, message: Message, matches: Match[str]
-    ) -> None:
+    async def delete_and_respond(self: Self, message: Message, matches: Match[str]) -> None:
         """Delete `message` and send a warning that it contained a Discord webhook."""
         webhook_url = matches[0]
         redacted_url = matches[1] + "xxx"
@@ -57,12 +56,17 @@ class WebhookRemover(Cog):
 
         # The webhook should only be actioned if it is the only content of a message,
         # and within the defined exemption parameters.
+        if not isinstance(message.author, discord.Member):
+            return
+
         user_roles = [role.id for role in message.author.roles]
+        category = getattr(message.channel, "category", None)
+
         if all(
             [
                 message.content != webhook_url,
-                message.channel.category.id == Channels.soc_category,
-                Roles.security in user_roles,
+                category and category.id == Channels.vipyr_internal_category,
+                Roles.vipyr_security in user_roles,
             ],
         ):
             return
@@ -70,15 +74,11 @@ class WebhookRemover(Cog):
         try:
             await message.delete()
         except NotFound:
-            log.debug(
-                f"Failed to remove webhook in message {message.id}: message already deleted."
-            )
+            log.debug(f"Failed to remove webhook in message {message.id}: message already deleted.")
             return
 
         # Log to user
-        await message.channel.send(
-            ALERT_MESSAGE_TEMPLATE.format(user=message.author.mention)
-        )
+        await message.channel.send(ALERT_MESSAGE_TEMPLATE.format(user=message.author.mention))
 
         if deleted_successfully:
             delete_state = "The webhook was successfully deleted."
@@ -91,35 +91,37 @@ class WebhookRemover(Cog):
         else:
             thumb = message.author.display_avatar.url
 
-        # Log to moderators
+        channel_mention = getattr(message.channel, "mention", "#unknown-channel")
         text = (
-            f"{format_user(message.author)} posted a Discord webhook URL to {message.channel.mention}. {delete_state} "
+            f"{format_user(message.author)} posted a Discord webhook URL to {channel_mention}. {delete_state} "
             f"Webhook URL was `{redacted_url}`"
         )
         log.debug(text)
-        await self.log.send_log_message(
-            icon_url=Icons.token_removed,
-            colour=Colour(Colours.soft_red),
-            title="Discord webhook URL removed!",
-            text=text,
-            thumbnail=thumb,
-            channel_id=Channels.mod_alerts,
-        )
+        if self.log:
+            await self.log.send_log_message(
+                icon_url=None,
+                colour=Colour(Colours.soft_red),
+                title="Discord webhook URL removed!",
+                text=text,
+                thumbnail=thumb,
+                channel_id=Channels.mod_alerts,
+            )
 
         # Log to SOC
         text = (
-            f"{format_user(message.author)} posted a Discord webhook URL to {message.channel.mention}. {delete_state} "
+            f"{format_user(message.author)} posted a Discord webhook URL to {channel_mention}. {delete_state} "
             f"Webhook URL was `{webhook_url}`. Metadata was: \n"
             f"```\n{json.dumps(webhook_metadata, indent=4)}\n```"
         )
-        await self.log.send_log_message(
-            icon_url=Icons.token_removed,
-            colour=Colour(Colours.soft_red),
-            title="Discord webhook URL removed!",
-            text=text,
-            thumbnail=thumb,
-            channel_id=Channels.soc_alerts,
-        )
+        if self.log:
+            await self.log.send_log_message(
+                icon_url=None,
+                colour=Colour(Colours.soft_red),
+                title="Discord webhook URL removed!",
+                text=text,
+                thumbnail=thumb,
+                channel_id=message.channel,  # type: ignore[reportAttributeAccessIssue]
+            )
 
     @Cog.listener()
     async def on_message(self: Self, message: Message) -> None:

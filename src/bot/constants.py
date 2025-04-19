@@ -126,6 +126,7 @@ class _Channels(EnvConfig, env_prefix="channels_"):
 
     mod_alerts: int = 1121492582686539788
     mod_log: int = 1121492613070082118
+    vipyr_internal_category: int = 1121462576249843782
     reporting: int = 1126657120897617961
 
 
