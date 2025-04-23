@@ -12,7 +12,7 @@ from discord import Colour, Message, NotFound
 from discord.ext.commands import Cog
 
 from bot.bot import Bot
-from bot.constants import Channels, Colours, Roles
+from bot.constants import Categories, Colours, Roles
 from bot.exts.core.log import Log
 from bot.utils.messages import format_user
 
@@ -59,13 +59,13 @@ class WebhookRemover(Cog):
         if not isinstance(message.author, discord.Member):
             return
 
-        user_roles = [role.id for role in message.author.roles]
+        user_roles = {role.id for role in message.author.roles}
         category = getattr(message.channel, "category", None)
 
         if all(
             [
                 message.content != webhook_url,
-                category and category.id == Channels.vipyr_internal_category,
+                category and category.id == Categories.vipyr_internal,
                 Roles.vipyr_security in user_roles,
             ],
         ):
@@ -97,17 +97,6 @@ class WebhookRemover(Cog):
             f"Webhook URL was `{redacted_url}`"
         )
         log.debug(text)
-        if self.log:
-            await self.log.send_log_message(
-                icon_url=None,
-                colour=Colour(Colours.soft_red),
-                title="Discord webhook URL removed!",
-                text=text,
-                thumbnail=thumb,
-                channel_id=Channels.mod_alerts,
-            )
-
-        # Log to SOC
         text = (
             f"{format_user(message.author)} posted a Discord webhook URL to {channel_mention}. {delete_state} "
             f"Webhook URL was `{webhook_url}`. Metadata was: \n"
@@ -120,7 +109,7 @@ class WebhookRemover(Cog):
                 title="Discord webhook URL removed!",
                 text=text,
                 thumbnail=thumb,
-                channel_id=message.channel,  # type: ignore[reportAttributeAccessIssue]
+                channel_id=message.channel.id,  # type: ignore[reportAttributeAccessIssue]
             )
 
     @Cog.listener()
