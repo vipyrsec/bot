@@ -133,7 +133,7 @@ class _Channels(EnvConfig, env_prefix="channels_"):
 Channels = _Channels()
 
 
-class _Categories(EnvConfig, env_prefix=""):
+class _Categories(EnvConfig, env_prefix="categories_"):
     vipyr_internal: int = 1121462576249843782
 
 
