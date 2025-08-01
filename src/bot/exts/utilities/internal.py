@@ -49,15 +49,14 @@ class Internal(Cog):
         self.socket_event_total += 1
         self.socket_events[event_type] += 1
 
-    def _format(self: Self, inp: str, out: Any) -> tuple[str, discord.Embed | None]:  # noqa: ANN401,C901,PLR0912
+    def _format(self: Self, inp: str, out: Any) -> tuple[str, discord.Embed | None]:  # noqa: ANN401, C901
         """Format the eval output into a string & attempt to format it into an Embed."""
         self._ = out
 
         res = ""
 
         # Erase temp input we made
-        if inp.startswith("_ = "):
-            inp = inp[4:]
+        inp = inp.removeprefix("_ = ")
 
         # Get all non-empty lines
         lines = [line for line in inp.split("\n") if line.strip()]
@@ -219,7 +218,7 @@ async def func():  # (None,) -> Any
     @group(name="internal", aliases=("int",))
     @has_any_role(Roles.administrators, Roles.core_developers)
     async def internal_group(self: Self, ctx: Context) -> None:  # type: ignore[type-arg]
-        """Internal commands. Top secret!."""  # noqa: D401
+        """Internal commands. Top secret!."""
         if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 

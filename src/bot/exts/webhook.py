@@ -40,7 +40,7 @@ class WebhookRemover(Cog):
     @property
     def log(self: Self) -> Log | None:
         """Get current instance of `Log`."""
-        return cast(Log, self.bot.get_cog("Log"))
+        return cast("Log", self.bot.get_cog("Log"))
 
     async def delete_and_respond(self: Self, message: Message, matches: Match[str]) -> None:
         """Delete `message` and send a warning that it contained a Discord webhook."""

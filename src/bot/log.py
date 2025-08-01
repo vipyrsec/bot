@@ -23,8 +23,7 @@ class CustomLogger(LoggerClass):  # type: ignore[misc, valid-type]
     """Custom implementation of the `Logger` class with an added `trace` method."""
 
     def trace(self: Self, msg: str, *args: tuple, **kwargs: dict) -> None:  # type: ignore[type-arg]
-        """
-        Log 'msg % args' with severity 'TRACE'.
+        """Log 'msg % args' with severity 'TRACE'.
 
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
@@ -36,8 +35,8 @@ class CustomLogger(LoggerClass):  # type: ignore[misc, valid-type]
 
 
 def get_logger(name: str | None = None) -> CustomLogger:
-    """Helper to make mypy recognise that logger is of type `CustomLogger`."""  # noqa: D401
-    return cast(CustomLogger, logging.getLogger(name))
+    """Helper to make mypy recognise that logger is of type `CustomLogger`."""
+    return cast("CustomLogger", logging.getLogger(name))
 
 
 def setup() -> None:
@@ -99,8 +98,7 @@ def setup_sentry() -> None:
 
 
 def _set_trace_loggers() -> None:
-    """
-    Set loggers to the trace level according to the value from the BOT_TRACE_LOGGERS env var.
+    """Set loggers to the trace level according to the value from the BOT_TRACE_LOGGERS env var.
 
     When the env var is a list of logger names delimited by a comma,
     each of the listed loggers will be set to the trace level.
