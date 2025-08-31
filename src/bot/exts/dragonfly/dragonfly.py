@@ -472,16 +472,36 @@ class Dragonfly(commands.Cog):
     async def lookup(self: Self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:  # type: ignore[type-arg]
         """Pull the scan results for a package."""
         scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
+
+        url = f"https://pypi.org/pypi/{name}"
+        if version:
+            url += f"/{version}"
+
+        async with self.bot.http_session.get(url + "/json") as resp:
+            exists_on_pypi = resp.ok
+
+        btn: discord.ui.Button[discord.ui.View] = discord.ui.Button(
+            style=discord.ButtonStyle.link, label="View on PyPI", url=url
+        )
         if scan_results:
             package = scan_results[0]
             embed = _build_package_scan_result_embed(package)
-            async with self.bot.http_session.get(f"https://pypi.org/pypi/{name}/{version}/json") as resp:
-                if resp.status == 404:  # noqa: PLR2004
-                    embed.add_field(name="Removed", value="Package was removed from PyPI.", inline=False)
-                    # Process the data as needed
-            await interaction.response.send_message(embed=embed, view=ReportView(self.bot, package))
+
+            view = ReportView(self.bot, package)
+            if exists_on_pypi:
+                view.add_item(btn)
+            else:
+                embed.title += " (removed)"
+
+            await interaction.response.send_message(embed=embed, view=view)
         else:
-            await interaction.response.send_message("No entries were found with the specified filters.")
+            if exists_on_pypi:
+                view = discord.ui.View()
+                view.add_item(btn)
+            else:
+                view = discord.utils.MISSING
+
+            await interaction.response.send_message("No entries were found with the specified filters.", view=view)
 
     @commands.group()
     async def threshold(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
