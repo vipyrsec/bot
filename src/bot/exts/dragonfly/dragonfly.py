@@ -476,8 +476,7 @@ class Dragonfly(commands.Cog):
             package = scan_results[0]
             embed = _build_package_scan_result_embed(package)
             async with self.bot.http_session.get(f"https://pypi.org/pypi/{name}/{version}/json") as resp:
-                data = await resp.json()
-                if data["message"] == "Not Found":
+                if resp.status == 404:  # noqa: PLR2004
                     embed.add_field(name="Removed", value="Package was removed from PyPI.", inline=False)
                     # Process the data as needed
             await interaction.response.send_message(embed=embed, view=ReportView(self.bot, package))
