@@ -475,12 +475,11 @@ class Dragonfly(commands.Cog):
         if scan_results:
             package = scan_results[0]
             embed = _build_package_scan_result_embed(package)
-            with aiohttp.ClientSession() as session:
-                async with session.get(f"https://pypi.org/pypi/{name}/{version}/json") as resp:
-                    data = await resp.json()
-                    if data["message"] == "Not Found":
-                        embed.add_field(name="Removed", value="Package was removed from PyPI.", inline=False)
-                        # Process the data as needed
+            async with self.bot.http_session.get(f"https://pypi.org/pypi/{name}/{version}/json") as resp:
+                data = await resp.json()
+                if data["message"] == "Not Found":
+                    embed.add_field(name="Removed", value="Package was removed from PyPI.", inline=False)
+                    # Process the data as needed
             await interaction.response.send_message(embed=embed, view=ReportView(self.bot, package))
         else:
             await interaction.response.send_message("No entries were found with the specified filters.")
