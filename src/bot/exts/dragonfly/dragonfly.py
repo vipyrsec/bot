@@ -480,23 +480,21 @@ class Dragonfly(commands.Cog):
         async with self.bot.http_session.get(url + "/json") as resp:
             exists_on_pypi = resp.ok
 
-        btn: discord.ui.Button[discord.ui.View] = discord.ui.Button(
-            style=discord.ButtonStyle.link, label="View on PyPI", url=url
-        )
         if scan_results:
             package = scan_results[0]
             embed = _build_package_scan_result_embed(package)
 
             view = ReportView(self.bot, package)
-            if exists_on_pypi:
-                view.add_item(btn)
-            else:
+            if not exists_on_pypi:
                 embed.title += " (removed)"
 
             await interaction.response.send_message(embed=embed, view=view)
         else:
             if exists_on_pypi:
                 view = discord.ui.View()
+                btn: discord.ui.Button[discord.ui.View] = discord.ui.Button(
+                    style=discord.ButtonStyle.link, label="View on PyPI", url=url
+                )
                 view.add_item(btn)
             else:
                 view = discord.utils.MISSING
