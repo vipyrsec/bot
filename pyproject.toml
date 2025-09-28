@@ -10,15 +10,15 @@ authors = [{name = "Vipyr Security Developers", email = "support@vipyrsec.com"}]
 license = {text = "MIT"}
 classifiers = ["Private :: Do Not Upload"]
 
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
   "aiohttp==3.10.9",
   "arrow==1.3.0",
   "coloredlogs==15.0.1",
   "discord-py==2.3.2",
-  "psycopg[binary]==3.1.18",
-  "pydantic-settings==2.2.1",
-  "pydantic==2.6.0",
+  "psycopg[binary]==3.2.10",
+  "pydantic-settings==2.11.0",
+  "pydantic==2.11.9",
   "pydis-core==10.7.0",
   "rapidfuzz==3.6.1",
   "sentry-sdk==2.15.0",
