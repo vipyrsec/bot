@@ -22,8 +22,8 @@ dependencies = [
   "pydantic==2.11.9",
   "pydis-core==10.7.0",
   "rapidfuzz==3.6.1",
-  "sentry-sdk==2.15.0",
-  "sqlalchemy==2.0.27",
+  "sentry-sdk==2.42.1",
+  "sqlalchemy==2.0.44",
 ]
 
   [project.urls]
