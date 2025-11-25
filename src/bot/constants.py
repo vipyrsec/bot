@@ -8,7 +8,7 @@ An `.env` file is used to populate env vars, if present.
 from os import getenv
 from typing import ClassVar
 
-from pydantic import root_validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -167,6 +167,7 @@ Guild = _Guild()
 
 class _BaseURLs(EnvConfig, env_prefix="urls_"):
     paste: str = "https://paste.pythondiscord.com"
+    rdap: str = "https://rdap.org"
 
 
 BaseURLs = _BaseURLs()
@@ -202,7 +203,7 @@ class _Colours(EnvConfig, env_prefix="colours_"):
     grass_green: int = 0x66FF00
     gold: int = 0xE6C200
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     def parse_hex_values(cls, values: dict[str, int]) -> dict[str, int]:  # noqa: N805 - check this
         """Verify that colors are valid hex."""
         for key, value in values.items():
