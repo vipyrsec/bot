@@ -1,6 +1,86 @@
 import ipaddress
 import re
-from typing import Any, cast
+from typing import Annotated, Any, cast
+
+from pydantic import BaseModel, Field
+
+
+class RDAPEntity(BaseModel):
+    """
+    Represents an entity in an RDAP response (e.g., registrar, registrant).
+
+    Attributes:
+        roles: List of roles this entity performs (e.g., 'registrar', 'abuse').
+        publicIds: List of public identifiers (e.g., IANA ID).
+        vcardArray: jCard formatted contact information.
+    """
+
+    roles: list[str] = []
+    publicIds: list[dict[str, Any]] = []
+    vcardArray: Annotated[list[Any], Field(default_factory=list)] = []
+
+    @property
+    def contact_info(self) -> dict[str, str | None]:
+        """Extracts name and email from the vCard array."""
+        return parse_rdap_vcard(self.vcardArray)
+
+
+class RDAPResponse(BaseModel):
+    """
+    Base model for RDAP responses containing common fields.
+
+    Attributes:
+        handle: The registry-unique identifier of the object.
+        entities: List of entities related to this object.
+        links: List of related links (e.g., for 'thin' registry redirection).
+    """
+
+    handle: str | None = None
+    entities: list[RDAPEntity] = []
+    links: list[dict[str, Any]] = []
+
+    def get_entity_by_role(self, role: str) -> RDAPEntity | None:
+        """Finds the first entity with the specified role."""
+        for entity in self.entities:
+            if role in entity.roles:
+                return entity
+        return None
+
+
+class RDAPDomain(RDAPResponse):
+    """Model for Domain RDAP responses."""
+
+    ldhName: str | None = None
+    events: list[dict[str, Any]] = []
+    nameservers: list[dict[str, Any]] = []
+
+    @property
+    def registration_date(self) -> str | None:
+        """Extracts the registration date from events."""
+        for event in self.events:
+            if event.get("eventAction") == "registration":
+                return event.get("eventDate")
+        return None
+
+
+class RDAPIP(RDAPResponse):
+    """Model for IP Network RDAP responses."""
+
+    startAddress: str | None = None
+    endAddress: str | None = None
+    name: str | None = None
+    parentHandle: str | None = None
+    type: str | None = None
+
+
+class RDAPASN(RDAPResponse):
+    """Model for Autonomous System Number RDAP responses."""
+
+    startAutnum: int | None = None
+    endAutnum: int | None = None
+    name: str | None = None
+    type: str | None = None
+
 
 
 def classify_query(query: str) -> str:
@@ -37,8 +117,8 @@ def parse_rdap_vcard(vcard_array: Any) -> dict[str, str | None]:
             if len(prop) < 4:
                 continue
 
-            name = cast("str", prop[0])
-            value = cast("str", prop[3])
+            name = cast(str, prop[0])
+            value = cast(str, prop[3])
 
             if name == "fn":
                 result["name"] = value

@@ -1,91 +1,14 @@
 import logging
 from typing import Any
 
+from discord import Embed
 from discord.ext import commands
-from pydantic import BaseModel, Field
 
 from bot.bot import Bot
-from bot.constants import BaseURLs
-from bot.utils.rdap import classify_query, parse_rdap_vcard
+from bot.constants import BaseURLs, Colours
+from bot.utils.rdap import RDAPASN, RDAPIP, RDAPDomain, classify_query
 
 log = logging.getLogger(__name__)
-
-
-class RDAPEntity(BaseModel):
-    """
-    Represents an entity in an RDAP response (e.g., registrar, registrant).
-
-    Attributes:
-        roles: List of roles this entity performs (e.g., 'registrar', 'abuse').
-        publicIds: List of public identifiers (e.g., IANA ID).
-        vcardArray: jCard formatted contact information.
-    """
-
-    roles: list[str] = []
-    publicIds: list[dict[str, Any]] = []
-    vcardArray: list[Any] = Field(default_factory=list)
-
-    @property
-    def contact_info(self) -> dict[str, str | None]:
-        """Extracts name and email from the vCard array."""
-        return parse_rdap_vcard(self.vcardArray)
-
-
-class RDAPResponse(BaseModel):
-    """
-    Base model for RDAP responses containing common fields.
-
-    Attributes:
-        handle: The registry-unique identifier of the object.
-        entities: List of entities related to this object.
-        links: List of related links (e.g., for 'thin' registry redirection).
-    """
-
-    handle: str | None = None
-    entities: list[RDAPEntity] = []
-    links: list[dict[str, Any]] = []
-
-    def get_entity_by_role(self, role: str) -> RDAPEntity | None:
-        """Finds the first entity with the specified role."""
-        for entity in self.entities:
-            if role in entity.roles:
-                return entity
-        return None
-
-
-class RDAPDomain(RDAPResponse):
-    """Model for Domain RDAP responses."""
-
-    ldhName: str | None = None
-    events: list[dict[str, Any]] = []
-    nameservers: list[dict[str, Any]] = []
-
-    @property
-    def registration_date(self) -> str | None:
-        """Extracts the registration date from events."""
-        for event in self.events:
-            if event.get("eventAction") == "registration":
-                return event.get("eventDate")
-        return None
-
-
-class RDAPIP(RDAPResponse):
-    """Model for IP Network RDAP responses."""
-
-    startAddress: str | None = None
-    endAddress: str | None = None
-    name: str | None = None
-    parentHandle: str | None = None
-    type: str | None = None
-
-
-class RDAPASN(RDAPResponse):
-    """Model for Autonomous System Number RDAP responses."""
-
-    startAutnum: int | None = None
-    endAutnum: int | None = None
-    name: str | None = None
-    type: str | None = None
 
 
 class RDAP(commands.Cog):
@@ -104,14 +27,14 @@ class RDAP(commands.Cog):
         if not clean_data:
             return "No data available."
 
-        max_key_len = max(len(k) for k in clean_data)
+        max_key_len = max(map(len, clean_data))
         lines: list[str] = []
 
-        lines.append(f"{'Property'.ljust(max_key_len)} | Value")
+        lines.append(f"{'Property':<{max_key_len}} | Value")
         lines.append(f"{'-' * max_key_len}-|{'-' * 25}")
 
         for key, value in clean_data.items():
-            lines.append(f"{key.ljust(max_key_len)} | {value}")
+            lines.append(f"{key:<{max_key_len}} | {value}")
 
         return "```\n" + "\n".join(lines) + "\n```"
 
@@ -128,21 +51,16 @@ class RDAP(commands.Cog):
         query_type = classify_query(query)
         url = f"{BaseURLs.rdap}/{query_type}/{query}"
 
-        try:
-            async with self.bot.http_session.get(url) as response:
-                if response.status == 404:
-                    await ctx.send(f"❌ No results found for `{query}`.")
-                    return
-                if response.status != 200:
-                    log.warning(f"RDAP lookup failed for {query}: HTTP {response.status}")
-                    await ctx.send(f"❌ Error fetching RDAP data: HTTP {response.status}")
-                    return
+        async with self.bot.http_session.get(url) as response:
+            if response.status == 404:
+                await ctx.send(f"❌ No results found for `{query}`.")
+                return
+            if response.status != 200:
+                log.warning(f"RDAP lookup failed for {query}: HTTP {response.status}")
+                await ctx.send(f"❌ Error fetching RDAP data: HTTP {response.status}")
+                return
 
-                data = await response.json()
-        except Exception as e:
-            log.exception(f"Error performing RDAP lookup for {query}: {e}")
-            await ctx.send("❌ An error occurred while fetching RDAP data.")
-            return
+            data = await response.json()
 
         # Handle "Thin" registries (e.g., .com, .net) which provide a "related" link to the full RDAP info
         if query_type == "domain":
@@ -151,19 +69,18 @@ class RDAP(commands.Cog):
                     related_url = link.get("href")
                     if related_url:
                         log.debug(f"Following related RDAP link: {related_url}")
-                        try:
-                            async with self.bot.http_session.get(related_url) as related_response:
-                                if related_response.status == 200:
-                                    data = await related_response.json()
-                        except Exception:
-                            log.warning(f"Failed to follow related RDAP link: {related_url}", exc_info=True)
+                        async with self.bot.http_session.get(related_url) as related_response:
+                            if related_response.status == 200:
+                                data = await related_response.json()
+                            else:
+                                log.warning(f"Failed to follow related RDAP link: {related_url} (HTTP {related_response.status})")
                         break
 
         result_data: dict[str, Any] = {}
         title = f"RDAP Lookup: {query}"
 
         if query_type == "domain":
-            model = RDAPDomain(**data)
+            model = RDAPDomain.model_validate(data)
             registrar = model.get_entity_by_role("registrar")
             registrant = model.get_entity_by_role("registrant")
             abuse = model.get_entity_by_role("abuse")  # Sometimes abuse contact is separate
@@ -188,7 +105,7 @@ class RDAP(commands.Cog):
                 result_data["Nameservers"] = ", ".join(ns_list[:3]) + ("..." if len(ns_list) > 3 else "")
 
         elif query_type == "ip":
-            model = RDAPIP(**data)
+            model = RDAPIP.model_validate(data)
             registrant = model.get_entity_by_role("registrant")
 
             result_data = {
@@ -200,7 +117,7 @@ class RDAP(commands.Cog):
             }
 
         elif query_type == "autnum":
-            model = RDAPASN(**data)
+            model = RDAPASN.model_validate(data)
             registrant = model.get_entity_by_role("registrant")
             abuse = model.get_entity_by_role("abuse")
 
@@ -212,7 +129,14 @@ class RDAP(commands.Cog):
             }
 
         table = self._format_table(result_data)
-        await ctx.send(f"**{title}**\n{table}")
+        
+        embed = Embed(
+            title=title,
+            description=table,
+            colour=Colours.blue,
+        )
+        
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: Bot) -> None:
