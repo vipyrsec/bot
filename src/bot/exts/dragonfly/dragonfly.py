@@ -303,7 +303,7 @@ def _build_package_scan_result_embed(scan_result: Package) -> discord.Embed:
 
     embed.add_field(
         name="\u200b",
-        value=f"[Inspector]({scan_result.inspector_url})",
+        value=f"[Inspector]({scan_result.inspector_url.replace(" ", "%20")})", # Markdown rendering fails in Discord when an Inspector URL includes spaces.
         inline=True,
     )
 
