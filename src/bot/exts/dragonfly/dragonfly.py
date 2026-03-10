@@ -1,6 +1,7 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware."""
 
 import logging
+import urllib.parse
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from logging import getLogger
