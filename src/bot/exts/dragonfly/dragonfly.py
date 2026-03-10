@@ -301,9 +301,12 @@ def _build_package_scan_result_embed(scan_result: Package) -> discord.Embed:
         timestamp=scan_result.queued_at,
     )
 
+    # Markdown rendering fails in Discord when an Inspector URL includes spaces.
+    quoted_inspector_url = urllib.parse.quote(scan_result.inspector_url, safe=":/")
+
     embed.add_field(
         name="\u200b",
-        value=f"[Inspector]({scan_result.inspector_url.replace(" ", "%20")})", # Markdown rendering fails in Discord when an Inspector URL includes spaces.
+        value=f"[Inspector]({quoted_inspector_url})", 
         inline=True,
     )
 
