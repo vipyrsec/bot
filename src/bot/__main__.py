@@ -30,13 +30,9 @@ async def main() -> None:
     async with ClientSession(headers={"Content-Type": "application/json"}, timeout=ClientTimeout(total=30)) as session:
         dragonfly_services = DragonflyServices(
             session=session,
-            base_url=constants.Dragonfly.base_url,
-            auth_url=constants.Dragonfly.auth_url,
-            audience=constants.Dragonfly.audience,
+            base_url=constants.DragonflyConfig.api_url,
             client_id=constants.Dragonfly.client_id,
             client_secret=constants.Dragonfly.client_secret,
-            username=constants.Dragonfly.username,
-            password=constants.Dragonfly.password,
         )
 
         bot = Bot(
