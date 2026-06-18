@@ -101,7 +101,7 @@ def classify_query(query: str) -> str:
     return "domain"
 
 
-def parse_rdap_vcard(vcard_array: Any) -> dict[str, str | None]:
+def parse_rdap_vcard(vcard_array: list[Any]) -> dict[str, str | None]:
     """
     Parse a jCard array to extract 'fn' (name) and 'email'.
     """
