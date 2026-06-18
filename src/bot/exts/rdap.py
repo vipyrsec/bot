@@ -39,7 +39,7 @@ class RDAP(commands.Cog):
         return "```\n" + "\n".join(lines) + "\n```"
 
     @commands.command(name="rdap")
-    async def rdap_command(self, ctx: commands.Context[Bot], query: str) -> None:
+    async def rdap_command(self, ctx: commands.Context[Bot], query: str) -> None: # noqa: C901, PLR0912
         """
         Perform an RDAP lookup for a domain, IP, or ASN.
 
