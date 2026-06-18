@@ -86,14 +86,14 @@ class RDAP(commands.Cog):
             abuse = model.get_entity_by_role("abuse")  # Sometimes abuse contact is separate
 
             iana_id = None
-            if registrar and registrar.publicIds:
-                for pid in registrar.publicIds:
+            if registrar and registrar.public_ids:
+                for pid in registrar.public_ids:
                     if "IANA" in pid.get("type", ""):
                         iana_id = pid.get("identifier")
                         break
 
             result_data = {
-                "Domain Name": model.ldhName,
+                "Domain Name": model.ldh_name,
                 "Registrar": registrar.contact_info.get("name") if registrar else None,
                 "IANA ID": iana_id,
                 "Registered": model.registration_date,
@@ -109,9 +109,9 @@ class RDAP(commands.Cog):
             registrant = model.get_entity_by_role("registrant")
 
             result_data = {
-                "Range": f"{model.startAddress} - {model.endAddress}",
+                "Range": f"{model.start_address} - {model.end_address}",
                 "NetName": model.name,
-                "Parent": model.parentHandle,
+                "Parent": model.parent_handle,
                 "Registrant": registrant.contact_info.get("name") if registrant else None,
                 "Contact": registrant.contact_info.get("email") if registrant else None,
             }
@@ -122,7 +122,7 @@ class RDAP(commands.Cog):
             abuse = model.get_entity_by_role("abuse")
 
             result_data = {
-                "ASN": f"{model.startAutnum} - {model.endAutnum}",
+                "ASN": f"{model.start_autnum} - {model.end_autnum}",
                 "Name": model.name,
                 "Registrant": registrant.contact_info.get("name") if registrant else None,
                 "Abuse Email": abuse.contact_info.get("email") if abuse else None,
