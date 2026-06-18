@@ -1,8 +1,11 @@
 import ipaddress
 import re
-from typing import Annotated, Any, cast
+from typing import Any, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+MIN_VCARD_FIELDS = 4
+VCARD_VALUE_INDEX = 3
 
 
 class RDAPEntity(BaseModel):
@@ -17,7 +20,7 @@ class RDAPEntity(BaseModel):
 
     roles: list[str] = []
     public_ids: list[dict[str, Any]] = []
-    vcard_array: Annotated[list[Any], Field(default_factory=list)] = []
+    vcard_array: list[Any] = []
 
     @property
     def contact_info(self) -> dict[str, str | None]:
@@ -82,16 +85,15 @@ class RDAPASN(RDAPResponse):
     type: str | None = None
 
 
-
 def classify_query(query: str) -> str:
     """
-    Classify the query as 'ip', 'asn', or 'domain'.
+    Classify the query as 'ip', 'autnum', or 'domain'.
     """
     query = query.strip()
 
     try:
         ipaddress.ip_address(query)
-        return "ip" # noqa: TRY300
+        return "ip"  # noqa: TRY300
     except ValueError:
         pass
 
@@ -107,22 +109,29 @@ def parse_rdap_vcard(vcard_array: list[Any]) -> dict[str, str | None]:
     """
     result: dict[str, str | None] = {"name": None, "email": None}
 
-    if not vcard_array or not isinstance(vcard_array, list):
+    if not vcard_array:
         return result
 
-    # jCard format: ["vcard", [ [property, {params}, type, value], ... ]]
-    if len(vcard_array) > 1 and isinstance(vcard_array[1], list):  # type: ignore
-        properties = cast("list[list[Any]]", vcard_array[1])
-        for prop in properties:
-            if len(prop) < 4:
-                continue
+    if len(vcard_array) <= 1:
+        return result
 
-            name = cast(str, prop[0])
-            value = cast(str, prop[3])
+    properties = vcard_array[1]
 
-            if name == "fn":
-                result["name"] = value
-            elif name == "email":
-                result["email"] = value
+    if not isinstance(properties, list):
+        return result
+
+    properties = cast(list[list[Any]], properties)
+
+    for prop in properties:
+        if len(prop) < MIN_VCARD_FIELDS:
+            continue
+
+        name = cast(str, prop[0])
+        value = cast(str, prop[VCARD_VALUE_INDEX])
+
+        if name == "fn":
+            result["name"] = value
+        elif name == "email":
+            result["email"] = value
 
     return result

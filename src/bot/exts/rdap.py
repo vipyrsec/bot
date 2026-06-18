@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 from typing import Any
 
 from discord import Embed
@@ -9,6 +10,8 @@ from bot.constants import BaseURLs, Colours
 from bot.utils.rdap import RDAPASN, RDAPIP, RDAPDomain, classify_query
 
 log = logging.getLogger(__name__)
+
+MAX_NAMESERVERS = 3
 
 
 class RDAP(commands.Cog):
@@ -39,7 +42,7 @@ class RDAP(commands.Cog):
         return "```\n" + "\n".join(lines) + "\n```"
 
     @commands.command(name="rdap")
-    async def rdap_command(self, ctx: commands.Context[Bot], query: str) -> None: # noqa: C901, PLR0912
+    async def rdap_command(self, ctx: commands.Context[Bot], query: str) -> None:  # noqa: C901, PLR0912
         """
         Perform an RDAP lookup for a domain, IP, or ASN.
 
@@ -52,11 +55,11 @@ class RDAP(commands.Cog):
         url = f"{BaseURLs.rdap}/{query_type}/{query}"
 
         async with self.bot.http_session.get(url) as response:
-            if response.status == 404:
+            if response.status == HTTPStatus.NOT_FOUND:
                 await ctx.send(f"❌ No results found for `{query}`.")
                 return
-            if response.status != 200:
-                log.warning(f"RDAP lookup failed for {query}: HTTP {response.status}")
+            if response.status != HTTPStatus.OK:
+                log.warning("RDAP lookup failed for %s: HTTP %s", query, response.status)
                 await ctx.send(f"❌ Error fetching RDAP data: HTTP {response.status}")
                 return
 
@@ -68,14 +71,15 @@ class RDAP(commands.Cog):
                 if link.get("rel") == "related" and link.get("type") == "application/rdap+json":
                     related_url = link.get("href")
                     if related_url:
-                        log.debug(f"Following related RDAP link: {related_url}")
+                        log.debug("Following related RDAP link: %s", related_url)
                         async with self.bot.http_session.get(related_url) as related_response:
-                            if related_response.status == 200:
+                            if related_response.status == HTTPStatus.OK:
                                 data = await related_response.json()
                             else:
                                 log.warning(
-                                    f"Failed to follow related RDAP link: {related_url} " 
-                                    f"(HTTP {related_response.status})"
+                                    "Failed to follow related RDAP link: %s (HTTP %s)",
+                                    related_url,
+                                    related_response.status,
                                 )
                         break
 
@@ -105,7 +109,10 @@ class RDAP(commands.Cog):
 
             if model.nameservers:
                 ns_list = [str(ns.get("ldhName")) for ns in model.nameservers if ns.get("ldhName")]
-                result_data["Nameservers"] = ", ".join(ns_list[:3]) + ("..." if len(ns_list) > 3 else "")
+                result_data["Nameservers"] = (
+                    ", ".join(ns_list[:MAX_NAMESERVERS])
+                    + ("..." if len(ns_list) > MAX_NAMESERVERS else "")
+                )
 
         elif query_type == "ip":
             model = RDAPIP.model_validate(data)
@@ -132,13 +139,13 @@ class RDAP(commands.Cog):
             }
 
         table = self._format_table(result_data)
-        
+
         embed = Embed(
             title=title,
             description=table,
             colour=Colours.blue,
         )
-        
+
         await ctx.send(embed=embed)
 
 
