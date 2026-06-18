@@ -91,7 +91,7 @@ def classify_query(query: str) -> str:
 
     try:
         ipaddress.ip_address(query)
-        return "ip"
+        return "ip" # noqa: TRY300
     except ValueError:
         pass
 
