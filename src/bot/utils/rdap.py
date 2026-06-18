@@ -11,18 +11,18 @@ class RDAPEntity(BaseModel):
 
     Attributes:
         roles: List of roles this entity performs (e.g., 'registrar', 'abuse').
-        publicIds: List of public identifiers (e.g., IANA ID).
-        vcardArray: jCard formatted contact information.
+        public_ids: List of public identifiers (e.g., IANA ID).
+        vcard_array: jCard formatted contact information.
     """
 
     roles: list[str] = []
-    publicIds: list[dict[str, Any]] = []
-    vcardArray: Annotated[list[Any], Field(default_factory=list)] = []
+    public_ids: list[dict[str, Any]] = []
+    vcard_array: Annotated[list[Any], Field(default_factory=list)] = []
 
     @property
     def contact_info(self) -> dict[str, str | None]:
         """Extracts name and email from the vCard array."""
-        return parse_rdap_vcard(self.vcardArray)
+        return parse_rdap_vcard(self.vcard_array)
 
 
 class RDAPResponse(BaseModel):
@@ -50,7 +50,7 @@ class RDAPResponse(BaseModel):
 class RDAPDomain(RDAPResponse):
     """Model for Domain RDAP responses."""
 
-    ldhName: str | None = None
+    ldh_name: str | None = None
     events: list[dict[str, Any]] = []
     nameservers: list[dict[str, Any]] = []
 
@@ -66,18 +66,18 @@ class RDAPDomain(RDAPResponse):
 class RDAPIP(RDAPResponse):
     """Model for IP Network RDAP responses."""
 
-    startAddress: str | None = None
-    endAddress: str | None = None
+    start_address: str | None = None
+    end_address: str | None = None
     name: str | None = None
-    parentHandle: str | None = None
+    parent_handle: str | None = None
     type: str | None = None
 
 
 class RDAPASN(RDAPResponse):
     """Model for Autonomous System Number RDAP responses."""
 
-    startAutnum: int | None = None
-    endAutnum: int | None = None
+    start_autnum: int | None = None
+    end_autnum: int | None = None
     name: str | None = None
     type: str | None = None
 
