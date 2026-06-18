@@ -73,7 +73,10 @@ class RDAP(commands.Cog):
                             if related_response.status == 200:
                                 data = await related_response.json()
                             else:
-                                log.warning(f"Failed to follow related RDAP link: {related_url} (HTTP {related_response.status})")
+                                log.warning(f"
+                                    Failed to follow related RDAP link: {related_url} 
+                                    (HTTP {related_response.status})"
+                                )
                         break
 
         result_data: dict[str, Any] = {}
