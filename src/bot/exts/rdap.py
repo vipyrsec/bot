@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 class RDAP(commands.Cog):
     """RDAP lookup commands."""
 
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: Bot) -> None:
         self.bot = bot
 
     def _format_table(self, data: dict[str, Any]) -> str:
