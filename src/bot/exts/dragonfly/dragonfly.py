@@ -307,7 +307,7 @@ def _build_package_scan_result_embed(scan_result: Package) -> discord.Embed:
 
     embed.add_field(
         name="\u200b",
-        value=f"[Inspector]({quoted_inspector_url})", 
+        value=f"[Inspector]({quoted_inspector_url})",
         inline=True,
     )
 
