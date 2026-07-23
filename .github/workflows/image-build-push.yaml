@@ -159,10 +159,31 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
-        run: >
-          docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "${DOCKER_METADATA_OUTPUT_JSON}") \
-            $(printf ' %s/%s@sha256:%s ' "${REGISTRY}" "${IMAGE_NAME}" *)
+        run: |
+          mapfile -t tags < <(jq -r '.tags[]' <<< "${DOCKER_METADATA_OUTPUT_JSON}")
+          if (( ${#tags[@]} == 0 )); then
+            echo "No image tags were generated" >&2
+            exit 1
+          fi
+
+          shopt -s nullglob
+          digests=(*)
+          if (( ${#digests[@]} == 0 )); then
+            echo "No image digests were downloaded" >&2
+            exit 1
+          fi
+
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=("-t" "${tag}")
+          done
+
+          sources=()
+          for digest in "${digests[@]}"; do
+            sources+=("${REGISTRY}/${IMAGE_NAME}@sha256:${digest}")
+          done
+
+          docker buildx imagetools create "${tag_args[@]}" "${sources[@]}"
 
       - name: Inspect image
         env:
