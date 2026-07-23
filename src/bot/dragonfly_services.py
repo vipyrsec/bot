@@ -64,20 +64,20 @@ class DragonflyServices:
         self: Self,
         session: ClientSession,
         base_url: str,
-        client_id: str,
-        client_secret: str,
+        access_client_id: str,
+        access_client_secret: str,
     ) -> None:
         """Initialize the DragonflyServices class."""
         self.session = session
         self.base_url = base_url
-        self.client_id = client_id
-        self.client_secret = client_secret
+        self.access_client_id = access_client_id
+        self.access_client_secret = access_client_secret
 
     def _build_access_headers(self: Self) -> dict[str, str]:
         """Build Cloudflare Access service-token headers."""
         return {
-            "CF-Access-Client-Id": self.client_id,
-            "CF-Access-Client-Secret": self.client_secret,
+            "CF-Access-Client-Id": self.access_client_id,
+            "CF-Access-Client-Secret": self.access_client_secret,
         }
 
     async def make_request(
@@ -86,21 +86,15 @@ class DragonflyServices:
         path: str,
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
-    ) -> dict:  # type: ignore[type-arg]
+    ) -> dict[str, Any]:
         """Make a request to Dragonfly's API."""
-        args = {
-            "url": self.base_url + path,
-            "method": method,
-            "headers": self._build_access_headers(),
-        }
-
-        if params is not None:
-            args["params"] = params
-
-        if json is not None:
-            args["json"] = json
-
-        async with self.session.request(**args) as response:  # type: ignore[arg-type]
+        async with self.session.request(
+            method=method,
+            url=self.base_url + path,
+            headers=self._build_access_headers(),
+            params=params,
+            json=json,
+        ) as response:
             response.raise_for_status()
             return await response.json()  # type: ignore[no-any-return]
 
@@ -111,7 +105,7 @@ class DragonflyServices:
         since: datetime | None = None,
     ) -> list[Package]:
         """Get a list of scanned packages."""
-        params = {}
+        params: dict[str, str | int] = {}
         if name:
             params["name"] = name
 

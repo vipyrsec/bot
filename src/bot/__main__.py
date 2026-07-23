@@ -31,8 +31,8 @@ async def main() -> None:
         dragonfly_services = DragonflyServices(
             session=session,
             base_url=constants.DragonflyConfig.api_url,
-            client_id=constants.Dragonfly.client_id,
-            client_secret=constants.Dragonfly.client_secret,
+            access_client_id=constants.Dragonfly.client_id,
+            access_client_secret=constants.Dragonfly.client_secret,
         )
 
         bot = Bot(
