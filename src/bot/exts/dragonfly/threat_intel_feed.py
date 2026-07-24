@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+from http import HTTPStatus
 from io import BytesIO
 from logging import getLogger
 from typing import cast
@@ -21,6 +22,12 @@ log.setLevel(logging.INFO)
 
 _p = re.compile(r"https://inspector.pypi.io/project/(?P<name>\w+)/(?P<version>[\w.]+)/.*")
 type JSONValue = None | bool | int | float | str | list["JSONValue"] | dict[str, "JSONValue"]
+REPOSITORY_ACCESS_FAILURES = frozenset(
+    {
+        HTTPStatus.UNAUTHORIZED,
+        HTTPStatus.NOT_FOUND,
+    }
+)
 
 
 def build_github_link_from_path(path: str) -> str:
@@ -110,10 +117,27 @@ class ThreatIntelFeed(commands.Cog):
         self.bot = bot
         self.reports_seen: set[str] = set()
 
+    async def fetch_available_zipfile(self) -> ZipFile | None:
+        """Fetch the feed or disable polling for a permanent repository access failure."""
+        try:
+            return await fetch_zipfile(self.bot.http_session)
+        except aiohttp.ClientResponseError as error:
+            if error.status not in REPOSITORY_ACCESS_FAILURES:
+                raise
+            log.warning(
+                "Threat intel feed repository is unavailable (HTTP %s); watcher disabled until restart",
+                error.status,
+            )
+            self.watcher.stop()
+            return None
+
     @tasks.loop(seconds=constants.ThreatIntelFeed.interval)
     async def watcher(self) -> None:
         """Watch the GitHub repository for changes."""
-        zipfile = await fetch_zipfile(self.bot.http_session)
+        zipfile = await self.fetch_available_zipfile()
+        if zipfile is None:
+            return
+
         paths = {path for path in zipfile.namelist() if path.endswith(".json")}
 
         channel = self.bot.get_channel(constants.ThreatIntelFeed.channel_id)
@@ -162,6 +186,8 @@ async def setup(bot: Bot) -> None:
     """Extension setup."""
     cog = ThreatIntelFeed(bot)
     task = cog.watcher
-    if not task.is_running():
+    if not constants.ThreatIntelFeed.access_token:
+        log.warning("Threat intel feed watcher disabled because TIF_ACCESS_TOKEN is not configured")
+    elif not task.is_running():
         task.start()
     await bot.add_cog(cog)
