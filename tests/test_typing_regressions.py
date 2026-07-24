@@ -94,6 +94,31 @@ def test_threat_intel_watcher_stops_after_repository_access_failure(status: HTTP
     stop.assert_called_once_with()
 
 
+def test_threat_intel_watcher_retries_forbidden_response() -> None:
+    """A potentially transient GitHub 403 must remain in the task retry loop."""
+    bot = cast("Bot", Mock())
+    cog = threat_intel_feed.ThreatIntelFeed(bot)
+    error = ClientResponseError(
+        cast("RequestInfo", Mock()),
+        (),
+        status=HTTPStatus.FORBIDDEN,
+        message=HTTPStatus.FORBIDDEN.phrase,
+    )
+    callback = cast(
+        "Callable[[threat_intel_feed.ThreatIntelFeed], Coroutine[Any, Any, None]]",
+        threat_intel_feed.ThreatIntelFeed.watcher.coro,
+    )
+
+    with (
+        patch.object(threat_intel_feed, "fetch_zipfile", AsyncMock(side_effect=error)),
+        patch.object(cog.watcher, "stop") as stop,
+        pytest.raises(ClientResponseError, match=HTTPStatus.FORBIDDEN.phrase),
+    ):
+        asyncio.run(callback(cog))
+
+    stop.assert_not_called()
+
+
 def test_invalid_command_input_resets_its_cooldown() -> None:
     """Rejected input must not consume the command cooldown."""
     command_mock = Mock()

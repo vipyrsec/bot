@@ -25,7 +25,6 @@ type JSONValue = None | bool | int | float | str | list["JSONValue"] | dict[str,
 REPOSITORY_ACCESS_FAILURES = frozenset(
     {
         HTTPStatus.UNAUTHORIZED,
-        HTTPStatus.FORBIDDEN,
         HTTPStatus.NOT_FOUND,
     }
 )
