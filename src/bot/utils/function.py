@@ -3,8 +3,8 @@
 import functools
 import inspect
 import types
-from collections import OrderedDict
 from collections.abc import Callable, Sequence
+from collections.abc import Set as AbstractSet
 from typing import Any
 
 from bot.log import get_logger
@@ -12,8 +12,8 @@ from bot.log import get_logger
 log = get_logger(__name__)
 
 Argument = int | str
-BoundArgs = OrderedDict[str, Any]
-Decorator = Callable[[Callable], Callable]  # type: ignore[type-arg]
+BoundArgs = dict[str, Any]
+Decorator = Callable[[Callable[..., Any]], Callable[..., Any]]
 ArgValGetter = Callable[[BoundArgs], Any]
 
 
@@ -41,16 +41,11 @@ def get_arg_value(name_or_pos: Argument, arguments: BoundArgs) -> Any:  # noqa: 
             raise ValueError(msg) from exception
         else:
             return value
-    elif isinstance(name_or_pos, str):
-        arg_name = name_or_pos
-        try:
-            return arguments[arg_name]
-        except KeyError as exception:
-            msg = f"Argument {arg_name!r} doesn't exist."
-            raise ValueError(msg) from exception
-    else:
-        msg = "'arg' must either be an int (positional index) or a str (keyword)."
-        raise TypeError(msg)
+    try:
+        return arguments[name_or_pos]
+    except KeyError as exception:
+        msg = f"Argument {name_or_pos!r} doesn't exist."
+        raise ValueError(msg) from exception
 
 
 def get_arg_value_wrapper(
@@ -77,7 +72,7 @@ def get_arg_value_wrapper(
     return decorator_func(wrapper)
 
 
-def get_bound_args(func: Callable, args: tuple, kwargs: dict[str, Any]) -> BoundArgs:  # type: ignore[type-arg]
+def get_bound_args(func: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]) -> BoundArgs:
     """Bind `args` and `kwargs` to `func` and return a mapping of parameter names to argument values.
 
     Default parameter values are also set.
@@ -93,7 +88,7 @@ def update_wrapper_globals(
     wrapper: types.FunctionType,
     wrapped: types.FunctionType,
     *,
-    ignored_conflict_names: set[str] = frozenset(),  # type: ignore[assignment]
+    ignored_conflict_names: AbstractSet[str] = frozenset(),
 ) -> types.FunctionType:
     """Update globals of `wrapper` with the globals from `wrapped`.
 
@@ -137,7 +132,7 @@ def command_wraps(
     assigned: Sequence[str] = functools.WRAPPER_ASSIGNMENTS,
     updated: Sequence[str] = functools.WRAPPER_UPDATES,
     *,
-    ignored_conflict_names: set[str] = frozenset(),  # type: ignore[assignment]
+    ignored_conflict_names: AbstractSet[str] = frozenset(),
 ) -> Callable[[types.FunctionType], types.FunctionType]:
     """Update the decorated function to look like `wrapped` and update globals for discordpy forwardref evaluation."""
 

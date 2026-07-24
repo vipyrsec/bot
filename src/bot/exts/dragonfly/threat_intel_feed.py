@@ -5,7 +5,7 @@ import logging
 import re
 from io import BytesIO
 from logging import getLogger
-from typing import Any
+from typing import cast
 from zipfile import ZipFile
 
 import aiohttp
@@ -20,6 +20,7 @@ log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
 _p = re.compile(r"https://inspector.pypi.io/project/(?P<name>\w+)/(?P<version>[\w.]+)/.*")
+type JSONValue = None | bool | int | float | str | list["JSONValue"] | dict[str, "JSONValue"]
 
 
 def build_github_link_from_path(path: str) -> str:
@@ -41,14 +42,14 @@ def parse_package_info_from_inspector_url(inspector_url: str) -> tuple[str, str]
     return None
 
 
-def search(d: dict, key: Any) -> Any | None:  # noqa: ANN401 - we can't know the type of the dict ahead of time
+def search(data: dict[str, JSONValue], key: str) -> JSONValue | None:
     """Recursively search for the first occurrence of a key in a dict. None if not found."""
-    for k, v in d.items():
+    for k, value in data.items():
         if k == key:
-            return v
+            return value
 
-        if isinstance(v, dict) and (val := search(v, key)):
-            return val
+        if isinstance(value, dict) and (result := search(value, key)):
+            return result
 
     return None
 
@@ -129,9 +130,9 @@ class ThreatIntelFeed(commands.Cog):
             if path in self.reports_seen:
                 continue
 
-            content = json.loads(zipfile.read(path).decode())
-            inspector_url: str | None = search(content, "inspector_url")
-            if not inspector_url:
+            content = cast("dict[str, JSONValue]", json.loads(zipfile.read(path).decode()))
+            inspector_url = search(content, "inspector_url")
+            if not isinstance(inspector_url, str) or not inspector_url:
                 log.error("Inspector URL not found in %s, skipping", path)
                 continue
 
@@ -161,6 +162,6 @@ async def setup(bot: Bot) -> None:
     """Extension setup."""
     cog = ThreatIntelFeed(bot)
     task = cog.watcher
-    if not task.is_running:
+    if not task.is_running():
         task.start()
     await bot.add_cog(cog)

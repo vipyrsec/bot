@@ -3,8 +3,10 @@
 import logging
 import os
 import sys
+from collections.abc import Mapping
 from logging import Logger, handlers
 from pathlib import Path
+from types import TracebackType
 from typing import TYPE_CHECKING, Self, cast
 
 import coloredlogs
@@ -22,7 +24,15 @@ LoggerClass = Logger if TYPE_CHECKING else logging.getLoggerClass()
 class CustomLogger(LoggerClass):  # type: ignore[misc, valid-type]
     """Custom implementation of the `Logger` class with an added `trace` method."""
 
-    def trace(self: Self, msg: str, *args: tuple, **kwargs: dict) -> None:  # type: ignore[type-arg]
+    def trace(
+        self: Self,
+        msg: str,
+        *args: object,
+        exc_info: bool | BaseException | tuple[type[BaseException], BaseException, TracebackType | None] | None = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
+    ) -> None:
         """Log 'msg % args' with severity 'TRACE'.
 
         To pass exception information, use the keyword argument exc_info with
@@ -31,7 +41,15 @@ class CustomLogger(LoggerClass):  # type: ignore[misc, valid-type]
         logger.trace("Houston, we have an %s", "interesting problem", exc_info=1)
         """
         if self.isEnabledFor(TRACE_LEVEL):
-            self.log(TRACE_LEVEL, msg, *args, **kwargs)  # type: ignore[arg-type]
+            self.log(
+                TRACE_LEVEL,
+                msg,
+                *args,
+                exc_info=exc_info,
+                stack_info=stack_info,
+                stacklevel=stacklevel,
+                extra=extra,
+            )
 
 
 def get_logger(name: str | None = None) -> CustomLogger:

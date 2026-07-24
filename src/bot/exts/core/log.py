@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Self
 
 import discord
-from discord.ext.commands import Cog, Context
+from discord.ext import commands
 
 from bot.bot import Bot
 from bot.constants import Channels, Roles
@@ -13,7 +13,7 @@ from bot.constants import Channels, Roles
 log = logging.getLogger(__name__)
 
 
-class Log(Cog):
+class Log(commands.Cog):
     """Logging for server events and staff actions."""
 
     def __init__(self: Self, bot: Bot) -> None:
@@ -33,7 +33,7 @@ class Log(Cog):
         additional_embeds: list[discord.Embed] | None = None,
         timestamp_override: datetime | None = None,
         footer: str | None = None,
-    ) -> Context:  # type: ignore[type-arg]
+    ) -> commands.Context[Bot]:
         """Generate log embed and send to logging channel."""
         # Truncate string directly here to avoid removing newlines
         embed = discord.Embed(description=text[:4093] + "..." if len(text) > 4096 else text)  # noqa: PLR2004
