@@ -6,7 +6,8 @@ import types
 from collections import defaultdict
 from collections.abc import Awaitable, Callable, Hashable
 from functools import partial
-from typing import Any, Self
+from types import TracebackType
+from typing import Any, Self, cast
 from weakref import WeakValueDictionary
 
 from bot.log import get_logger
@@ -16,16 +17,17 @@ from bot.utils.function import command_wraps
 from .exceptions import LockedResourceError
 
 log = get_logger(__name__)
-__lock_dicts = defaultdict(WeakValueDictionary)  # type: ignore[var-annotated]
+__lock_dicts: defaultdict[Hashable, WeakValueDictionary[Hashable, asyncio.Lock]] = defaultdict(WeakValueDictionary)
 
 _IdCallableReturn = Hashable | Awaitable[Hashable]
 _IdCallable = Callable[[function.BoundArgs], _IdCallableReturn]
 ResourceId = Hashable | _IdCallable
+AsyncCallable = Callable[..., Awaitable[Any]]
+AsyncDecorator = Callable[[AsyncCallable], AsyncCallable]
 
 
 class SharedEvent:
-    """
-    Context manager managing an internal event exposed through the wait coro.
+    """Context manager managing an internal event exposed through the wait coro.
 
     While any code is executing in this context manager, the underlying event will not be set;
     when all of the holders finish the event will be set.
@@ -41,7 +43,12 @@ class SharedEvent:
         self._active_count += 1
         self._event.clear()
 
-    def __exit__(self: Self, _exc_type, _exc_val, _exc_tb) -> None:  # type: ignore[no-untyped-def] # noqa: ANN001
+    def __exit__(
+        self: Self,
+        _exc_type: type[BaseException] | None,
+        _exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
+    ) -> None:
         """Decrement the count of the active holders; if 0 is reached set the internal event."""
         self._active_count -= 1
         if not self._active_count:
@@ -58,9 +65,8 @@ def lock(
     *,
     raise_error: bool = False,
     wait: bool = False,
-) -> Callable:  # type: ignore[type-arg]
-    """
-    Turn the decorated coroutine function into a mutually exclusive operation on a `resource_id`.
+) -> AsyncDecorator:
+    """Turn the decorated coroutine function into a mutually exclusive operation on a `resource_id`.
 
     If `wait` is True, wait until the lock becomes available. Otherwise, if any other mutually
     exclusive function currently holds the lock for a resource, do not run the decorated function
@@ -77,11 +83,11 @@ def lock(
     If decorating a command, this decorator must go before (below) the `command` decorator.
     """
 
-    def decorator(func: types.FunctionType) -> types.FunctionType:
+    def decorator(func: AsyncCallable) -> AsyncCallable:
         name = func.__name__
 
-        @command_wraps(func)  # type: ignore[arg-type]
-        async def wrapper(*args: tuple, **kwargs: dict) -> Any:  # type: ignore[type-arg] # noqa: ANN401 -- matches signature of upstream
+        @command_wraps(cast("types.FunctionType", func))
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401 -- preserves the decorated signature
             log.trace(f"{name}: mutually exclusive decorator called")
 
             if callable(resource_id):
@@ -97,6 +103,7 @@ def lock(
             else:
                 id_ = resource_id
 
+            id_ = cast("Hashable", id_)
             log.trace(f"{name}: getting the lock object for resource {namespace!r}:{id_!r}")
 
             # Get the lock for the ID. Create a lock if one doesn't exist yet.
@@ -114,10 +121,10 @@ def lock(
             else:
                 log.info(f"{name}: aborted because resource {namespace!r}:{id_!r} is locked")
                 if raise_error:
-                    raise LockedResourceError(str(namespace), id_)  # type: ignore[arg-type]
+                    raise LockedResourceError(str(namespace), id_)
                 return None
 
-        return wrapper
+        return cast("AsyncCallable", wrapper)
 
     return decorator
 
@@ -129,9 +136,8 @@ def lock_arg(
     *,
     raise_error: bool = False,
     wait: bool = False,
-) -> Callable:  # type: ignore[type-arg]
-    """
-    Apply the `lock` decorator using the value of the arg at the given name/position as the ID.
+) -> AsyncDecorator:
+    """Apply the `lock` decorator using the value of the arg at the given name/position as the ID.
 
     `func` is an optional callable or awaitable which will return the ID given the argument value.
     See `lock` docs for more information.

@@ -1,11 +1,16 @@
 """Message utilities."""
 
+from __future__ import annotations
+
 import contextlib
+from typing import TYPE_CHECKING
 
 import discord
 from discord import Embed, Message
 from discord.ext import commands
-from discord.ext.commands import Context, MessageConverter
+
+if TYPE_CHECKING:
+    from bot.bot import Bot
 
 
 def format_user(user: discord.abc.User) -> str:
@@ -13,20 +18,19 @@ def format_user(user: discord.abc.User) -> str:
     return f"{user.mention} (`{user.id}`)"
 
 
-async def get_discord_message(ctx: Context, text: str) -> Message | str:  # type: ignore[return, type-arg]
-    """
-    Attempt to convert a given `text` to a discord Message object and return it.
+async def get_discord_message(ctx: commands.Context[Bot], text: str) -> Message | str:
+    """Attempt to convert a given `text` to a discord Message object and return it.
 
     Conversion will succeed if given a discord Message ID or link.
     Returns `text` if the conversion fails.
     """
     with contextlib.suppress(commands.BadArgument):
-        return await MessageConverter().convert(ctx, text)
+        return await commands.MessageConverter().convert(ctx, text)
+    return text
 
 
-async def get_text_and_embed(ctx: Context, text: str) -> tuple[str, Embed | None]:  # type: ignore[type-arg]
-    """
-    Attempt to extract the text and embed from a possible link to a discord Message.
+async def get_text_and_embed(ctx: commands.Context[Bot], text: str) -> tuple[str, Embed | None]:
+    """Attempt to extract the text and embed from a possible link to a discord Message.
 
     Does not retrieve the text and embed from the Message if it is in a channel the user does
     not have read permissions in.

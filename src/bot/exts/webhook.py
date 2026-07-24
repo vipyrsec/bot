@@ -9,7 +9,7 @@ from typing import Self, cast
 
 import discord
 from discord import Colour, Message, NotFound
-from discord.ext.commands import Cog
+from discord.ext import commands
 
 from bot.bot import Bot
 from bot.constants import Categories, Colours, Roles
@@ -31,7 +31,7 @@ ALERT_MESSAGE_TEMPLATE = (
 log = logging.getLogger(__name__)
 
 
-class WebhookRemover(Cog):
+class WebhookRemover(commands.Cog):
     """Scan messages to detect Discord webhooks links."""
 
     def __init__(self: Self, bot: Bot) -> None:
@@ -40,7 +40,7 @@ class WebhookRemover(Cog):
     @property
     def log(self: Self) -> Log | None:
         """Get current instance of `Log`."""
-        return cast(Log, self.bot.get_cog("Log"))
+        return cast("Log", self.bot.get_cog("Log"))
 
     async def delete_and_respond(self: Self, message: Message, matches: Match[str]) -> None:
         """Delete `message` and send a warning that it contained a Discord webhook."""
@@ -112,7 +112,7 @@ class WebhookRemover(Cog):
                 channel_id=message.channel.id,  # type: ignore[reportAttributeAccessIssue]
             )
 
-    @Cog.listener()
+    @commands.Cog.listener()
     async def on_message(self: Self, message: Message) -> None:
         """Check if a Discord webhook URL is in `message`."""
         # Ignore DMs; can't delete messages in there anyway.
@@ -122,7 +122,7 @@ class WebhookRemover(Cog):
         if matches := WEBHOOK_URL_RE.search(message.content):
             await self.delete_and_respond(message, matches)
 
-    @Cog.listener()
+    @commands.Cog.listener()
     async def on_message_edit(self: Self, _before: Message, after: Message) -> None:
         """Check if a Discord webhook URL is in the edited message `after`."""
         await self.on_message(after)

@@ -7,12 +7,13 @@ import re
 import textwrap
 import traceback
 from collections import Counter
+from collections.abc import Awaitable, Callable
 from io import StringIO
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import arrow
 import discord
-from discord.ext.commands import Cog, Context, group, has_any_role, is_owner
+from discord.ext import commands
 
 from bot.bot import Bot
 from bot.constants import DEBUG_MODE, Roles
@@ -27,37 +28,36 @@ from bot.utils import (
 log = get_logger(__name__)
 
 
-class Internal(Cog):
+class Internal(commands.Cog):
     """Administrator and Core Developer commands."""
 
     def __init__(self: Self, bot: Bot) -> None:
         self.bot = bot
-        self.env = {}  # type: ignore[var-annotated]
+        self.env: dict[str, Any] = {}
         self.ln = 0
         self.stdout = StringIO()
 
         self.socket_since = arrow.utcnow()
         self.socket_event_total = 0
-        self.socket_events = Counter()  # type: ignore[var-annotated]
+        self.socket_events: Counter[str] = Counter()
 
         if DEBUG_MODE:
-            self.eval.add_check(is_owner().predicate)
+            self.eval.add_check(commands.is_owner().predicate)
 
-    @Cog.listener()
+    @commands.Cog.listener()
     async def on_socket_event_type(self: Self, event_type: str) -> None:
         """When a websocket event is received, increase our counters."""
         self.socket_event_total += 1
         self.socket_events[event_type] += 1
 
-    def _format(self: Self, inp: str, out: Any) -> tuple[str, discord.Embed | None]:  # noqa: ANN401,C901,PLR0912
+    def _format(self: Self, inp: str, out: Any) -> tuple[str, discord.Embed | None]:  # noqa: ANN401, C901
         """Format the eval output into a string & attempt to format it into an Embed."""
         self._ = out
 
         res = ""
 
         # Erase temp input we made
-        if inp.startswith("_ = "):
-            inp = inp[4:]
+        inp = inp.removeprefix("_ = ")
 
         # Get all non-empty lines
         lines = [line for line in inp.split("\n") if line.strip()]
@@ -110,38 +110,26 @@ class Internal(Cog):
         res += f"Out[{self.ln}]: "
 
         if isinstance(out, discord.Embed):
-            # We made an embed? Send that as embed
-            res += "<Embed>"
-            res = (res, out)  # type: ignore[assignment]
+            return (res + "<Embed>", out)
 
-        else:
-            if isinstance(out, str) and out.startswith("Traceback (most recent call last):\n"):
-                # Leave out the traceback message
-                out = "\n" + "\n".join(out.split("\n")[1:])
+        if isinstance(out, str) and out.startswith("Traceback (most recent call last):\n"):
+            # Leave out the traceback message
+            out = "\n" + "\n".join(out.split("\n")[1:])
 
-            pretty = out if isinstance(out, str) else pprint.pformat(out, compact=True, width=60)
+        pretty = out if isinstance(out, str) else pprint.pformat(out, compact=True, width=60)
 
-            if pretty != str(out):
-                # We're using the pretty version, start on the next line
-                res += "\n"
+        if pretty != str(out):
+            # We're using the pretty version, start on the next line
+            res += "\n"
 
-            if pretty.count("\n") > 20:  # noqa: PLR2004
-                # Text too long, shorten
-                li = pretty.split("\n")
+        if pretty.count("\n") > 20:  # noqa: PLR2004
+            # Text too long, shorten
+            lines = pretty.split("\n")
+            pretty = "\n".join(lines[:3]) + "\n ...\n" + "\n".join(lines[-3:])
 
-                pretty = (
-                    "\n".join(li[:3])  # First 3 lines
-                    + "\n ...\n"  # Ellipsis to indicate removed lines
-                    + "\n".join(li[-3:])
-                )  # last 3 lines
+        return (res + pretty, None)
 
-            # Add the output
-            res += pretty
-            res = (res, None)  # type: ignore[assignment]
-
-        return res  # type: ignore[return-value] # Return (text, embed)
-
-    async def _eval(self: Self, ctx: Context, code: str) -> discord.Message | None:  # type: ignore[type-arg]
+    async def _eval(self: Self, ctx: commands.Context[Bot], code: str) -> discord.Message | None:
         """Eval the input code string & send an embed to the invoking context."""
         self.ln += 1
 
@@ -183,7 +171,7 @@ async def func():  # (None,) -> Any
 
         try:
             exec(code_, self.env)  # noqa: S102
-            func = self.env["func"]
+            func = cast("Callable[[], Awaitable[Any]]", self.env["func"])
             res = await func()
 
         except Exception:  # noqa: BLE001
@@ -216,16 +204,16 @@ async def func():  # (None,) -> Any
         await ctx.send(f"```py\n{out}```", embed=embed)  # type: ignore[arg-type]
         return None
 
-    @group(name="internal", aliases=("int",))
-    @has_any_role(Roles.administrators, Roles.core_developers)
-    async def internal_group(self: Self, ctx: Context) -> None:  # type: ignore[type-arg]
-        """Internal commands. Top secret!."""  # noqa: D401
+    @commands.group(name="internal", aliases=("int",))
+    @commands.has_any_role(Roles.administrators, Roles.core_developers)
+    async def internal_group(self: Self, ctx: commands.Context[Bot]) -> None:
+        """Internal commands. Top secret!."""
         if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
     @internal_group.command(name="eval", aliases=("e",))  # type: ignore[arg-type]
-    @has_any_role(Roles.administrators)
-    async def eval(self: Self, ctx: Context, *, code: str) -> None:  # type: ignore[type-arg]
+    @commands.has_any_role(Roles.administrators)
+    async def eval(self: Self, ctx: commands.Context[Bot], *, code: str) -> None:
         """Run eval in a REPL-like format."""
         code = code.strip("`")
         if re.match("py(thon)?\n", code):
@@ -244,8 +232,8 @@ async def func():  # (None,) -> Any
         await self._eval(ctx, code)
 
     @internal_group.command(name="socketstats", aliases=("socket", "stats"))  # type: ignore[arg-type]
-    @has_any_role(Roles.administrators, Roles.core_developers)
-    async def socketstats(self: Self, ctx: Context) -> None:  # type: ignore[type-arg]
+    @commands.has_any_role(Roles.administrators, Roles.core_developers)
+    async def socketstats(self: Self, ctx: commands.Context[Bot]) -> None:
         """Fetch information on the socket events received from Discord."""
         running_s = (arrow.utcnow() - self.socket_since).total_seconds()
 

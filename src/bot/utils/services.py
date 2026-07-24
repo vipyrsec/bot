@@ -26,8 +26,7 @@ async def send_to_paste_service(
     extension: str = "",
     max_length: int = MAX_PASTE_LENGTH,
 ) -> str:
-    """
-    Upload `contents` to the paste service.
+    """Upload `contents` to the paste service.
 
     Add `extension` to the output URL. Use `max_length` to limit the allowed contents length
     to lower than the maximum allowed by the paste service.

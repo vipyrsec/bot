@@ -1,6 +1,9 @@
 """Download the most recent packages from PyPI and use Dragonfly to check them for malware."""
 
+from __future__ import annotations
+
 import logging
+import urllib.parse
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from logging import getLogger
@@ -55,7 +58,7 @@ def _build_package_report_log_embed(
 async def handle_submit(
     *,
     report: PackageReport,
-    interaction: discord.Interaction,
+    interaction: discord.Interaction[discord.Client],
     dragonfly_services: DragonflyServices,
 ) -> None:
     """Handle modal submit."""
@@ -103,7 +106,7 @@ async def handle_submit(
 class ConfirmEmailReportModal(discord.ui.Modal):
     """Modal for confirming a report."""
 
-    recipient = discord.ui.TextInput(  # type: ignore[var-annotated]
+    recipient: discord.ui.TextInput[ConfirmEmailReportModal] = discord.ui.TextInput(
         label="Recipient",
         placeholder="Recipient's Email Address",
         required=False,
@@ -111,14 +114,14 @@ class ConfirmEmailReportModal(discord.ui.Modal):
         style=discord.TextStyle.short,
     )
 
-    additional_information = discord.ui.TextInput(  # type: ignore[var-annotated]
+    additional_information: discord.ui.TextInput[ConfirmEmailReportModal] = discord.ui.TextInput(
         label="Additional information",
         placeholder="Additional information",
         required=False,
         style=discord.TextStyle.long,
     )
 
-    inspector_url = discord.ui.TextInput(  # type: ignore[var-annotated]
+    inspector_url: discord.ui.TextInput[ConfirmEmailReportModal] = discord.ui.TextInput(
         label="Inspector URL",
         placeholder="Inspector URL",
         required=False,
@@ -136,21 +139,20 @@ class ConfirmEmailReportModal(discord.ui.Modal):
 
         super().__init__()
 
-    async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:  # type: ignore[override, type-arg]
+    async def on_error(self: Self, interaction: discord.Interaction[discord.Client], error: Exception) -> None:
         """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
             message = (
-                f"Error from upstream: {error.status}\n"
-                f"```{error.message}```\n"
-                f"Retry using Observation API instead?"
+                f"Error from upstream: {error.status}\n```{error.message}```\nRetry using Observation API instead?"
             )
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
-            return await interaction.response.send_message(message, view=view, ephemeral=True)
+            await interaction.response.send_message(message, view=view, ephemeral=True)
+            return
 
         await interaction.response.send_message("An unexpected error occurred.", ephemeral=True)
         raise error
 
-    async def on_submit(self: Self, interaction: discord.Interaction) -> None:
+    async def on_submit(self: Self, interaction: discord.Interaction[discord.Client]) -> None:
         """Modal submit callback."""
         report = PackageReport(
             name=self.package.name,
@@ -167,14 +169,14 @@ class ConfirmEmailReportModal(discord.ui.Modal):
 class ConfirmReportModal(discord.ui.Modal):
     """Modal for confirming a report through the Observations API."""
 
-    additional_information = discord.ui.TextInput(
+    additional_information: discord.ui.TextInput[ConfirmReportModal] = discord.ui.TextInput(
         label="Additional information",
         placeholder="Additional information",
         required=True,
         style=discord.TextStyle.long,
     )
 
-    inspector_url = discord.ui.TextInput(
+    inspector_url: discord.ui.TextInput[ConfirmReportModal] = discord.ui.TextInput(
         label="Inspector URL",
         placeholder="Inspector URL",
         required=False,
@@ -193,17 +195,18 @@ class ConfirmReportModal(discord.ui.Modal):
 
         super().__init__()
 
-    async def on_error(self: Self, interaction: discord.Interaction, error: Exception) -> None:
+    async def on_error(self: Self, interaction: discord.Interaction[discord.Client], error: Exception) -> None:
         """Handle errors that occur in the modal."""
         if isinstance(error, aiohttp.ClientResponseError):
             message = f"Error from upstream: {error.status}\n```{error.message}```\nRetry using email instead?"
             view = ReportMethodSwitchConfirmationView(previous_modal=self)
-            return await interaction.response.send_message(message, view=view, ephemeral=True)
+            await interaction.response.send_message(message, view=view, ephemeral=True)
+            return
 
         await interaction.response.send_message("An unexpected error occurred.", ephemeral=True)
         raise error
 
-    async def on_submit(self: Self, interaction: discord.Interaction) -> None:
+    async def on_submit(self: Self, interaction: discord.Interaction[discord.Client]) -> None:
         """Modal submit callback."""
         report = PackageReport(
             name=self.package.name,
@@ -231,7 +234,11 @@ class ReportMethodSwitchConfirmationView(discord.ui.View):
         self.bot = previous_modal.bot
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
-    async def confirm(self: Self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
+    async def confirm(
+        self: Self,
+        interaction: discord.Interaction[Bot],
+        _button: discord.ui.Button[ReportMethodSwitchConfirmationView],
+    ) -> None:
         """Confirm button callback."""
         if isinstance(self.previous_modal, ConfirmReportModal):
             modal = ConfirmEmailReportModal(package=self.package, bot=self.bot)
@@ -244,7 +251,11 @@ class ReportMethodSwitchConfirmationView(discord.ui.View):
         await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="No, retry the operation", style=discord.ButtonStyle.red)
-    async def cancel(self: Self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
+    async def cancel(
+        self: Self,
+        interaction: discord.Interaction[Bot],
+        _button: discord.ui.Button[ReportMethodSwitchConfirmationView],
+    ) -> None:
         """Cancel button callback."""
         modal = type(self.previous_modal)(package=self.package, bot=self.bot)
 
@@ -267,7 +278,7 @@ class ReportView(discord.ui.View):
         self.payload = payload
         super().__init__(timeout=None)
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    async def interaction_check(self, interaction: discord.Interaction[discord.Client]) -> bool:
         """Check that only those with the 'Vipyr Security' role can use this view."""
         if isinstance(interaction.user, discord.Member):
             return constants.Roles.vipyr_security in {role.id for role in interaction.user.roles}
@@ -280,7 +291,11 @@ class ReportView(discord.ui.View):
         return False
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
-    async def report(self: Self, interaction: discord.Interaction, button: discord.ui.Button) -> None:  # type: ignore[type-arg]
+    async def report(
+        self: Self,
+        interaction: discord.Interaction[Bot],
+        button: discord.ui.Button[ReportView],
+    ) -> None:
         """Report a package."""
         modal = ConfirmReportModal(package=self.payload, bot=self.bot)
         await interaction.response.send_modal(modal)
@@ -303,11 +318,14 @@ def _build_package_scan_result_embed(scan_result: Package) -> discord.Embed:
         timestamp=scan_result.queued_at,
     )
 
-    embed.add_field(
-        name="\u200b",
-        value=f"[Inspector]({scan_result.inspector_url})",
-        inline=True,
-    )
+    if scan_result.inspector_url is not None:
+        # Markdown rendering fails in Discord when an Inspector URL includes spaces.
+        quoted_inspector_url = urllib.parse.quote(scan_result.inspector_url, safe=":/")
+        embed.add_field(
+            name="\u200b",
+            value=f"[Inspector]({quoted_inspector_url})",
+            inline=True,
+        )
 
     embed.add_field(
         name="\u200b",
@@ -437,7 +455,7 @@ class Dragonfly(commands.Cog):
 
     @commands.has_role(Roles.vipyr_security)
     @commands.hybrid_command()
-    async def queue(self: Self, ctx: commands.Context, name: str, version: str) -> None:
+    async def queue(self: Self, ctx: commands.Context[Bot], name: str, version: str) -> None:
         """Add a package to the Dragonfly scan queue."""
         try:
             await self.bot.dragonfly_services.queue_package(name=name, version=version)
@@ -465,7 +483,7 @@ class Dragonfly(commands.Cog):
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
-    async def start(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
+    async def start(self: Self, ctx: commands.Context[Bot]) -> None:
         """Start the scan task."""
         if self.scan_loop.is_running():
             await ctx.send("Task is already running")
@@ -475,7 +493,11 @@ class Dragonfly(commands.Cog):
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()
-    async def stop(self: Self, ctx: commands.Context, force: bool = False) -> None:  # type: ignore[type-arg] # noqa: FBT001,FBT002
+    async def stop(
+        self: Self,
+        ctx: commands.Context[Bot],
+        force: bool = False,  # noqa: FBT001,FBT002 -- Discord exposes command arguments positionally.
+    ) -> None:
         """Stop the scan task."""
         if self.scan_loop.is_running():
             if force:
@@ -489,29 +511,56 @@ class Dragonfly(commands.Cog):
 
     @discord.app_commands.checks.has_role(Roles.vipyr_security)  # type: ignore[arg-type]
     @discord.app_commands.command(name="lookup", description="Scans a package")
-    async def lookup(self: Self, interaction: discord.Interaction, name: str, version: str | None = None) -> None:  # type: ignore[type-arg]
+    async def lookup(
+        self: Self,
+        interaction: discord.Interaction[Bot],
+        name: str,
+        version: str | None = None,
+    ) -> None:
         """Pull the scan results for a package."""
         scan_results = await self.bot.dragonfly_services.get_scanned_packages(name=name, version=version)
+
+        url = f"https://pypi.org/pypi/{name}"
+        if version:
+            url += f"/{version}"
+
+        async with self.bot.http_session.get(url + "/json") as resp:
+            exists_on_pypi = resp.ok
+
         if scan_results:
             package = scan_results[0]
             embed = _build_package_scan_result_embed(package)
-            await interaction.response.send_message(embed=embed, view=ReportView(self.bot, package))
+
+            view = ReportView(self.bot, package)
+            if not exists_on_pypi:
+                embed.title = f"{embed.title or 'Package'} (removed)"
+
+            await interaction.response.send_message(embed=embed, view=view)
         else:
-            await interaction.response.send_message("No entries were found with the specified filters.")
+            if exists_on_pypi:
+                view = discord.ui.View()
+                btn: discord.ui.Button[discord.ui.View] = discord.ui.Button(
+                    style=discord.ButtonStyle.link, label="View on PyPI", url=url
+                )
+                view.add_item(btn)
+            else:
+                view = discord.utils.MISSING
+
+            await interaction.response.send_message("No entries were found with the specified filters.", view=view)
 
     @commands.group()
-    async def threshold(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
+    async def threshold(self: Self, ctx: commands.Context[Bot]) -> None:
         """Group of commands for managing the score threshold."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(self.threshold)
 
     @threshold.command()  # type: ignore[arg-type]
-    async def get(self: Self, ctx: commands.Context) -> None:  # type: ignore[type-arg]
+    async def get(self: Self, ctx: commands.Context[Bot]) -> None:
         """Get the score threshold."""
         await ctx.send(f"The current threshold is set to `{self.score_threshold}`")
 
     @threshold.command()  # type: ignore[arg-type]
-    async def set(self: Self, ctx: commands.Context, value: int) -> None:  # type: ignore[type-arg]
+    async def set(self: Self, ctx: commands.Context[Bot], value: int) -> None:
         """Set the score threshold."""
         self.score_threshold = value
         await ctx.send(f"The current threshold has been set to `{value}`")

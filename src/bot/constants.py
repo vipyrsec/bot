@@ -1,5 +1,4 @@
-"""
-Loads bot configuration from environment variables and `.env` files.
+"""Loads bot configuration from environment variables and `.env` files.
 
 By default, the values defined in the classes are used, these can be overridden by an env var with the same name.
 
@@ -9,7 +8,7 @@ An `.env` file is used to populate env vars, if present.
 from os import getenv
 from typing import ClassVar
 
-from pydantic import root_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -58,16 +57,11 @@ FILE_LOGS = Miscellaneous.file_logs
 DEBUG_MODE = Miscellaneous.debug
 
 
-class _Dragonfly(EnvConfig, env_prefix="auth0_"):
-    """Configuration for the Dragonfly API."""
+class _Dragonfly(EnvConfig, env_prefix="cf_access_"):
+    """Cloudflare Access configuration for the Dragonfly API."""
 
-    base_url: str = "https://dragonfly.vipyrsec.com"
-    auth_url: str = "https://vipyrsec.us.auth0.com/oauth/token"
-    audience: str = "https://dragonfly.vipyrsec.com"
     client_id: str = ""
     client_secret: str = ""
-    username: str = ""
-    password: str = ""
 
 
 Dragonfly = _Dragonfly()
@@ -204,12 +198,19 @@ class _Colours(EnvConfig, env_prefix="colours_"):
     grass_green: int = 0x66FF00
     gold: int = 0xE6C200
 
-    @root_validator(pre=True)
-    def parse_hex_values(cls, values: dict[str, int]) -> dict[str, int]:  # noqa: N805 - check this
-        """Verify that colors are valid hex."""
-        for key, value in values.items():
-            values[key] = int(value, 16)  # type: ignore[call-overload]
-        return values
+    @field_validator("*", mode="before")
+    @classmethod
+    def parse_hex_values(cls, value: int | str) -> int:
+        max_color_code = 0xFFFFFF
+        msg = f"'{value}' could not be parsed into a color code."
+        try:
+            c = value if isinstance(value, int) else int(value, 16)
+            if 0 <= c <= max_color_code:
+                return c
+        except ValueError as e:
+            raise ValueError(msg) from e
+
+        raise ValueError(msg)
 
 
 Colours = _Colours()
