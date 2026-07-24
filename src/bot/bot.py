@@ -28,42 +28,6 @@ class BotInitOptions(TypedDict):
     intents: discord.Intents
 
 
-class CommandTree(discord.app_commands.CommandTree[discord.Client]):
-    """Custom command tree that handles errors raised by commands."""
-
-    def __init__(self: Self, bot: discord.Client) -> None:
-        super().__init__(bot)
-
-    async def on_error(
-        self: Self,
-        interaction: discord.Interaction[discord.Client],
-        error: discord.app_commands.AppCommandError,
-    ) -> None:
-        """Override the default error handler to handle custom errors."""
-        if isinstance(error, discord.app_commands.MissingRole):
-            log.warning(
-                "User '%s' attempted to run command '%s', which requires the '%s' role which the user is missing.",
-                interaction.user,
-                interaction.command.name if interaction.command else "None",
-                error.missing_role,
-            )
-
-            await interaction.response.send_message(
-                f"The '{error.missing_role}' role is required to run this command.",
-                ephemeral=True,
-            )
-        elif isinstance(error, discord.app_commands.NoPrivateMessage):
-            log.warning(
-                "User '%s' attempted to run command '%s', which cannot be invoked from DMs",
-                interaction.user,
-                interaction.command,
-            )
-
-            await interaction.response.send_message("This command cannot be used in DMs.", ephemeral=True)
-        else:
-            raise error
-
-
 class Bot(BotBase):  # type: ignore[misc]
     """Bot implementation."""
 
@@ -82,7 +46,6 @@ class Bot(BotBase):  # type: ignore[misc]
         base_init = cast("Callable[..., None]", vars(BotBase)["__init__"])
         base_init(
             self,
-            tree_cls=CommandTree,
             **options,
         )
 

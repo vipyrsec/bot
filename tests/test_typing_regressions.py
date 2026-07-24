@@ -6,9 +6,12 @@ import asyncio
 from typing import Any, cast
 from unittest.mock import AsyncMock, Mock, patch
 
+import discord
+from aiohttp import ClientSession
 from discord.ext import commands
 
 from bot.bot import Bot
+from bot.dragonfly_services import DragonflyServices
 from bot.exts.core.error_handler import CommandErrorHandler
 from bot.exts.dragonfly import threat_intel_feed
 from bot.utils.messages import get_discord_message
@@ -51,3 +54,25 @@ def test_invalid_command_input_resets_its_cooldown() -> None:
     CommandErrorHandler.revert_cooldown_counter(command, ctx)
 
     command_mock.reset_cooldown.assert_called_once_with(ctx)
+
+
+def test_bot_constructs_with_pydis_command_tree() -> None:
+    """The bot must let pydis-core provide its command-tree implementation."""
+
+    def command_prefix(_bot: Bot, _message: discord.Message) -> list[str]:
+        return ["!"]
+
+    async def construct_bot() -> None:
+        async with ClientSession() as session:
+            dragonfly_services = cast("DragonflyServices", Mock())
+            bot = Bot(
+                dragonfly_services=dragonfly_services,
+                guild_id=1,
+                allowed_roles=[],
+                http_session=session,
+                command_prefix=command_prefix,
+                intents=discord.Intents.none(),
+            )
+            await bot.close()
+
+    asyncio.run(construct_bot())
