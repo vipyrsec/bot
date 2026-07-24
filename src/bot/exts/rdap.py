@@ -33,6 +33,7 @@ from bot.utils.rdap import (
 log = logging.getLogger(__name__)
 
 MAX_NAMESERVERS = 3
+MAX_EMBED_TITLE_LENGTH = 256
 MAX_TABLE_LENGTH = 3_900
 MAX_VALUE_LENGTH = 500
 RDAP_MEDIA_TYPE = "application/rdap+json"
@@ -84,8 +85,12 @@ class RDAP(commands.Cog):
             await ctx.send("❌ The RDAP service returned an invalid response. Please try again later.")
             return
 
+        title = f"RDAP Lookup: {normalized_query}"
+        if len(title) > MAX_EMBED_TITLE_LENGTH:
+            title = f"{title[: MAX_EMBED_TITLE_LENGTH - 1]}…"
+
         embed = Embed(
-            title=f"RDAP Lookup: {normalized_query}",
+            title=title,
             description=table,
             colour=Colours.blue,
         )

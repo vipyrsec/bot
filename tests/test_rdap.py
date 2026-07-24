@@ -170,7 +170,22 @@ def test_rdap_command_handles_table_overflow() -> None:
     ctx_mock.send.assert_awaited_once_with("❌ The RDAP service returned an invalid response. Please try again later.")
 
 
-def _invoke_rdap_command() -> Mock:
+def test_rdap_command_bounds_long_domain_title() -> None:
+    """A valid maximum-length domain must fit Discord's embed title limit."""
+    query = ".".join(("a" * 63, "b" * 63, "c" * 63, "d" * 61))
+    with (
+        patch.object(rdap, "fetch_rdap_data", AsyncMock(return_value={})),
+        patch.object(rdap, "fetch_related_domain_data", AsyncMock(return_value=None)),
+        patch.object(rdap, "build_result_data", return_value={"Domain": query}),
+    ):
+        ctx_mock = _invoke_rdap_command(query)
+
+    embed = ctx_mock.send.await_args.kwargs["embed"]
+    assert len(embed.title) == rdap.MAX_EMBED_TITLE_LENGTH
+    assert embed.title.endswith("…")
+
+
+def _invoke_rdap_command(query: str = "example.com") -> Mock:
     """Invoke the decorated command callback with typed mocks."""
     bot = cast("Bot", Mock())
     ctx_mock = Mock()
@@ -179,5 +194,5 @@ def _invoke_rdap_command() -> Mock:
     cog = rdap.RDAP(bot)
     command = cast("commands.Command[Any, ..., Any]", rdap.RDAP.rdap_command)
 
-    asyncio.run(command.callback(cog, ctx, query="example.com"))
+    asyncio.run(command.callback(cog, ctx, query=query))
     return ctx_mock
