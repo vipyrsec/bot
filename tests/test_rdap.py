@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Coroutine
 from typing import Any, cast
 from unittest.mock import AsyncMock, Mock, patch
 
+import discord
 import pytest
-from discord.ext import commands
+from aiohttp import ClientSession
+from discord import app_commands
 
 from bot.bot import Bot
 from bot.exts import rdap
@@ -106,6 +109,20 @@ def test_domain_result_combines_registry_and_registrar_responses() -> None:
     assert result["Nameservers"] == "A.IANA-SERVERS.NET"
 
 
+def test_domain_result_ignores_schema_invalid_registrar_response() -> None:
+    """Invalid optional registrar data must not discard a valid registry result."""
+    primary = {
+        "ldhName": "EXAMPLE.COM",
+        "events": [{"eventAction": "registration", "eventDate": "1995-08-14T04:00:00Z"}],
+    }
+    invalid_related = {"entities": "not-a-list"}
+
+    result = rdap.build_result_data("domain", primary, related_data=invalid_related)
+
+    assert result["Domain"] == "EXAMPLE.COM"
+    assert result["Registration"] == "1995-08-14T04:00:00Z"
+
+
 def test_ip_and_asn_models_render_rfc_fields() -> None:
     """IP and ASN aliases must produce useful output rather than None placeholders."""
     ip_model = RDAPIP.model_validate(
@@ -141,6 +158,47 @@ def test_related_url_safety(url: str, expected: object) -> None:
         assert asyncio.run(rdap.is_safe_related_url(url)) is expected
 
 
+def test_primary_rdap_lookup_retries_one_timeout() -> None:
+    """A transient primary timeout must be retried within the command window."""
+    session = cast("ClientSession", Mock())
+    request = AsyncMock(side_effect=[TimeoutError, {"objectClassName": "domain"}])
+    with patch.object(rdap, "_fetch_rdap_data_once", request):
+        result = asyncio.run(
+            rdap.fetch_rdap_data(
+                session,
+                base_url="https://rdap.example",
+                query_type="domain",
+                query="example.com",
+            )
+        )
+
+    assert result == {"objectClassName": "domain"}
+    assert request.await_count == rdap.RDAP_REQUEST_ATTEMPTS
+
+
+def test_related_rdap_timeout_keeps_primary_result_usable() -> None:
+    """An optional registrar timeout must not discard the registry response."""
+    request_context = AsyncMock()
+    request_context.__aenter__.side_effect = TimeoutError
+    session_mock = Mock()
+    session_mock.get.return_value = request_context
+    session = cast("ClientSession", session_mock)
+    data = {
+        "links": [
+            {
+                "rel": "related",
+                "type": rdap.RDAP_MEDIA_TYPE,
+                "href": "https://rdap.example/domain/example.com",
+            }
+        ]
+    }
+
+    with patch.object(rdap, "is_safe_related_url", AsyncMock(return_value=True)):
+        result = asyncio.run(rdap.fetch_related_domain_data(session, data))
+
+    assert result is None
+
+
 def test_format_table_contains_external_text_safely() -> None:
     """External response text must not break out of the Markdown code block."""
     table = rdap.format_table({"Registrant": "line one\n```injected```"})
@@ -152,9 +210,9 @@ def test_format_table_contains_external_text_safely() -> None:
 def test_rdap_command_handles_request_timeout() -> None:
     """An upstream timeout must produce the RDAP-specific error response."""
     with patch.object(rdap, "fetch_rdap_data", AsyncMock(side_effect=TimeoutError)):
-        ctx_mock = _invoke_rdap_command()
+        interaction_mock = _invoke_rdap_command()
 
-    ctx_mock.send.assert_awaited_once_with("❌ The RDAP service returned an invalid response. Please try again later.")
+    interaction_mock.followup.send.assert_awaited_once_with("❌ The RDAP service timed out. Please try again.")
 
 
 def test_rdap_command_handles_table_overflow() -> None:
@@ -165,9 +223,11 @@ def test_rdap_command_handles_table_overflow() -> None:
         patch.object(rdap, "fetch_related_domain_data", AsyncMock(return_value=None)),
         patch.object(rdap, "build_result_data", return_value=oversized_result),
     ):
-        ctx_mock = _invoke_rdap_command()
+        interaction_mock = _invoke_rdap_command()
 
-    ctx_mock.send.assert_awaited_once_with("❌ The RDAP service returned an invalid response. Please try again later.")
+    interaction_mock.followup.send.assert_awaited_once_with(
+        "❌ The RDAP service returned an invalid response. Please try again later."
+    )
 
 
 def test_rdap_command_bounds_long_domain_title() -> None:
@@ -178,21 +238,36 @@ def test_rdap_command_bounds_long_domain_title() -> None:
         patch.object(rdap, "fetch_related_domain_data", AsyncMock(return_value=None)),
         patch.object(rdap, "build_result_data", return_value={"Domain": query}),
     ):
-        ctx_mock = _invoke_rdap_command(query)
+        interaction_mock = _invoke_rdap_command(query)
 
-    embed = ctx_mock.send.await_args.kwargs["embed"]
+    embed = interaction_mock.followup.send.await_args.kwargs["embed"]
     assert len(embed.title) == rdap.MAX_EMBED_TITLE_LENGTH
     assert embed.title.endswith("…")
+
+
+def test_rdap_is_registered_as_a_slash_command() -> None:
+    """RDAP must be exposed as an application command, not a prefix command."""
+    command = rdap.RDAP.rdap_command
+
+    assert isinstance(command, app_commands.Command)
+    assert command.name == "rdap"
+    assert command.description == "Look up registration data for a domain, IP address, or ASN"
 
 
 def _invoke_rdap_command(query: str = "example.com") -> Mock:
     """Invoke the decorated command callback with typed mocks."""
     bot = cast("Bot", Mock())
-    ctx_mock = Mock()
-    ctx_mock.send = AsyncMock()
-    ctx = cast("commands.Context[Bot]", ctx_mock)
+    interaction_mock = Mock()
+    interaction_mock.response.defer = AsyncMock()
+    interaction_mock.followup.send = AsyncMock()
+    interaction = cast("discord.Interaction[Bot]", interaction_mock)
     cog = rdap.RDAP(bot)
-    command = cast("commands.Command[Any, ..., Any]", rdap.RDAP.rdap_command)
+    command = cast("app_commands.Command[Any, ..., Any]", rdap.RDAP.rdap_command)
+    callback = cast(
+        "Callable[[rdap.RDAP, discord.Interaction[Bot], str], Coroutine[Any, Any, None]]",
+        command.callback,
+    )
 
-    asyncio.run(command.callback(cog, ctx, query=query))
-    return ctx_mock
+    asyncio.run(callback(cog, interaction, query))
+    interaction_mock.response.defer.assert_awaited_once_with(thinking=True)
+    return interaction_mock
