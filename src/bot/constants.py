@@ -163,6 +163,7 @@ Guild = _Guild()
 
 class _BaseURLs(EnvConfig, env_prefix="urls_"):
     paste: str = "https://paste.pythondiscord.com"
+    rdap: str = "https://rdap.org"
 
 
 BaseURLs = _BaseURLs()
