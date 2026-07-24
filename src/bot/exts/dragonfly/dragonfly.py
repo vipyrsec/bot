@@ -473,17 +473,23 @@ class Dragonfly(commands.Cog):
             self.last_seen_package = now
             self.inactivity_alert_fired = False
 
-        if inactivity_threshold_reached(
+        self.since = now
+        self.scan_error_alert_fired = False
+        if not inactivity_threshold_reached(
             now=now,
             last_seen_package=self.last_seen_package,
             alert_fired=self.inactivity_alert_fired,
         ):
-            embed = _build_inactivity_embed(self.last_seen_package)
-            await alerts_channel.send(f"<@&{Roles.core_developers}>", embed=embed)
-            self.inactivity_alert_fired = True
+            return
 
-        self.since = now
-        self.scan_error_alert_fired = False
+        embed = _build_inactivity_embed(self.last_seen_package)
+        try:
+            await alerts_channel.send(f"<@&{Roles.core_developers}>", embed=embed)
+        except Exception as error:
+            log.exception("Failed to send the Dragonfly inactivity alert; retrying next iteration.")
+            sentry_sdk.capture_exception(error)
+            return
+        self.inactivity_alert_fired = True
 
     async def handle_scan_error(
         self,
