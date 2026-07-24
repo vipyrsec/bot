@@ -357,6 +357,34 @@ def _build_pastebin_embed(paste_response: PasteResponse) -> discord.Embed:
     )
 
 
+def _build_inactivity_embed(last_seen_package: datetime) -> discord.Embed:
+    """Build the embed that indicates that we haven't seen a package in a while."""
+    return discord.Embed(
+        title="Inactivity threshold reached",
+        description=f"Last package was scanned {discord.utils.format_dt(last_seen_package, 'R')}.",
+        color=discord.Color.yellow(),
+    )
+
+
+def _build_scan_error_embed() -> discord.Embed:
+    """Build an alert without exposing exception details in Discord."""
+    return discord.Embed(
+        title="The Dragonfly scan loop encountered an error",
+        description="The error was reported to Sentry. The bot will retry on the next scheduled run.",
+        color=discord.Color.red(),
+    )
+
+
+def inactivity_threshold_reached(
+    *,
+    now: datetime,
+    last_seen_package: datetime,
+    alert_fired: bool,
+) -> bool:
+    """Return whether the current inactivity period needs an alert."""
+    return not alert_fired and now - last_seen_package >= timedelta(seconds=DragonflyConfig.inactivity_threshold)
+
+
 async def run(
     bot: Bot,
     *,
@@ -364,8 +392,8 @@ async def run(
     alerts_channel: discord.abc.Messageable,
     logs_channel: discord.abc.Messageable,
     score: int,
-) -> None:
-    """Script entrypoint."""
+) -> list[Package]:
+    """Fetch and publish one iteration of package scan results."""
     scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
     for result in scan_results:
         if result.score is not None and result.score >= score:
@@ -379,13 +407,15 @@ async def run(
     all_packages_scanned_embed = _build_all_packages_scanned_embed(scan_results)
     if len(all_packages_scanned_embed) <= 4096:  # noqa: PLR2004
         await logs_channel.send(embed=all_packages_scanned_embed)
-    else:
-        content = "\n".join(map(str, scan_results))
-        paste_request = PasteRequest(expiry="1day", files=[PasteFile(lexer="text", content=content)])
-        paste_response = await paste(paste_request, session=bot.http_session)
-        embed = _build_pastebin_embed(paste_response)
-        await logs_channel.send(embed=embed)
-        log.info("Package scan log embed would have exceeded size, sent in a pastebin instead")
+        return scan_results
+
+    content = "\n".join(map(str, scan_results))
+    paste_request = PasteRequest(expiry="1day", files=[PasteFile(lexer="text", content=content)])
+    paste_response = await paste(paste_request, session=bot.http_session)
+    embed = _build_pastebin_embed(paste_response)
+    await logs_channel.send(embed=embed)
+    log.info("Package scan log embed would have exceeded size, sent in a pastebin instead")
+    return scan_results
 
 
 class Dragonfly(commands.Cog):
@@ -396,6 +426,9 @@ class Dragonfly(commands.Cog):
         self.bot = bot
         self.score_threshold = DragonflyConfig.threshold
         self.since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
+        self.last_seen_package = datetime.now(tz=UTC)
+        self.inactivity_alert_fired = False
+        self.scan_error_alert_fired = False
         super().__init__()
 
     @commands.hybrid_command(name="username")  # type: ignore [arg-type]
@@ -417,18 +450,70 @@ class Dragonfly(commands.Cog):
         assert isinstance(alerts_channel, discord.abc.Messageable)
 
         try:
-            await run(
-                self.bot,
-                since=self.since,
-                logs_channel=logs_channel,
-                alerts_channel=alerts_channel,
-                score=self.score_threshold,
+            await self.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel)
+        except Exception as error:  # noqa: BLE001 - A monitoring loop must survive unexpected failures.
+            await self.handle_scan_error(error, alerts_channel)
+
+    async def run_scan_iteration(
+        self,
+        *,
+        logs_channel: discord.abc.Messageable,
+        alerts_channel: discord.abc.Messageable,
+    ) -> None:
+        """Run one scan-loop iteration and update activity state after it succeeds."""
+        scan_results = await run(
+            self.bot,
+            since=self.since,
+            logs_channel=logs_channel,
+            alerts_channel=alerts_channel,
+            score=self.score_threshold,
+        )
+        now = datetime.now(tz=UTC)
+        if scan_results:
+            self.last_seen_package = now
+            self.inactivity_alert_fired = False
+
+        self.since = now
+        self.scan_error_alert_fired = False
+        if not inactivity_threshold_reached(
+            now=now,
+            last_seen_package=self.last_seen_package,
+            alert_fired=self.inactivity_alert_fired,
+        ):
+            return
+
+        embed = _build_inactivity_embed(self.last_seen_package)
+        try:
+            await alerts_channel.send(f"<@&{Roles.core_developers}>", embed=embed)
+        except Exception as error:
+            log.exception("Failed to send the Dragonfly inactivity alert; retrying next iteration.")
+            sentry_sdk.capture_exception(error)
+            return
+        self.inactivity_alert_fired = True
+
+    async def handle_scan_error(
+        self,
+        error: Exception,
+        alerts_channel: discord.abc.Messageable,
+    ) -> None:
+        """Report a scan error once per continuous failure period."""
+        log.error(
+            "An error occurred in the scan loop task; retrying next iteration.",
+            exc_info=(type(error), error, error.__traceback__),
+        )
+        sentry_sdk.capture_exception(error)
+        if self.scan_error_alert_fired:
+            return
+
+        try:
+            await alerts_channel.send(
+                f"<@&{Roles.core_developers}>",
+                embed=_build_scan_error_embed(),
             )
-        except Exception as e:
-            log.exception("An error occurred in the scan loop task. Skipping run.")
-            sentry_sdk.capture_exception(e)
-        else:
-            self.since = datetime.now(tz=UTC)
+        except Exception:
+            log.exception("Failed to send the scan-loop error alert")
+            return
+        self.scan_error_alert_fired = True
 
     @scan_loop.before_loop
     async def before_scan_loop(self: Self) -> None:
