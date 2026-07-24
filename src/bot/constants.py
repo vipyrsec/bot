@@ -57,16 +57,11 @@ FILE_LOGS = Miscellaneous.file_logs
 DEBUG_MODE = Miscellaneous.debug
 
 
-class _Dragonfly(EnvConfig, env_prefix="auth0_"):
-    """Configuration for the Dragonfly API."""
+class _Dragonfly(EnvConfig, env_prefix="cf_access_"):
+    """Cloudflare Access configuration for the Dragonfly API."""
 
-    base_url: str = "https://dragonfly.vipyrsec.com"
-    auth_url: str = "https://vipyrsec.us.auth0.com/oauth/token"
-    audience: str = "https://dragonfly.vipyrsec.com"
     client_id: str = ""
     client_secret: str = ""
-    username: str = ""
-    password: str = ""
 
 
 Dragonfly = _Dragonfly()

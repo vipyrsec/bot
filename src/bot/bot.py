@@ -1,10 +1,13 @@
 """Bot subclass."""
 
+from __future__ import annotations
+
 import logging
-from typing import Self
+from collections.abc import Callable, Coroutine
+from typing import Any, Self, TypedDict, Unpack, cast
 
 import discord
-from discord.ext import commands
+from aiohttp import ClientSession
 from pydis_core import BotBase
 from pydis_core.utils import scheduling
 from sentry_sdk import push_scope
@@ -15,15 +18,25 @@ from bot.dragonfly_services import DragonflyServices
 log = logging.getLogger(__name__)
 
 
-class CommandTree(discord.app_commands.CommandTree):  # type: ignore[type-arg]
+class BotInitOptions(TypedDict):
+    """Typed arguments forwarded to the untyped pydis BotBase initializer."""
+
+    guild_id: int
+    allowed_roles: list[discord.Object]
+    http_session: ClientSession
+    command_prefix: Callable[[Bot, discord.Message], list[str]]
+    intents: discord.Intents
+
+
+class CommandTree(discord.app_commands.CommandTree[discord.Client]):
     """Custom command tree that handles errors raised by commands."""
 
-    def __init__(self: Self, bot: commands.Bot) -> None:
+    def __init__(self: Self, bot: discord.Client) -> None:
         super().__init__(bot)
 
     async def on_error(
         self: Self,
-        interaction: discord.Interaction,  # type: ignore[type-arg]
+        interaction: discord.Interaction[discord.Client],
         error: discord.app_commands.AppCommandError,
     ) -> None:
         """Override the default error handler to handle custom errors."""
@@ -57,8 +70,7 @@ class Bot(BotBase):  # type: ignore[misc]
     def __init__(
         self: Self,
         dragonfly_services: DragonflyServices,
-        *args: tuple,
-        **kwargs: dict,
+        **options: Unpack[BotInitOptions],
     ) -> None:
         """Initialise the base bot instance.
 
@@ -66,10 +78,12 @@ class Bot(BotBase):  # type: ignore[misc]
             allowed_roles: A list of role IDs that the bot is allowed to mention.
             http_session (aiohttp.ClientSession): The session to use for the bot.
         """
-        super().__init__(
-            *args,
+        # BotBase's published annotations leave its variadic arguments unknown.
+        base_init = cast("Callable[..., None]", vars(BotBase)["__init__"])
+        base_init(
+            self,
             tree_cls=CommandTree,
-            **kwargs,  # type: ignore[arg-type]
+            **options,
         )
 
         self.dragonfly_services = dragonfly_services
@@ -83,9 +97,10 @@ class Bot(BotBase):  # type: ignore[misc]
         # This is not awaited to avoid a deadlock with any cogs that have
         # wait_until_guild_available in their cog_load method.
         log.debug("load_extensions")
-        scheduling.create_task(self.load_extensions(exts))
+        create_task = cast("Callable[[Coroutine[Any, Any, None]], object]", vars(scheduling)["create_task"])
+        create_task(self.load_extensions(exts))
 
-    async def on_error(self: Self, event: str, *args: tuple, **kwargs: dict) -> None:  # type: ignore[type-arg]
+    async def on_error(self: Self, event: str, *args: object, **kwargs: object) -> None:
         """Log errors raised in event listeners rather than printing them to stderr."""
         with push_scope() as scope:
             scope.set_tag("event", event)
