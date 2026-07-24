@@ -3,10 +3,10 @@
 import re
 from abc import ABCMeta
 
-from discord.ext.commands import CogMeta
+from discord.ext import commands
 
 
-class CogABCMeta(CogMeta, ABCMeta):
+class CogABCMeta(commands.CogMeta, ABCMeta):
     """Metaclass for ABCs meant to be implemented as Cogs."""
 
 
