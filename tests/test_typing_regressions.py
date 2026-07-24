@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Coroutine
+from http import HTTPStatus
 from typing import Any, cast
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
-from aiohttp import ClientSession
+import pytest
+from aiohttp import ClientResponseError, ClientSession, RequestInfo
 from discord.ext import commands
 
 from bot.bot import Bot
@@ -37,12 +40,58 @@ def test_threat_intel_setup_starts_an_idle_watcher() -> None:
     bot = cast("Bot", Mock())
     bot.add_cog = AsyncMock()
 
-    with patch.object(threat_intel_feed, "ThreatIntelFeed", return_value=cog):
+    with (
+        patch.object(threat_intel_feed.constants.ThreatIntelFeed, "access_token", "configured"),
+        patch.object(threat_intel_feed, "ThreatIntelFeed", return_value=cog),
+    ):
         asyncio.run(threat_intel_feed.setup(bot))
 
     watcher.is_running.assert_called_once_with()
     watcher.start.assert_called_once_with()
     bot.add_cog.assert_awaited_once_with(cog)
+
+
+def test_threat_intel_setup_stays_idle_without_token() -> None:
+    """A missing token must keep the cog loaded without starting its watcher."""
+    watcher = Mock()
+    cog = Mock(watcher=watcher)
+    bot = cast("Bot", Mock())
+    bot.add_cog = AsyncMock()
+
+    with (
+        patch.object(threat_intel_feed.constants.ThreatIntelFeed, "access_token", ""),
+        patch.object(threat_intel_feed, "ThreatIntelFeed", return_value=cog),
+    ):
+        asyncio.run(threat_intel_feed.setup(bot))
+
+    watcher.is_running.assert_not_called()
+    watcher.start.assert_not_called()
+    bot.add_cog.assert_awaited_once_with(cog)
+
+
+@pytest.mark.parametrize("status", sorted(threat_intel_feed.REPOSITORY_ACCESS_FAILURES))
+def test_threat_intel_watcher_stops_after_repository_access_failure(status: HTTPStatus) -> None:
+    """Permanent GitHub access failures must not enter the task retry loop."""
+    bot = cast("Bot", Mock())
+    cog = threat_intel_feed.ThreatIntelFeed(bot)
+    error = ClientResponseError(
+        cast("RequestInfo", Mock()),
+        (),
+        status=status,
+        message=status.phrase,
+    )
+    callback = cast(
+        "Callable[[threat_intel_feed.ThreatIntelFeed], Coroutine[Any, Any, None]]",
+        threat_intel_feed.ThreatIntelFeed.watcher.coro,
+    )
+
+    with (
+        patch.object(threat_intel_feed, "fetch_zipfile", AsyncMock(side_effect=error)),
+        patch.object(cog.watcher, "stop") as stop,
+    ):
+        asyncio.run(callback(cog))
+
+    stop.assert_called_once_with()
 
 
 def test_invalid_command_input_resets_its_cooldown() -> None:
