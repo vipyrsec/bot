@@ -13,7 +13,8 @@ from typing import Any, cast
 from urllib.parse import quote, urlsplit
 
 import aiohttp
-from discord import Embed
+import discord
+from discord import Embed, app_commands
 from discord.ext import commands
 from pydantic import ValidationError
 
@@ -36,6 +37,8 @@ MAX_NAMESERVERS = 3
 MAX_EMBED_TITLE_LENGTH = 256
 MAX_TABLE_LENGTH = 3_900
 MAX_VALUE_LENGTH = 500
+RDAP_REQUEST_ATTEMPTS = 2
+RDAP_REQUEST_TIMEOUT_SECONDS = 15
 RDAP_MEDIA_TYPE = "application/rdap+json"
 RDAP_HEADERS = {
     "Accept": RDAP_MEDIA_TYPE,
@@ -49,20 +52,26 @@ class RDAP(commands.Cog):
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
 
-    @commands.command(name="rdap")
-    async def rdap_command(self, ctx: commands.Context[Bot], *, query: str) -> None:
+    @app_commands.command(
+        name="rdap",
+        description="Look up registration data for a domain, IP address, or ASN",
+    )
+    @app_commands.describe(query="Domain, IP address, or ASN to look up")
+    async def rdap_command(self, interaction: discord.Interaction[Bot], query: str) -> None:
         """
         Perform an RDAP lookup for a domain, IP address, or ASN.
 
         Usage:
-        !rdap example.com
-        !rdap 1.1.1.1
-        !rdap AS13335
+        /rdap query:example.com
+        /rdap query:1.1.1.1
+        /rdap query:AS13335
         """
+        await interaction.response.defer(thinking=True)
+
         try:
             query_type, normalized_query = normalize_query(query)
         except InvalidRDAPQuery as error:
-            await ctx.send(f"❌ {error}")
+            await interaction.followup.send(f"❌ {error}")
             return
 
         try:
@@ -78,11 +87,15 @@ class RDAP(commands.Cog):
             result_data = build_result_data(query_type, data, related_data=related_data)
             table = format_table(result_data)
         except RDAPNotFoundError:
-            await ctx.send(f"❌ No results found for `{normalized_query}`.")
+            await interaction.followup.send(f"❌ No results found for `{normalized_query}`.")
             return
-        except (TimeoutError, aiohttp.ClientError, RDAPResponseError, ValidationError):
+        except TimeoutError:
+            log.exception("RDAP lookup timed out for %s", normalized_query)
+            await interaction.followup.send("❌ The RDAP service timed out. Please try again.")
+            return
+        except (aiohttp.ClientError, RDAPResponseError, ValidationError):
             log.exception("RDAP lookup failed for %s", normalized_query)
-            await ctx.send("❌ The RDAP service returned an invalid response. Please try again later.")
+            await interaction.followup.send("❌ The RDAP service returned an invalid response. Please try again later.")
             return
 
         title = f"RDAP Lookup: {normalized_query}"
@@ -94,7 +107,7 @@ class RDAP(commands.Cog):
             description=table,
             colour=Colours.blue,
         )
-        await ctx.send(embed=embed)
+        await interaction.followup.send(embed=embed)
 
 
 class RDAPResponseError(RuntimeError):
@@ -112,9 +125,24 @@ async def fetch_rdap_data(
     query_type: QueryType,
     query: str,
 ) -> dict[str, Any]:
-    """Fetch and validate an RDAP JSON object."""
+    """Fetch and validate an RDAP JSON object, retrying one transient timeout."""
     url = f"{base_url.rstrip('/')}/{query_type}/{quote(query, safe='')}"
-    async with session.get(url, headers=RDAP_HEADERS) as response:
+    for attempt in range(1, RDAP_REQUEST_ATTEMPTS + 1):
+        try:
+            return await _fetch_rdap_data_once(session, url)
+        except TimeoutError:
+            if attempt == RDAP_REQUEST_ATTEMPTS:
+                raise
+            log.warning("RDAP request timed out; retrying %s", url)
+
+    message = "RDAP request exhausted its attempts"
+    raise AssertionError(message)
+
+
+async def _fetch_rdap_data_once(session: aiohttp.ClientSession, url: str) -> dict[str, Any]:
+    """Perform one bounded RDAP request."""
+    timeout = aiohttp.ClientTimeout(total=RDAP_REQUEST_TIMEOUT_SECONDS)
+    async with session.get(url, headers=RDAP_HEADERS, timeout=timeout) as response:
         if response.status == HTTPStatus.NOT_FOUND:
             raise RDAPNotFoundError
         if response.status != HTTPStatus.OK:
@@ -153,19 +181,25 @@ async def fetch_related_domain_data(
             log.warning("Ignoring unsafe related RDAP URL: %r", related_url)
             continue
 
-        async with session.get(related_url, headers=RDAP_HEADERS, allow_redirects=False) as response:
-            if response.status != HTTPStatus.OK:
-                log.warning("Related RDAP lookup returned HTTP %s", response.status)
-                return None
-            try:
+        try:
+            timeout = aiohttp.ClientTimeout(total=RDAP_REQUEST_TIMEOUT_SECONDS)
+            async with session.get(
+                related_url,
+                headers=RDAP_HEADERS,
+                allow_redirects=False,
+                timeout=timeout,
+            ) as response:
+                if response.status != HTTPStatus.OK:
+                    log.warning("Related RDAP lookup returned HTTP %s", response.status)
+                    return None
                 related_data: object = await response.json()
-            except (aiohttp.ContentTypeError, json.JSONDecodeError, UnicodeDecodeError) as error:
-                message = "Related RDAP server returned invalid JSON"
-                raise RDAPResponseError(message) from error
+        except (TimeoutError, aiohttp.ClientError, json.JSONDecodeError, UnicodeDecodeError):
+            log.warning("Ignoring unavailable related RDAP response from %s", related_url, exc_info=True)
+            return None
 
         if not isinstance(related_data, dict):
-            message = "Related RDAP server did not return a JSON object"
-            raise RDAPResponseError(message)
+            log.warning("Ignoring non-object related RDAP response from %s", related_url)
+            return None
         return cast("dict[str, Any]", related_data)
 
     return None
