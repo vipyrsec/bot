@@ -251,7 +251,12 @@ def build_result_data(
     if query_type == "domain":
         models = [RDAPDomain.model_validate(data)]
         if related_data is not None:
-            models.insert(0, RDAPDomain.model_validate(related_data))
+            try:
+                related_model = RDAPDomain.model_validate(related_data)
+            except ValidationError:
+                log.warning("Ignoring schema-invalid related RDAP response", exc_info=True)
+            else:
+                models.insert(0, related_model)
         return _build_domain_result(models)
     if query_type == "ip":
         return _build_ip_result(RDAPIP.model_validate(data))

@@ -109,6 +109,20 @@ def test_domain_result_combines_registry_and_registrar_responses() -> None:
     assert result["Nameservers"] == "A.IANA-SERVERS.NET"
 
 
+def test_domain_result_ignores_schema_invalid_registrar_response() -> None:
+    """Invalid optional registrar data must not discard a valid registry result."""
+    primary = {
+        "ldhName": "EXAMPLE.COM",
+        "events": [{"eventAction": "registration", "eventDate": "1995-08-14T04:00:00Z"}],
+    }
+    invalid_related = {"entities": "not-a-list"}
+
+    result = rdap.build_result_data("domain", primary, related_data=invalid_related)
+
+    assert result["Domain"] == "EXAMPLE.COM"
+    assert result["Registration"] == "1995-08-14T04:00:00Z"
+
+
 def test_ip_and_asn_models_render_rfc_fields() -> None:
     """IP and ASN aliases must produce useful output rather than None placeholders."""
     ip_model = RDAPIP.model_validate(
