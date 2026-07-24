@@ -75,17 +75,18 @@ class RDAP(commands.Cog):
                 await fetch_related_domain_data(self.bot.http_session, data) if query_type == "domain" else None
             )
             result_data = build_result_data(query_type, data, related_data=related_data)
+            table = format_table(result_data)
         except RDAPNotFoundError:
             await ctx.send(f"❌ No results found for `{normalized_query}`.")
             return
-        except (aiohttp.ClientError, RDAPResponseError, ValidationError):
+        except (TimeoutError, aiohttp.ClientError, RDAPResponseError, ValidationError):
             log.exception("RDAP lookup failed for %s", normalized_query)
             await ctx.send("❌ The RDAP service returned an invalid response. Please try again later.")
             return
 
         embed = Embed(
             title=f"RDAP Lookup: {normalized_query}",
-            description=format_table(result_data),
+            description=table,
             colour=Colours.blue,
         )
         await ctx.send(embed=embed)

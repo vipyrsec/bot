@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
-from unittest.mock import AsyncMock
+from typing import Any, cast
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from discord.ext import commands
 
+from bot.bot import Bot
 from bot.exts import rdap
 from bot.utils.rdap import RDAPASN, RDAPIP, InvalidRDAPQuery, RDAPDomain, normalize_query
 
@@ -145,3 +147,37 @@ def test_format_table_contains_external_text_safely() -> None:
 
     assert table.count("```") == 2
     assert "line one '''injected'''" in table
+
+
+def test_rdap_command_handles_request_timeout() -> None:
+    """An upstream timeout must produce the RDAP-specific error response."""
+    with patch.object(rdap, "fetch_rdap_data", AsyncMock(side_effect=TimeoutError)):
+        ctx_mock = _invoke_rdap_command()
+
+    ctx_mock.send.assert_awaited_once_with("❌ The RDAP service returned an invalid response. Please try again later.")
+
+
+def test_rdap_command_handles_table_overflow() -> None:
+    """Oversized valid output must produce the RDAP-specific error response."""
+    oversized_result = {f"Field {index}": "x" * rdap.MAX_VALUE_LENGTH for index in range(8)}
+    with (
+        patch.object(rdap, "fetch_rdap_data", AsyncMock(return_value={})),
+        patch.object(rdap, "fetch_related_domain_data", AsyncMock(return_value=None)),
+        patch.object(rdap, "build_result_data", return_value=oversized_result),
+    ):
+        ctx_mock = _invoke_rdap_command()
+
+    ctx_mock.send.assert_awaited_once_with("❌ The RDAP service returned an invalid response. Please try again later.")
+
+
+def _invoke_rdap_command() -> Mock:
+    """Invoke the decorated command callback with typed mocks."""
+    bot = cast("Bot", Mock())
+    ctx_mock = Mock()
+    ctx_mock.send = AsyncMock()
+    ctx = cast("commands.Context[Bot]", ctx_mock)
+    cog = rdap.RDAP(bot)
+    command = cast("commands.Command[Any, ..., Any]", rdap.RDAP.rdap_command)
+
+    asyncio.run(command.callback(cog, ctx, query="example.com"))
+    return ctx_mock
