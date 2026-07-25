@@ -8,6 +8,7 @@ from typing import cast
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
+import pytest
 
 from bot.bot import Bot
 from bot.dragonfly_services import AlertingConfiguration, Package
@@ -64,6 +65,40 @@ def test_scan_iteration_alerts_once_until_activity_resumes() -> None:
         asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
 
     assert not cog.inactivity_alert_fired
+
+
+def test_scan_iteration_uses_last_known_threshold_during_configuration_outage() -> None:
+    """A configuration-only outage must not stop otherwise available scanning."""
+    bot = cast("Bot", Mock())
+    configuration = AlertingConfiguration(
+        production_score_threshold=12,
+        updated_at=datetime.now(tz=UTC),
+        updated_by="test",
+    )
+    bot.dragonfly_services.get_alerting_configuration = AsyncMock(
+        side_effect=[configuration, TimeoutError("configuration unavailable")]
+    )
+    cog = dragonfly.Dragonfly(bot)
+    logs_channel = cast("discord.abc.Messageable", Mock())
+    alerts_channel = cast("discord.abc.Messageable", Mock())
+
+    with patch.object(dragonfly, "run", AsyncMock(return_value=[])) as run:
+        asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
+        asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
+
+    assert [call.kwargs["score"] for call in run.await_args_list] == [12, 12]
+
+
+def test_scan_iteration_requires_an_initial_threshold() -> None:
+    """The bot must not invent a threshold before Mainframe responds once."""
+    bot = cast("Bot", Mock())
+    bot.dragonfly_services.get_alerting_configuration = AsyncMock(side_effect=TimeoutError("configuration unavailable"))
+    cog = dragonfly.Dragonfly(bot)
+    logs_channel = cast("discord.abc.Messageable", Mock())
+    alerts_channel = cast("discord.abc.Messageable", Mock())
+
+    with pytest.raises(TimeoutError, match="configuration unavailable"):
+        asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
 
 
 def test_scan_errors_alert_once_per_failure_period() -> None:
