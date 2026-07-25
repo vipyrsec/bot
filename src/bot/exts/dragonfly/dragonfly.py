@@ -6,6 +6,7 @@ import logging
 import urllib.parse
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
+from json import JSONDecodeError
 from logging import getLogger
 from typing import Self
 
@@ -13,11 +14,13 @@ import aiohttp
 import discord
 import sentry_sdk
 from discord.ext import commands, tasks
+from pydantic import ValidationError
 
 from bot import constants
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
 from bot.dragonfly_services import DragonflyServices, Package, PackageReport
+from bot.queue_status import build_queue_status_embed
 from bot.utils.pastebin import PasteFile, PasteRequest, PasteResponse, paste
 
 log = getLogger(__name__)
@@ -547,6 +550,19 @@ class Dragonfly(commands.Cog):
         except Exception as e:
             await ctx.send(str(e))
             raise
+
+    @commands.hybrid_command(name="queue-status")
+    @commands.cooldown(1, 10, commands.BucketType.guild)
+    async def queue_status(self: Self, ctx: commands.Context[Bot]) -> None:
+        """Show cached queue health for this bot's Dragonfly service."""
+        try:
+            snapshot = await self.bot.dragonfly_services.get_queue_status()
+        except (TimeoutError, aiohttp.ClientError, JSONDecodeError, UnicodeDecodeError, ValidationError):
+            log.warning("Failed to retrieve Dragonfly queue status", exc_info=True)
+            await ctx.send("Queue status is temporarily unavailable.")
+            return
+
+        await ctx.send(embed=build_queue_status_embed(snapshot))
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()

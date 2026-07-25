@@ -45,6 +45,19 @@ class Package(BaseModel):
         return f"{self.name} {self.version}"
 
 
+class QueueStatus(BaseModel):
+    """Cached queue summary returned by Mainframe."""
+
+    queued: int
+    in_progress: int
+    retryable: int
+    stranded: int
+    total_backlog: int
+    oldest_queued_at: datetime | None
+    oldest_age_seconds: int | None
+    sampled_at: datetime
+
+
 @dataclass
 class PackageReport:
     """Represents the payload sent to the report endpoint."""
@@ -117,6 +130,11 @@ class DragonflyServices:
 
         data = await self.make_request("GET", "/package", params=params)
         return list(map(Package.model_validate, data))
+
+    async def get_queue_status(self: Self) -> QueueStatus:
+        """Get Mainframe's latest cached queue snapshot."""
+        data = await self.make_request("GET", "/queue-status")
+        return QueueStatus.model_validate(data)
 
     async def report_package(
         self: Self,

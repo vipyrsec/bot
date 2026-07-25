@@ -33,7 +33,6 @@ async def main() -> None:
             access_client_id=constants.Dragonfly.client_id,
             access_client_secret=constants.Dragonfly.client_secret,
         )
-
         bot = Bot(
             guild_id=constants.Guild.id,
             http_session=session,
