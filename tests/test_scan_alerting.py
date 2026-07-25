@@ -10,8 +10,18 @@ from unittest.mock import AsyncMock, Mock, patch
 import discord
 
 from bot.bot import Bot
-from bot.dragonfly_services import Package
+from bot.dragonfly_services import AlertingConfiguration, Package
 from bot.exts.dragonfly import dragonfly
+
+
+def configure_alerting_api(bot: Bot, threshold: int = 8) -> None:
+    bot.dragonfly_services.get_alerting_configuration = AsyncMock(
+        return_value=AlertingConfiguration(
+            production_score_threshold=threshold,
+            updated_at=datetime.now(tz=UTC),
+            updated_by="test",
+        )
+    )
 
 
 def test_inactivity_threshold_is_inclusive() -> None:
@@ -34,6 +44,7 @@ def test_inactivity_threshold_is_inclusive() -> None:
 def test_scan_iteration_alerts_once_until_activity_resumes() -> None:
     """A continuous inactivity period must produce one alert and reset on activity."""
     bot = cast("Bot", Mock())
+    configure_alerting_api(bot)
     cog = dragonfly.Dragonfly(bot)
     cog.last_seen_package = datetime.now(tz=UTC) - timedelta(seconds=dragonfly.DragonflyConfig.inactivity_threshold + 1)
     logs_channel = cast("discord.abc.Messageable", Mock())
@@ -58,6 +69,7 @@ def test_scan_iteration_alerts_once_until_activity_resumes() -> None:
 def test_scan_errors_alert_once_per_failure_period() -> None:
     """Repeated task errors must reach Sentry without spamming Discord."""
     bot = cast("Bot", Mock())
+    configure_alerting_api(bot)
     cog = dragonfly.Dragonfly(bot)
     alerts_channel_mock = Mock()
     alerts_channel_mock.send = AsyncMock()
@@ -75,6 +87,7 @@ def test_scan_errors_alert_once_per_failure_period() -> None:
 def test_inactivity_alert_failure_preserves_successful_scan_progress() -> None:
     """Alert delivery failures must not retain the cursor or become scan errors."""
     bot = cast("Bot", Mock())
+    configure_alerting_api(bot)
     cog = dragonfly.Dragonfly(bot)
     previous_cursor = cog.since
     cog.last_seen_package = datetime.now(tz=UTC) - timedelta(seconds=dragonfly.DragonflyConfig.inactivity_threshold + 1)

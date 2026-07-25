@@ -75,7 +75,6 @@ class _DragonflyConfig(EnvConfig, env_prefix="dragonfly_"):
     alerts_role_id: int = 1122647527485878392
     api_url: str = "https://dragonfly.vipyrsec.com"
     interval: int = 60
-    threshold: int = 8
     timeout: int = 25
     inactivity_threshold: int = 60 * 10  # 10 minutes
 

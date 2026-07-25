@@ -309,9 +309,13 @@ class ReportView(discord.ui.View):
             await interaction.edit_original_response(view=self)
 
 
-def _build_package_scan_result_embed(scan_result: Package) -> discord.Embed:
+def _build_package_scan_result_embed(
+    scan_result: Package,
+    *,
+    production_score_threshold: int,
+) -> discord.Embed:
     """Build the embed that shows the results of a package scan."""
-    condition = (scan_result.score or 0) >= DragonflyConfig.threshold
+    condition = (scan_result.score or 0) >= production_score_threshold
     title, color = ("Malicious", 0xF70606) if condition else ("Benign", 0x4CBB17)
 
     embed = discord.Embed(
@@ -400,7 +404,10 @@ async def run(
     scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
     for result in scan_results:
         if result.score is not None and result.score >= score:
-            embed = _build_package_scan_result_embed(result)
+            embed = _build_package_scan_result_embed(
+                result,
+                production_score_threshold=score,
+            )
             await alerts_channel.send(
                 f"<@&{DragonflyConfig.alerts_role_id}>",
                 embed=embed,
@@ -427,7 +434,6 @@ class Dragonfly(commands.Cog):
     def __init__(self: Self, bot: Bot) -> None:
         """Initialize the Dragonfly cog."""
         self.bot = bot
-        self.score_threshold = DragonflyConfig.threshold
         self.since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
         self.last_seen_package = datetime.now(tz=UTC)
         self.inactivity_alert_fired = False
@@ -464,12 +470,13 @@ class Dragonfly(commands.Cog):
         alerts_channel: discord.abc.Messageable,
     ) -> None:
         """Run one scan-loop iteration and update activity state after it succeeds."""
+        alerting_configuration = await self.bot.dragonfly_services.get_alerting_configuration()
         scan_results = await run(
             self.bot,
             since=self.since,
             logs_channel=logs_channel,
             alerts_channel=alerts_channel,
-            score=self.score_threshold,
+            score=alerting_configuration.production_score_threshold,
         )
         now = datetime.now(tz=UTC)
         if scan_results:
@@ -543,7 +550,11 @@ class Dragonfly(commands.Cog):
                 )
 
                 if scan_results:
-                    embed = _build_package_scan_result_embed(scan_results[0])
+                    configuration = await self.bot.dragonfly_services.get_alerting_configuration()
+                    embed = _build_package_scan_result_embed(
+                        scan_results[0],
+                        production_score_threshold=configuration.production_score_threshold,
+                    )
                     await ctx.send(f"Package `{name} v{version}` has already been scanned.", embed=embed)
                 else:
                     await ctx.send(f"Package `{name} v{version}` is already waiting to be scanned.")
@@ -612,7 +623,11 @@ class Dragonfly(commands.Cog):
 
         if scan_results:
             package = scan_results[0]
-            embed = _build_package_scan_result_embed(package)
+            configuration = await self.bot.dragonfly_services.get_alerting_configuration()
+            embed = _build_package_scan_result_embed(
+                package,
+                production_score_threshold=configuration.production_score_threshold,
+            )
 
             view = ReportView(self.bot, package)
             if not exists_on_pypi:
@@ -631,6 +646,7 @@ class Dragonfly(commands.Cog):
 
             await interaction.response.send_message("No entries were found with the specified filters.", view=view)
 
+    @commands.has_role(Roles.vipyr_security)
     @commands.group()
     async def threshold(self: Self, ctx: commands.Context[Bot]) -> None:
         """Group of commands for managing the score threshold."""
@@ -640,13 +656,14 @@ class Dragonfly(commands.Cog):
     @threshold.command()  # type: ignore[arg-type]
     async def get(self: Self, ctx: commands.Context[Bot]) -> None:
         """Get the score threshold."""
-        await ctx.send(f"The current threshold is set to `{self.score_threshold}`")
+        configuration = await self.bot.dragonfly_services.get_alerting_configuration()
+        await ctx.send(f"The current threshold is set to `{configuration.production_score_threshold}`")
 
     @threshold.command()  # type: ignore[arg-type]
     async def set(self: Self, ctx: commands.Context[Bot], value: int) -> None:
         """Set the score threshold."""
-        self.score_threshold = value
-        await ctx.send(f"The current threshold has been set to `{value}`")
+        configuration = await self.bot.dragonfly_services.update_alerting_configuration(value)
+        await ctx.send(f"The current threshold has been set to `{configuration.production_score_threshold}`")
 
 
 async def setup(bot: Bot) -> None:
