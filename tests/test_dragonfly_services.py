@@ -9,7 +9,14 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from bot.dragonfly_services import DragonflyServices, Package, PackageReport, QueueStatus, ScanStatus
+from bot.dragonfly_services import (
+    AlertingConfiguration,
+    DragonflyServices,
+    Package,
+    PackageReport,
+    QueueStatus,
+    ScanStatus,
+)
 
 
 class _MockResponse:
@@ -212,4 +219,46 @@ def test_queue_package() -> None:
         "POST",
         "/package",
         json={"name": "example", "version": "1.0.0"},
+    )
+
+
+def test_get_alerting_configuration() -> None:
+    service = _service()
+    updated_at = dt.datetime(2026, 7, 25, 12, 0, tzinfo=dt.UTC)
+    service.make_request = AsyncMock(
+        return_value={
+            "production_score_threshold": 8,
+            "updated_at": int(updated_at.timestamp()),
+            "updated_by": "bot",
+        }
+    )
+
+    configuration = asyncio.run(service.get_alerting_configuration())
+
+    assert configuration == AlertingConfiguration(
+        production_score_threshold=8,
+        updated_at=updated_at,
+        updated_by="bot",
+    )
+    service.make_request.assert_awaited_once_with("GET", "/alerting/configuration")
+
+
+def test_update_alerting_configuration() -> None:
+    service = _service()
+    updated_at = dt.datetime(2026, 7, 25, 12, 0, tzinfo=dt.UTC)
+    service.make_request = AsyncMock(
+        return_value={
+            "production_score_threshold": 12,
+            "updated_at": int(updated_at.timestamp()),
+            "updated_by": "bot",
+        }
+    )
+
+    configuration = asyncio.run(service.update_alerting_configuration(12))
+
+    assert configuration.production_score_threshold == 12
+    service.make_request.assert_awaited_once_with(
+        "PUT",
+        "/alerting/configuration",
+        json={"production_score_threshold": 12},
     )

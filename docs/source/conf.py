@@ -4,6 +4,9 @@ For the full list of built-in configuration values, see the documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
+import importlib
+import inspect
+import types
 from importlib.metadata import metadata
 
 project_metadata = metadata("bot")
@@ -59,10 +62,6 @@ def linkcode_resolve(domain: str, info: dict) -> str:
         return None
     if not info["module"]:
         return None
-
-    import importlib
-    import inspect
-    import types
 
     mod = importlib.import_module(info["module"])
 

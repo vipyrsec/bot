@@ -58,6 +58,14 @@ class QueueStatus(BaseModel):
     sampled_at: datetime
 
 
+class AlertingConfiguration(BaseModel):
+    """Production alerting configuration owned by Mainframe."""
+
+    production_score_threshold: int
+    updated_at: datetime
+    updated_by: str
+
+
 @dataclass
 class PackageReport:
     """Represents the payload sent to the report endpoint."""
@@ -135,6 +143,23 @@ class DragonflyServices:
         """Get Mainframe's latest cached queue snapshot."""
         data = await self.make_request("GET", "/queue-status")
         return QueueStatus.model_validate(data)
+
+    async def get_alerting_configuration(self: Self) -> AlertingConfiguration:
+        """Get Mainframe's durable production alerting configuration."""
+        data = await self.make_request("GET", "/alerting/configuration")
+        return AlertingConfiguration.model_validate(data)
+
+    async def update_alerting_configuration(
+        self: Self,
+        production_score_threshold: int,
+    ) -> AlertingConfiguration:
+        """Update Mainframe's durable production alerting configuration."""
+        data = await self.make_request(
+            "PUT",
+            "/alerting/configuration",
+            json={"production_score_threshold": production_score_threshold},
+        )
+        return AlertingConfiguration.model_validate(data)
 
     async def report_package(
         self: Self,
