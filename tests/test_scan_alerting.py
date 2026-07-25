@@ -8,7 +8,6 @@ from typing import cast
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
-import pytest
 
 from bot.bot import Bot
 from bot.dragonfly_services import AlertingConfiguration, Package
@@ -89,16 +88,19 @@ def test_scan_iteration_uses_last_known_threshold_during_configuration_outage() 
     assert [call.kwargs["score"] for call in run.await_args_list] == [12, 12]
 
 
-def test_scan_iteration_requires_an_initial_threshold() -> None:
-    """The bot must not invent a threshold before Mainframe responds once."""
+def test_scan_iteration_uses_bootstrap_threshold_during_startup_outage() -> None:
+    """A startup configuration outage must not stop scanning."""
     bot = cast("Bot", Mock())
     bot.dragonfly_services.get_alerting_configuration = AsyncMock(side_effect=TimeoutError("configuration unavailable"))
     cog = dragonfly.Dragonfly(bot)
     logs_channel = cast("discord.abc.Messageable", Mock())
     alerts_channel = cast("discord.abc.Messageable", Mock())
 
-    with pytest.raises(TimeoutError, match="configuration unavailable"):
+    with patch.object(dragonfly, "run", AsyncMock(return_value=[])) as run:
         asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
+
+    run.assert_awaited_once()
+    assert run.await_args_list[0].kwargs["score"] == dragonfly.DragonflyConfig.bootstrap_threshold
 
 
 def test_scan_errors_alert_once_per_failure_period() -> None:

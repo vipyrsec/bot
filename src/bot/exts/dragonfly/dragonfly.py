@@ -434,7 +434,7 @@ class Dragonfly(commands.Cog):
     def __init__(self: Self, bot: Bot) -> None:
         """Initialize the Dragonfly cog."""
         self.bot = bot
-        self.score_threshold: int | None = None
+        self.score_threshold = DragonflyConfig.bootstrap_threshold
         self.since = datetime.now(tz=UTC) - timedelta(seconds=DragonflyConfig.interval)
         self.last_seen_package = datetime.now(tz=UTC)
         self.inactivity_alert_fired = False
@@ -474,8 +474,6 @@ class Dragonfly(commands.Cog):
         try:
             alerting_configuration = await self.bot.dragonfly_services.get_alerting_configuration()
         except (TimeoutError, aiohttp.ClientError, JSONDecodeError, UnicodeDecodeError, ValidationError):
-            if self.score_threshold is None:
-                raise
             log.warning(
                 "Failed to refresh the production score threshold; using the last known value.",
                 exc_info=True,
@@ -483,7 +481,6 @@ class Dragonfly(commands.Cog):
         else:
             self.score_threshold = alerting_configuration.production_score_threshold
 
-        assert self.score_threshold is not None
         scan_results = await run(
             self.bot,
             since=self.since,
