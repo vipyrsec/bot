@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from bot.dragonfly_services import DragonflyServices, Package, PackageReport, ScanStatus
+from bot.dragonfly_services import DragonflyServices, Package, PackageReport, QueueStatus, ScanStatus
 
 
 class _MockResponse:
@@ -169,6 +169,35 @@ def test_report_package() -> None:
             "use_email": False,
         },
     )
+
+
+def test_get_queue_status() -> None:
+    service = _service()
+    sampled_at = dt.datetime(2026, 7, 25, 12, 0, tzinfo=dt.UTC)
+    service.make_request = AsyncMock(
+        return_value={
+            "queued": 12,
+            "in_progress": 2,
+            "retryable": 1,
+            "total_backlog": 13,
+            "oldest_queued_at": int((sampled_at - dt.timedelta(minutes=5)).timestamp()),
+            "oldest_age_seconds": 300,
+            "sampled_at": int(sampled_at.timestamp()),
+        }
+    )
+
+    snapshot = asyncio.run(service.get_queue_status())
+
+    assert snapshot == QueueStatus(
+        queued=12,
+        in_progress=2,
+        retryable=1,
+        total_backlog=13,
+        oldest_queued_at=sampled_at - dt.timedelta(minutes=5),
+        oldest_age_seconds=300,
+        sampled_at=sampled_at,
+    )
+    service.make_request.assert_awaited_once_with("GET", "/queue-status")
 
 
 def test_queue_package() -> None:

@@ -18,6 +18,7 @@ from bot import constants
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
 from bot.dragonfly_services import DragonflyServices, Package, PackageReport
+from bot.queue_status import build_queue_status_embed, fetch_cluster_queue_statuses
 from bot.utils.pastebin import PasteFile, PasteRequest, PasteResponse, paste
 
 log = getLogger(__name__)
@@ -547,6 +548,13 @@ class Dragonfly(commands.Cog):
         except Exception as e:
             await ctx.send(str(e))
             raise
+
+    @commands.hybrid_command(name="queue-status")
+    @commands.cooldown(1, 10, commands.BucketType.guild)
+    async def queue_status(self: Self, ctx: commands.Context[Bot]) -> None:
+        """Show cached queue health for every configured Dragonfly cluster."""
+        statuses = await fetch_cluster_queue_statuses(self.bot.dragonfly_queue_services)
+        await ctx.send(embed=build_queue_status_embed(statuses))
 
     @commands.has_role(Roles.vipyr_security)
     @commands.command()

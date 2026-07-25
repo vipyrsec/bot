@@ -8,7 +8,7 @@ An `.env` file is used to populate env vars, if present.
 from os import getenv
 from typing import ClassVar
 
-from pydantic import field_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -67,6 +67,14 @@ class _Dragonfly(EnvConfig, env_prefix="cf_access_"):
 Dragonfly = _Dragonfly()
 
 
+class DragonflyCluster(BaseModel):
+    """Connection settings for one isolated Dragonfly environment."""
+
+    api_url: str
+    access_client_id: str
+    access_client_secret: SecretStr
+
+
 class _DragonflyConfig(EnvConfig, env_prefix="dragonfly_"):
     """Dragonfly Cog Configuration."""
 
@@ -74,6 +82,7 @@ class _DragonflyConfig(EnvConfig, env_prefix="dragonfly_"):
     logs_channel_id: int = 1121462677131251752
     alerts_role_id: int = 1122647527485878392
     api_url: str = "https://dragonfly.vipyrsec.com"
+    queue_clusters: dict[str, DragonflyCluster] = Field(default_factory=dict)
     interval: int = 60
     threshold: int = 8
     timeout: int = 25

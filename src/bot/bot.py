@@ -34,6 +34,7 @@ class Bot(BotBase):  # type: ignore[misc]
     def __init__(
         self: Self,
         dragonfly_services: DragonflyServices,
+        dragonfly_queue_services: dict[str, DragonflyServices] | None = None,
         **options: Unpack[BotInitOptions],
     ) -> None:
         """Initialise the base bot instance.
@@ -50,6 +51,7 @@ class Bot(BotBase):  # type: ignore[misc]
         )
 
         self.dragonfly_services = dragonfly_services
+        self.dragonfly_queue_services = dragonfly_queue_services or {"production": dragonfly_services}
         self.all_extensions: frozenset[str] | None = None
 
     async def setup_hook(self: Self) -> None:

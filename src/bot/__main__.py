@@ -33,6 +33,17 @@ async def main() -> None:
             access_client_id=constants.Dragonfly.client_id,
             access_client_secret=constants.Dragonfly.client_secret,
         )
+        dragonfly_queue_services = {"production": dragonfly_services}
+        if constants.DragonflyConfig.queue_clusters:
+            dragonfly_queue_services = {
+                name: DragonflyServices(
+                    session=session,
+                    base_url=cluster.api_url,
+                    access_client_id=cluster.access_client_id,
+                    access_client_secret=cluster.access_client_secret.get_secret_value(),
+                )
+                for name, cluster in constants.DragonflyConfig.queue_clusters.items()
+            }
 
         bot = Bot(
             guild_id=constants.Guild.id,
@@ -41,6 +52,7 @@ async def main() -> None:
             command_prefix=get_prefix,
             intents=intents,
             dragonfly_services=dragonfly_services,
+            dragonfly_queue_services=dragonfly_queue_services,
         )
 
         await bot.start(constants.Bot.token)
