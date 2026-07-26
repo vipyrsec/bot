@@ -20,13 +20,21 @@ from pydantic import ValidationError
 
 from bot import constants
 from bot.bot import Bot
-from bot.constants import Channels, DragonflyConfig, Roles
+from bot.constants import Channels, Colours, DragonflyConfig, Roles
 from bot.dragonfly_services import DragonflyServices, Package, PackageReport, Suppression
 from bot.queue_status import build_queue_status_embed
 from bot.utils.pastebin import PasteFile, PasteRequest, PasteResponse, paste
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
+
+SUPPRESSION_SERVICE_ERRORS = (
+    TimeoutError,
+    aiohttp.ClientError,
+    JSONDecodeError,
+    UnicodeDecodeError,
+    ValidationError,
+)
 
 
 def _build_modal_title(name: str, version: str) -> str:
@@ -471,21 +479,168 @@ def parse_suppression_rules(value: str | None) -> list[str] | None:
     return rules
 
 
-def _format_suppression(suppression: Suppression) -> str:
-    """Format one suppression for compact Discord output."""
-    scope = "all rules" if suppression.rules is None else ", ".join(suppression.rules) or "no rules"
-    return f"`{suppression.suppression_id}` | `{suppression.package_name}=={suppression.package_version}` | {scope}"
+def _inline_code(value: str, *, limit: int = 100) -> str:
+    """Format bounded external text as inline code without allowing delimiter injection."""
+    escaped = value.replace("`", "'")
+    if len(escaped) > limit:
+        escaped = escaped[: limit - 1] + "…"
+    return f"`{escaped}`"
 
 
-async def _send_suppression_output(ctx: commands.Context[Bot], content: str) -> None:
-    """Send suppression output directly or as a paste when it exceeds Discord's limit."""
-    if len(content) <= 2000:  # noqa: PLR2004
-        await ctx.send(content)
-        return
+def _format_suppression_rules(rules: list[str] | None, *, limit: int = 900) -> str:
+    """Format a bounded rule preview for an embed field."""
+    if rules is None:
+        return "Every current and future alert rule."
+    if not rules:
+        return "_No rules selected._"
 
-    paste_request = PasteRequest(expiry="1day", files=[PasteFile(lexer="text", content=content)])
-    paste_response = await paste(paste_request, session=ctx.bot.http_session)
-    await ctx.send(embed=_build_pastebin_embed(paste_response))
+    rendered: list[str] = []
+    for index, rule in enumerate(rules):
+        candidate = ", ".join([*rendered, _inline_code(rule)])
+        remaining = len(rules) - index - 1
+        suffix = f"\n_+{remaining} more_" if remaining else ""
+        if len(candidate) + len(suffix) > limit:
+            break
+        rendered.append(_inline_code(rule))
+
+    omitted = len(rules) - len(rendered)
+    preview = ", ".join(rendered)
+    if omitted:
+        preview += f"\n_+{omitted} more_"
+    return preview
+
+
+def _suppression_scope(suppression: Suppression) -> str:
+    """Summarize the number of rules covered by a suppression."""
+    if suppression.rules is None:
+        return "All rules"
+    return f"{len(suppression.rules)} selected rule{'s' if len(suppression.rules) != 1 else ''}"
+
+
+def _build_suppression_embed(suppression: Suppression, *, title: str) -> discord.Embed:
+    """Build a detailed embed for one suppression."""
+    embed = discord.Embed(
+        title=title,
+        description=(
+            f"**Package:** {_inline_code(suppression.package_name)}\n"
+            f"**Version:** {_inline_code(suppression.package_version)}"
+        ),
+        color=Colours.blue,
+        timestamp=suppression.updated_at,
+    )
+    embed.add_field(name="Scope", value=_suppression_scope(suppression), inline=False)
+    embed.add_field(name="Rules", value=_format_suppression_rules(suppression.rules), inline=False)
+    embed.add_field(name="Suppression ID", value=_inline_code(str(suppression.suppression_id)), inline=False)
+    embed.add_field(
+        name="Created",
+        value=f"{discord.utils.format_dt(suppression.created_at, 'f')} by {_inline_code(suppression.created_by)}",
+        inline=False,
+    )
+    embed.add_field(
+        name="Updated",
+        value=f"{discord.utils.format_dt(suppression.updated_at, 'R')} by {_inline_code(suppression.updated_by)}",
+        inline=False,
+    )
+    return embed
+
+
+def _build_suppression_list_embeds(package_name: str, suppressions: list[Suppression]) -> list[discord.Embed]:
+    """Build bounded summary embeds for every suppression against a package."""
+    if not suppressions:
+        return [
+            discord.Embed(
+                title="No suppressions found",
+                description=f"No suppressions exist for {_inline_code(package_name)}.",
+                color=Colours.blue,
+            )
+        ]
+
+    per_page = 8
+    page_count = (len(suppressions) + per_page - 1) // per_page
+    embeds: list[discord.Embed] = []
+    for page, start in enumerate(range(0, len(suppressions), per_page), start=1):
+        embed = discord.Embed(
+            title=f"Suppressions · {package_name}"[:256],
+            description=f"{len(suppressions)} suppression{'s' if len(suppressions) != 1 else ''} found.",
+            color=Colours.blue,
+        )
+        for suppression in suppressions[start : start + per_page]:
+            embed.add_field(
+                name=f"{suppression.package_version} · {_suppression_scope(suppression)}"[:256],
+                value=(
+                    f"**ID:** {_inline_code(str(suppression.suppression_id))}\n"
+                    f"**Rules:** {_format_suppression_rules(suppression.rules, limit=350)}"
+                ),
+                inline=False,
+            )
+        embed.set_footer(text=f"Page {page}/{page_count}")
+        embeds.append(embed)
+    return embeds
+
+
+async def _send_suppression_list(
+    interaction: discord.Interaction[Bot],
+    package_name: str,
+    suppressions: list[Suppression],
+) -> None:
+    """Send each bounded suppression list page as an ephemeral embed."""
+    for embed in _build_suppression_list_embeds(package_name, suppressions):
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+def _build_suppression_deleted_embed(
+    package_name: str,
+    package_version: str,
+    suppression_id: uuid.UUID,
+) -> discord.Embed:
+    """Build confirmation for deletion of one suppression."""
+    embed = discord.Embed(
+        title="Suppression deleted",
+        description=f"{_inline_code(package_name)} version {_inline_code(package_version)}",
+        color=Colours.soft_green,
+    )
+    embed.add_field(name="Suppression ID", value=_inline_code(str(suppression_id)), inline=False)
+    return embed
+
+
+def _build_suppressions_cleared_embed(
+    package_name: str,
+    package_version: str,
+    deleted: int,
+) -> discord.Embed:
+    """Build confirmation for deletion of a version's suppressions."""
+    embed = discord.Embed(
+        title="Suppressions cleared",
+        description=f"{_inline_code(package_name)} version {_inline_code(package_version)}",
+        color=Colours.soft_green,
+    )
+    embed.add_field(name="Deleted", value=str(deleted), inline=False)
+    return embed
+
+
+class SuppressionCommandGroup(discord.app_commands.Group):
+    """Application-command group with operator-facing error handling."""
+
+    async def on_error(
+        self: Self,
+        interaction: discord.Interaction[Bot],
+        error: discord.app_commands.AppCommandError,
+    ) -> None:
+        """Return an actionable ephemeral response for suppression command failures."""
+        cause = error.original if isinstance(error, discord.app_commands.CommandInvokeError) else error
+        if isinstance(cause, discord.app_commands.CheckFailure):
+            message = "You are not authorized to manage suppressions."
+        elif isinstance(cause, SUPPRESSION_SERVICE_ERRORS):
+            log.warning("Mainframe failed to complete a suppression command.", exc_info=cause)
+            message = "Mainframe could not complete the suppression request. No changes were confirmed."
+        else:
+            log.error("Unexpected suppression command failure.", exc_info=cause)
+            message = "The suppression request failed unexpectedly. No changes were confirmed."
+
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
 
 
 async def run(
@@ -544,6 +699,11 @@ async def run(
 
 class Dragonfly(commands.Cog):
     """Cog for the Dragonfly scanner."""
+
+    suppressions = SuppressionCommandGroup(
+        name="suppressions",
+        description="Manage package alert suppressions",
+    )
 
     def __init__(self: Self, bot: Bot) -> None:
         """Initialize the Dragonfly cog."""
@@ -770,107 +930,176 @@ class Dragonfly(commands.Cog):
 
             await interaction.response.send_message("No entries were found with the specified filters.", view=view)
 
-    @commands.has_role(Roles.vipyr_security)
-    @commands.group(name="suppressions", aliases=("suppression",))
-    async def suppressions(self: Self, ctx: commands.Context[Bot]) -> None:
-        """Group of commands for managing package suppressions."""
-        if ctx.invoked_subcommand is None:
-            await ctx.send_help(self.suppressions)
-
+    @discord.app_commands.checks.has_role(Roles.vipyr_security)  # type: ignore[arg-type]
     @suppressions.command(name="list")
-    async def list_suppressions(self: Self, ctx: commands.Context[Bot], package_name: str) -> None:
+    @discord.app_commands.describe(package_name="Package whose suppressions should be listed")
+    async def list_suppressions(
+        self: Self,
+        interaction: discord.Interaction[Bot],
+        package_name: str,
+    ) -> None:
         """List every suppression for a package."""
+        await interaction.response.defer(thinking=True, ephemeral=True)
         suppressions = await self.bot.dragonfly_services.get_suppressions(package_name)
-        if not suppressions:
-            await ctx.send(f"No suppressions exist for `{package_name}`.")
-            return
+        await _send_suppression_list(interaction, package_name, suppressions)
 
-        await _send_suppression_output(
-            ctx,
-            "\n".join(_format_suppression(suppression) for suppression in suppressions),
-        )
-
+    @discord.app_commands.checks.has_role(Roles.vipyr_security)  # type: ignore[arg-type]
     @suppressions.command(name="view")
+    @discord.app_commands.describe(
+        package_name="Suppressed package",
+        package_version="Suppressed package version",
+        suppression_id="Suppression UUID",
+    )
     async def view_suppression(
         self: Self,
-        ctx: commands.Context[Bot],
+        interaction: discord.Interaction[Bot],
         package_name: str,
         package_version: str,
-        suppression_id: uuid.UUID,
+        suppression_id: str,
     ) -> None:
         """View one suppression."""
+        try:
+            parsed_id = uuid.UUID(suppression_id)
+        except ValueError:
+            await interaction.response.send_message("The suppression ID must be a valid UUID.", ephemeral=True)
+            return
+
+        await interaction.response.defer(thinking=True, ephemeral=True)
         suppression = await self.bot.dragonfly_services.get_suppression(
             package_name,
             package_version,
-            suppression_id,
+            parsed_id,
         )
-        await _send_suppression_output(ctx, _format_suppression(suppression))
+        await interaction.followup.send(
+            embed=_build_suppression_embed(suppression, title="Suppression details"),
+            ephemeral=True,
+        )
 
+    @discord.app_commands.checks.has_role(Roles.vipyr_security)  # type: ignore[arg-type]
     @suppressions.command(name="create")
+    @discord.app_commands.describe(
+        package_name="Package to suppress",
+        package_version="Package version to suppress",
+        rules="Comma-delimited rules, `all`, or `none`; defaults to all",
+    )
     async def create_suppression(
         self: Self,
-        ctx: commands.Context[Bot],
+        interaction: discord.Interaction[Bot],
         package_name: str,
         package_version: str,
-        *,
         rules: str | None = None,
     ) -> None:
         """Create a suppression, optionally scoped to comma-delimited rules."""
+        try:
+            parsed_rules = parse_suppression_rules(rules)
+        except commands.BadArgument as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+
+        await interaction.response.defer(thinking=True, ephemeral=True)
         suppression = await self.bot.dragonfly_services.create_suppression(
             package_name,
             package_version,
-            parse_suppression_rules(rules),
+            parsed_rules,
         )
-        await _send_suppression_output(ctx, f"Created suppression {_format_suppression(suppression)}")
+        await interaction.followup.send(
+            embed=_build_suppression_embed(suppression, title="Suppression created"),
+            ephemeral=True,
+        )
 
+    @discord.app_commands.checks.has_role(Roles.vipyr_security)  # type: ignore[arg-type]
     @suppressions.command(name="modify")
+    @discord.app_commands.describe(
+        package_name="Suppressed package",
+        package_version="Suppressed package version",
+        suppression_id="Suppression UUID",
+        rules="Comma-delimited rules, `all`, or `none`",
+    )
     async def modify_suppression(
         self: Self,
-        ctx: commands.Context[Bot],
+        interaction: discord.Interaction[Bot],
         package_name: str,
         package_version: str,
-        suppression_id: uuid.UUID,
-        *,
+        suppression_id: str,
         rules: str,
     ) -> None:
         """Replace a suppression's comma-delimited rule corpus."""
+        try:
+            parsed_id = uuid.UUID(suppression_id)
+            parsed_rules = parse_suppression_rules(rules)
+        except ValueError:
+            await interaction.response.send_message("The suppression ID must be a valid UUID.", ephemeral=True)
+            return
+        except commands.BadArgument as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+
+        await interaction.response.defer(thinking=True, ephemeral=True)
         suppression = await self.bot.dragonfly_services.update_suppression(
             package_name,
             package_version,
-            suppression_id,
-            parse_suppression_rules(rules),
+            parsed_id,
+            parsed_rules,
         )
-        await _send_suppression_output(ctx, f"Updated suppression {_format_suppression(suppression)}")
+        await interaction.followup.send(
+            embed=_build_suppression_embed(suppression, title="Suppression updated"),
+            ephemeral=True,
+        )
 
+    @discord.app_commands.checks.has_role(Roles.vipyr_security)  # type: ignore[arg-type]
     @suppressions.command(name="delete")
+    @discord.app_commands.describe(
+        package_name="Suppressed package",
+        package_version="Suppressed package version",
+        suppression_id="Suppression UUID",
+    )
     async def delete_suppression(
         self: Self,
-        ctx: commands.Context[Bot],
+        interaction: discord.Interaction[Bot],
         package_name: str,
         package_version: str,
-        suppression_id: uuid.UUID,
+        suppression_id: str,
     ) -> None:
         """Delete one suppression."""
+        try:
+            parsed_id = uuid.UUID(suppression_id)
+        except ValueError:
+            await interaction.response.send_message("The suppression ID must be a valid UUID.", ephemeral=True)
+            return
+
+        await interaction.response.defer(thinking=True, ephemeral=True)
         await self.bot.dragonfly_services.delete_suppression(
             package_name,
             package_version,
-            suppression_id,
+            parsed_id,
         )
-        await ctx.send(f"Deleted suppression `{suppression_id}`.")
+        await interaction.followup.send(
+            embed=_build_suppression_deleted_embed(package_name, package_version, parsed_id),
+            ephemeral=True,
+        )
 
+    @discord.app_commands.checks.has_role(Roles.vipyr_security)  # type: ignore[arg-type]
     @suppressions.command(name="clear")
+    @discord.app_commands.describe(
+        package_name="Package whose suppressions should be deleted",
+        package_version="Package version whose suppressions should be deleted",
+    )
     async def clear_suppressions(
         self: Self,
-        ctx: commands.Context[Bot],
+        interaction: discord.Interaction[Bot],
         package_name: str,
         package_version: str,
     ) -> None:
         """Delete every suppression for one package version."""
+        await interaction.response.defer(thinking=True, ephemeral=True)
         response = await self.bot.dragonfly_services.delete_version_suppressions(
             package_name,
             package_version,
         )
-        await ctx.send(f"Deleted `{response.deleted}` suppressions for `{package_name}=={package_version}`.")
+        await interaction.followup.send(
+            embed=_build_suppressions_cleared_embed(package_name, package_version, response.deleted),
+            ephemeral=True,
+        )
 
     @commands.has_role(Roles.vipyr_security)
     @commands.group()
