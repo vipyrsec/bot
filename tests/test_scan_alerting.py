@@ -151,9 +151,22 @@ def test_suppression_embeds_bound_large_rule_corpora_and_lists() -> None:
     assert details.fields[1].value is not None
     assert len(details.fields[1].value) <= 900
     assert len(pages) == 2
-    assert [len(page.fields) for page in pages] == [10, 1]
+    assert [len(page.fields) for page in pages] == [8, 3]
     assert [page.footer.text for page in pages] == ["Page 1/2", "Page 2/2"]
+    assert all(len(page) <= 6000 for page in pages)
     assert all(field.value is not None and len(field.value) <= 1024 for page in pages for field in page.fields)
+
+
+def test_suppression_list_pages_stay_within_aggregate_embed_limit() -> None:
+    suppressions = [
+        suppression(version=f"{index}-{'v' * 500}", rules=[f"{rule}-{'r' * 500}" for rule in range(30)])
+        for index in range(9)
+    ]
+
+    pages = dragonfly._build_suppression_list_embeds("p" * 500, suppressions)  # noqa: SLF001
+
+    assert [len(page.fields) for page in pages] == [8, 1]
+    assert all(len(page) <= 6000 for page in pages)
 
 
 def test_list_suppressions_slash_command_sends_embed_pages() -> None:
@@ -168,6 +181,26 @@ def test_list_suppressions_slash_command_sends_embed_pages() -> None:
     sent_embeds = [call.kwargs["embed"] for call in interaction.followup.send.await_args_list]
     assert [embed.footer.text for embed in sent_embeds] == ["Page 1/2", "Page 2/2"]
     assert all(call.kwargs["ephemeral"] is True for call in interaction.followup.send.await_args_list)
+
+
+def test_suppression_group_reports_deferred_service_failure() -> None:
+    group = dragonfly.Dragonfly.suppressions
+    command = group.get_command("list")
+    assert isinstance(command, app_commands.Command)
+    interaction_mock = Mock()
+    interaction_mock.response.is_done.return_value = True
+    interaction_mock.response.send_message = AsyncMock()
+    interaction_mock.followup.send = AsyncMock()
+    interaction = cast("discord.Interaction[Bot]", interaction_mock)
+    error = app_commands.CommandInvokeError(command, TimeoutError("mainframe unavailable"))
+
+    asyncio.run(dragonfly.SuppressionCommandGroup.on_error(group, interaction, error))
+
+    interaction_mock.followup.send.assert_awaited_once_with(
+        "Mainframe could not complete the suppression request. No changes were confirmed.",
+        ephemeral=True,
+    )
+    interaction_mock.response.send_message.assert_not_awaited()
 
 
 def test_view_suppression_slash_command_rejects_invalid_uuid() -> None:

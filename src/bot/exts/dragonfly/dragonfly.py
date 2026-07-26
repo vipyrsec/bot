@@ -28,6 +28,14 @@ from bot.utils.pastebin import PasteFile, PasteRequest, PasteResponse, paste
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
 
+SUPPRESSION_SERVICE_ERRORS = (
+    TimeoutError,
+    aiohttp.ClientError,
+    JSONDecodeError,
+    UnicodeDecodeError,
+    ValidationError,
+)
+
 
 def _build_modal_title(name: str, version: str) -> str:
     """Build the modal title."""
@@ -547,7 +555,7 @@ def _build_suppression_list_embeds(package_name: str, suppressions: list[Suppres
             )
         ]
 
-    per_page = 10
+    per_page = 8
     page_count = (len(suppressions) + per_page - 1) // per_page
     embeds: list[discord.Embed] = []
     for page, start in enumerate(range(0, len(suppressions), per_page), start=1):
@@ -610,6 +618,31 @@ def _build_suppressions_cleared_embed(
     return embed
 
 
+class SuppressionCommandGroup(discord.app_commands.Group):
+    """Application-command group with operator-facing error handling."""
+
+    async def on_error(
+        self: Self,
+        interaction: discord.Interaction[Bot],
+        error: discord.app_commands.AppCommandError,
+    ) -> None:
+        """Return an actionable ephemeral response for suppression command failures."""
+        cause = error.original if isinstance(error, discord.app_commands.CommandInvokeError) else error
+        if isinstance(cause, discord.app_commands.CheckFailure):
+            message = "You are not authorized to manage suppressions."
+        elif isinstance(cause, SUPPRESSION_SERVICE_ERRORS):
+            log.warning("Mainframe failed to complete a suppression command.", exc_info=cause)
+            message = "Mainframe could not complete the suppression request. No changes were confirmed."
+        else:
+            log.error("Unexpected suppression command failure.", exc_info=cause)
+            message = "The suppression request failed unexpectedly. No changes were confirmed."
+
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
+
+
 async def run(
     bot: Bot,
     *,
@@ -667,7 +700,7 @@ async def run(
 class Dragonfly(commands.Cog):
     """Cog for the Dragonfly scanner."""
 
-    suppressions = discord.app_commands.Group(
+    suppressions = SuppressionCommandGroup(
         name="suppressions",
         description="Manage package alert suppressions",
     )
