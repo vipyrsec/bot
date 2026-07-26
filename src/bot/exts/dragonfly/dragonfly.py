@@ -448,17 +448,19 @@ def _normalize_package_name(package_name: str) -> str:
 
 
 def is_suppressed(scan_result: Package, suppressions: list[Suppression]) -> bool:
-    """Return whether applicable suppressions cover every matched rule."""
-    applicable = [
+    """Return whether package-wide rule suppressions cover every matched rule."""
+    package_suppressions = [
         suppression
         for suppression in suppressions
-        if suppression.package_version == scan_result.version
-        and _normalize_package_name(suppression.package_name) == _normalize_package_name(scan_result.name)
+        if _normalize_package_name(suppression.package_name) == _normalize_package_name(scan_result.name)
     ]
-    if any(suppression.rules is None for suppression in applicable):
+    if any(
+        suppression.rules is None and suppression.package_version == scan_result.version
+        for suppression in package_suppressions
+    ):
         return True
 
-    suppressed_rules = {rule for suppression in applicable for rule in suppression.rules or []}
+    suppressed_rules = {rule for suppression in package_suppressions for rule in suppression.rules or []}
     return bool(scan_result.rules) and set(scan_result.rules) <= suppressed_rules
 
 
