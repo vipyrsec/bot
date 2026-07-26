@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime, timedelta
-from typing import cast
+from typing import Any, cast
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
 import pytest
+from discord import app_commands
 from discord.ext import commands
 
 from bot.bot import Bot
@@ -91,6 +93,111 @@ def test_suppression_rule_command_parser() -> None:
         dragonfly.parse_suppression_rules("one,")
     with pytest.raises(commands.BadArgument):
         dragonfly.parse_suppression_rules("one,one")
+
+
+def test_suppressions_are_registered_as_slash_commands_only() -> None:
+    group = dragonfly.Dragonfly.suppressions
+
+    assert isinstance(group, app_commands.Group)
+    assert group.name == "suppressions"
+    assert {command.name for command in group.commands} == {
+        "clear",
+        "create",
+        "delete",
+        "list",
+        "modify",
+        "view",
+    }
+    assert all(command.checks for command in group.commands if isinstance(command, app_commands.Command))
+    assert "suppressions" not in {command.name for command in dragonfly.Dragonfly.__cog_commands__}
+
+
+def test_create_suppression_slash_command_defaults_to_all_rules() -> None:
+    bot = cast("Bot", Mock())
+    created = suppression()
+    bot.dragonfly_services.create_suppression = AsyncMock(return_value=created)
+
+    interaction = _invoke_suppression_command("create", bot, "Example_Package", "1.0.0")
+
+    bot.dragonfly_services.create_suppression.assert_awaited_once_with(
+        "Example_Package",
+        "1.0.0",
+        None,
+    )
+    interaction.response.defer.assert_awaited_once_with(thinking=True, ephemeral=True)
+    sent_embed = interaction.followup.send.await_args.kwargs["embed"]
+    assert sent_embed.title == "Suppression created"
+    assert sent_embed.description == "**Package:** `example-package`\n**Version:** `1.0.0`"
+    assert [(field.name, field.value) for field in sent_embed.fields[:3]] == [
+        ("Scope", "All rules"),
+        ("Rules", "Every current and future alert rule."),
+        ("Suppression ID", f"`{created.suppression_id}`"),
+    ]
+    assert interaction.followup.send.await_args.kwargs["ephemeral"] is True
+
+
+def test_suppression_embeds_bound_large_rule_corpora_and_lists() -> None:
+    rules = [f"false_positive_rule_{index:02d}" for index in range(30)]
+    suppressions = [suppression(version=f"1.0.{index}", rules=rules) for index in range(11)]
+
+    details = dragonfly._build_suppression_embed(  # noqa: SLF001
+        suppressions[0],
+        title="Suppression details",
+    )
+    pages = dragonfly._build_suppression_list_embeds("example-package", suppressions)  # noqa: SLF001
+
+    assert details.title == "Suppression details"
+    assert details.fields[0].value == "30 selected rules"
+    assert details.fields[1].value is not None
+    assert len(details.fields[1].value) <= 900
+    assert len(pages) == 2
+    assert [len(page.fields) for page in pages] == [10, 1]
+    assert [page.footer.text for page in pages] == ["Page 1/2", "Page 2/2"]
+    assert all(field.value is not None and len(field.value) <= 1024 for page in pages for field in page.fields)
+
+
+def test_list_suppressions_slash_command_sends_embed_pages() -> None:
+    bot = cast("Bot", Mock())
+    suppressions = [suppression(version=f"1.0.{index}", rules=["one", "two"]) for index in range(11)]
+    bot.dragonfly_services.get_suppressions = AsyncMock(return_value=suppressions)
+
+    interaction = _invoke_suppression_command("list", bot, "example-package")
+
+    interaction.response.defer.assert_awaited_once_with(thinking=True, ephemeral=True)
+    assert interaction.followup.send.await_count == 2
+    sent_embeds = [call.kwargs["embed"] for call in interaction.followup.send.await_args_list]
+    assert [embed.footer.text for embed in sent_embeds] == ["Page 1/2", "Page 2/2"]
+    assert all(call.kwargs["ephemeral"] is True for call in interaction.followup.send.await_args_list)
+
+
+def test_view_suppression_slash_command_rejects_invalid_uuid() -> None:
+    bot = cast("Bot", Mock())
+    get_suppression = AsyncMock()
+    bot.dragonfly_services.get_suppression = get_suppression
+
+    interaction = _invoke_suppression_command("view", bot, "example-package", "1.0.0", "not-a-uuid")
+
+    interaction.response.send_message.assert_awaited_once_with(
+        "The suppression ID must be a valid UUID.",
+        ephemeral=True,
+    )
+    interaction.response.defer.assert_not_awaited()
+    get_suppression.assert_not_called()
+
+
+def _invoke_suppression_command(command_name: str, bot: Bot, *args: str) -> Mock:
+    """Invoke a decorated suppression application-command callback."""
+    command = dragonfly.Dragonfly.suppressions.get_command(command_name)
+    assert isinstance(command, app_commands.Command)
+    callback = cast("Callable[..., Coroutine[Any, Any, None]]", command.callback)
+    interaction_mock = Mock()
+    interaction_mock.response.defer = AsyncMock()
+    interaction_mock.response.send_message = AsyncMock()
+    interaction_mock.followup.send = AsyncMock()
+    interaction = cast("discord.Interaction[Bot]", interaction_mock)
+
+    asyncio.run(callback(dragonfly.Dragonfly(bot), interaction, *args))
+    return interaction_mock
 
 
 def test_alert_suppress_button_creates_current_rule_suppression() -> None:
