@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import re
 import urllib.parse
+import uuid
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from json import JSONDecodeError
@@ -19,7 +21,7 @@ from pydantic import ValidationError
 from bot import constants
 from bot.bot import Bot
 from bot.constants import Channels, DragonflyConfig, Roles
-from bot.dragonfly_services import DragonflyServices, Package, PackageReport
+from bot.dragonfly_services import DragonflyServices, Package, PackageReport, Suppression
 from bot.queue_status import build_queue_status_embed
 from bot.utils.pastebin import PasteFile, PasteRequest, PasteResponse, paste
 
@@ -309,6 +311,47 @@ class ReportView(discord.ui.View):
             await interaction.edit_original_response(view=self)
 
 
+class AlertView(ReportView):
+    """Alert actions for a suspicious package."""
+
+    @discord.ui.button(label="Suppress", style=discord.ButtonStyle.primary)
+    async def suppress(
+        self: Self,
+        interaction: discord.Interaction[Bot],
+        button: discord.ui.Button[AlertView],
+    ) -> None:
+        """Suppress the package's currently matched rules."""
+        await interaction.response.defer()
+        rules = self.payload.rules or None
+        try:
+            suppression = await self.bot.dragonfly_services.create_suppression(
+                self.payload.name,
+                self.payload.version,
+                rules,
+            )
+        except (TimeoutError, aiohttp.ClientError, JSONDecodeError, UnicodeDecodeError, ValidationError):
+            log.warning(
+                "Failed to suppress %s v%s from its alert.",
+                self.payload.name,
+                self.payload.version,
+                exc_info=True,
+            )
+            await interaction.followup.send(
+                "The suppression could not be created. The alert remains active.",
+                ephemeral=True,
+            )
+            return
+
+        button.disabled = True
+        await interaction.edit_original_response(view=self)
+        scope = "all rules" if suppression.rules is None else f"{len(suppression.rules)} current matched rules"
+        await interaction.followup.send(
+            f"Created suppression `{suppression.suppression_id}` for `{self.payload.name}=={self.payload.version}` "
+            f"covering {scope}.",
+            ephemeral=True,
+        )
+
+
 def _build_package_scan_result_embed(
     scan_result: Package,
     *,
@@ -392,6 +435,60 @@ def inactivity_threshold_reached(
     return not alert_fired and now - last_seen_package >= timedelta(seconds=DragonflyConfig.inactivity_threshold)
 
 
+def _normalize_package_name(package_name: str) -> str:
+    """Return the normalized package name defined by PEP 503."""
+    return re.sub(r"[-_.]+", "-", package_name).lower()
+
+
+def is_suppressed(scan_result: Package, suppressions: list[Suppression]) -> bool:
+    """Return whether applicable suppressions cover every matched rule."""
+    applicable = [
+        suppression
+        for suppression in suppressions
+        if suppression.package_version == scan_result.version
+        and _normalize_package_name(suppression.package_name) == _normalize_package_name(scan_result.name)
+    ]
+    if any(suppression.rules is None for suppression in applicable):
+        return True
+
+    suppressed_rules = {rule for suppression in applicable for rule in suppression.rules or []}
+    return bool(scan_result.rules) and set(scan_result.rules) <= suppressed_rules
+
+
+def parse_suppression_rules(value: str | None) -> list[str] | None:
+    """Parse a comma-delimited rule corpus used by suppression commands."""
+    if value is None or value.strip().lower() == "all":
+        return None
+    if value.strip().lower() == "none":
+        return []
+
+    rules = [rule.strip() for rule in value.split(",")]
+    if not all(rules):
+        msg = "Rules must be comma-delimited non-empty names, or `all`/`none`."
+        raise commands.BadArgument(msg)
+    if len(rules) != len(set(rules)):
+        msg = "A suppression cannot contain duplicate rules."
+        raise commands.BadArgument(msg)
+    return rules
+
+
+def _format_suppression(suppression: Suppression) -> str:
+    """Format one suppression for compact Discord output."""
+    scope = "all rules" if suppression.rules is None else ", ".join(suppression.rules) or "no rules"
+    return f"`{suppression.suppression_id}` | `{suppression.package_name}=={suppression.package_version}` | {scope}"
+
+
+async def _send_suppression_output(ctx: commands.Context[Bot], content: str) -> None:
+    """Send suppression output directly or as a paste when it exceeds Discord's limit."""
+    if len(content) <= 2000:  # noqa: PLR2004
+        await ctx.send(content)
+        return
+
+    paste_request = PasteRequest(expiry="1day", files=[PasteFile(lexer="text", content=content)])
+    paste_response = await paste(paste_request, session=ctx.bot.http_session)
+    await ctx.send(embed=_build_pastebin_embed(paste_response))
+
+
 async def run(
     bot: Bot,
     *,
@@ -402,17 +499,35 @@ async def run(
 ) -> list[Package]:
     """Fetch and publish one iteration of package scan results."""
     scan_results = await bot.dragonfly_services.get_scanned_packages(since=since)
+    suppressions_by_package: dict[str, list[Suppression]] = {}
     for result in scan_results:
-        if result.score is not None and result.score >= score:
-            embed = _build_package_scan_result_embed(
-                result,
-                production_score_threshold=score,
-            )
-            await alerts_channel.send(
-                f"<@&{DragonflyConfig.alerts_role_id}>",
-                embed=embed,
-                view=ReportView(bot, result),
-            )
+        if result.score is None or result.score < score:
+            continue
+
+        normalized_name = _normalize_package_name(result.name)
+        if normalized_name not in suppressions_by_package:
+            try:
+                suppressions_by_package[normalized_name] = await bot.dragonfly_services.get_suppressions(result.name)
+            except (TimeoutError, aiohttp.ClientError, JSONDecodeError, UnicodeDecodeError, ValidationError):
+                log.warning(
+                    "Failed to retrieve suppressions for %s; delivering its alert.",
+                    result.name,
+                    exc_info=True,
+                )
+                suppressions_by_package[normalized_name] = []
+
+        if is_suppressed(result, suppressions_by_package[normalized_name]):
+            continue
+
+        embed = _build_package_scan_result_embed(
+            result,
+            production_score_threshold=score,
+        )
+        await alerts_channel.send(
+            f"<@&{DragonflyConfig.alerts_role_id}>",
+            embed=embed,
+            view=AlertView(bot, result),
+        )
 
     all_packages_scanned_embed = _build_all_packages_scanned_embed(scan_results)
     if len(all_packages_scanned_embed) <= 4096:  # noqa: PLR2004
@@ -441,7 +556,7 @@ class Dragonfly(commands.Cog):
         self.scan_error_alert_fired = False
         super().__init__()
 
-    @commands.hybrid_command(name="username")  # type: ignore [arg-type]
+    @commands.hybrid_command(name="username")  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
     async def get_username_command(self, ctx: commands.Context[Bot]) -> None:
         """Get the username of the currently logged in user to the PyPI Observation API."""
         async with ctx.bot.http_session.get(DragonflyConfig.reporter_url + "/echo") as res:
@@ -655,6 +770,108 @@ class Dragonfly(commands.Cog):
                 view = discord.utils.MISSING
 
             await interaction.response.send_message("No entries were found with the specified filters.", view=view)
+
+    @commands.has_role(Roles.vipyr_security)
+    @commands.group(name="suppressions", aliases=("suppression",))
+    async def suppressions(self: Self, ctx: commands.Context[Bot]) -> None:
+        """Group of commands for managing package suppressions."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(self.suppressions)
+
+    @suppressions.command(name="list")
+    async def list_suppressions(self: Self, ctx: commands.Context[Bot], package_name: str) -> None:
+        """List every suppression for a package."""
+        suppressions = await self.bot.dragonfly_services.get_suppressions(package_name)
+        if not suppressions:
+            await ctx.send(f"No suppressions exist for `{package_name}`.")
+            return
+
+        await _send_suppression_output(
+            ctx,
+            "\n".join(_format_suppression(suppression) for suppression in suppressions),
+        )
+
+    @suppressions.command(name="view")
+    async def view_suppression(
+        self: Self,
+        ctx: commands.Context[Bot],
+        package_name: str,
+        package_version: str,
+        suppression_id: uuid.UUID,
+    ) -> None:
+        """View one suppression."""
+        suppression = await self.bot.dragonfly_services.get_suppression(
+            package_name,
+            package_version,
+            suppression_id,
+        )
+        await _send_suppression_output(ctx, _format_suppression(suppression))
+
+    @suppressions.command(name="create")
+    async def create_suppression(
+        self: Self,
+        ctx: commands.Context[Bot],
+        package_name: str,
+        package_version: str,
+        *,
+        rules: str | None = None,
+    ) -> None:
+        """Create a suppression, optionally scoped to comma-delimited rules."""
+        suppression = await self.bot.dragonfly_services.create_suppression(
+            package_name,
+            package_version,
+            parse_suppression_rules(rules),
+        )
+        await _send_suppression_output(ctx, f"Created suppression {_format_suppression(suppression)}")
+
+    @suppressions.command(name="modify")
+    async def modify_suppression(
+        self: Self,
+        ctx: commands.Context[Bot],
+        package_name: str,
+        package_version: str,
+        suppression_id: uuid.UUID,
+        *,
+        rules: str,
+    ) -> None:
+        """Replace a suppression's comma-delimited rule corpus."""
+        suppression = await self.bot.dragonfly_services.update_suppression(
+            package_name,
+            package_version,
+            suppression_id,
+            parse_suppression_rules(rules),
+        )
+        await _send_suppression_output(ctx, f"Updated suppression {_format_suppression(suppression)}")
+
+    @suppressions.command(name="delete")
+    async def delete_suppression(
+        self: Self,
+        ctx: commands.Context[Bot],
+        package_name: str,
+        package_version: str,
+        suppression_id: uuid.UUID,
+    ) -> None:
+        """Delete one suppression."""
+        await self.bot.dragonfly_services.delete_suppression(
+            package_name,
+            package_version,
+            suppression_id,
+        )
+        await ctx.send(f"Deleted suppression `{suppression_id}`.")
+
+    @suppressions.command(name="clear")
+    async def clear_suppressions(
+        self: Self,
+        ctx: commands.Context[Bot],
+        package_name: str,
+        package_version: str,
+    ) -> None:
+        """Delete every suppression for one package version."""
+        response = await self.bot.dragonfly_services.delete_version_suppressions(
+            package_name,
+            package_version,
+        )
+        await ctx.send(f"Deleted `{response.deleted}` suppressions for `{package_name}=={package_version}`.")
 
     @commands.has_role(Roles.vipyr_security)
     @commands.group()
