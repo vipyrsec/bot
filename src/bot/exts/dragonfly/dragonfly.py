@@ -322,12 +322,11 @@ class AlertView(ReportView):
     ) -> None:
         """Suppress the package's currently matched rules."""
         await interaction.response.defer()
-        rules = self.payload.rules or None
         try:
             suppression = await self.bot.dragonfly_services.create_suppression(
                 self.payload.name,
                 self.payload.version,
-                rules,
+                self.payload.rules,
             )
         except (TimeoutError, aiohttp.ClientError, JSONDecodeError, UnicodeDecodeError, ValidationError):
             log.warning(

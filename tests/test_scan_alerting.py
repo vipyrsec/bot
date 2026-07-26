@@ -146,6 +146,32 @@ def test_alert_suppress_button_preserves_alert_when_mainframe_fails() -> None:
     )
 
 
+def test_alert_suppress_button_preserves_empty_rule_corpus() -> None:
+    bot = cast("Bot", Mock())
+    result = package_result(rules=[])
+    created = suppression(rules=[])
+    bot.dragonfly_services.create_suppression = AsyncMock(return_value=created)
+    view = dragonfly.AlertView(bot, result)
+    interaction_mock = Mock()
+    interaction_mock.response.defer = AsyncMock()
+    interaction_mock.edit_original_response = AsyncMock()
+    interaction_mock.followup.send = AsyncMock()
+    interaction = cast("discord.Interaction[Bot]", interaction_mock)
+
+    asyncio.run(view.suppress.callback(interaction))
+
+    bot.dragonfly_services.create_suppression.assert_awaited_once_with(
+        result.name,
+        result.version,
+        [],
+    )
+    interaction_mock.followup.send.assert_awaited_once_with(
+        f"Created suppression `{created.suppression_id}` for `Example_Package==1.0.0` "
+        "covering 0 current matched rules.",
+        ephemeral=True,
+    )
+
+
 def test_run_omits_suppressed_alert_but_keeps_scan_log() -> None:
     bot = cast("Bot", Mock())
     result = package_result(rules=["false_positive"])
