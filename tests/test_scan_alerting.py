@@ -64,7 +64,7 @@ def suppression(*, version: str = "1.0.0", rules: list[str] | None = None) -> Su
     )
 
 
-def test_all_rule_suppression_applies_to_matching_package_version() -> None:
+def test_all_rule_suppression_applies_only_to_matching_package_version() -> None:
     assert dragonfly.is_suppressed(package_result(rules=["one"]), [suppression()])
     assert not dragonfly.is_suppressed(
         package_result(version="2.0.0", rules=["one"]),
@@ -72,15 +72,25 @@ def test_all_rule_suppression_applies_to_matching_package_version() -> None:
     )
 
 
-def test_scoped_suppressions_combine_without_hiding_unsuppressed_rules() -> None:
-    result = package_result(rules=["one", "two"])
+def test_scoped_suppressions_apply_across_versions_and_combine() -> None:
+    result = package_result(version="3.0.0", rules=["one", "two"])
 
     assert dragonfly.is_suppressed(
         result,
-        [suppression(rules=["one"]), suppression(rules=["two"])],
+        [
+            suppression(version="1.0.0", rules=["one"]),
+            suppression(version="2.0.0", rules=["two"]),
+        ],
     )
     assert not dragonfly.is_suppressed(result, [suppression(rules=["one"])])
     assert not dragonfly.is_suppressed(package_result(rules=[]), [suppression(rules=[])])
+
+
+def test_scoped_suppression_does_not_apply_to_another_package() -> None:
+    other_package = suppression(rules=["one"])
+    other_package.package_name = "different-package"
+
+    assert not dragonfly.is_suppressed(package_result(rules=["one"]), [other_package])
 
 
 def test_suppression_rule_command_parser() -> None:
