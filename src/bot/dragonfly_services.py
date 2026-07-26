@@ -1,10 +1,12 @@
 """Interacting with the Dragonfly API."""
 
 import dataclasses
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any, Self
+from urllib.parse import quote
 
 from aiohttp import ClientSession
 from pydantic import BaseModel
@@ -64,6 +66,25 @@ class AlertingConfiguration(BaseModel):
     production_score_threshold: int
     updated_at: datetime
     updated_by: str
+
+
+class Suppression(BaseModel):
+    """A package-version alert suppression owned by Mainframe."""
+
+    suppression_id: uuid.UUID
+    package_name: str
+    package_version: str
+    rules: list[str] | None
+    created_at: datetime
+    created_by: str
+    updated_at: datetime
+    updated_by: str
+
+
+class SuppressionDeleteResponse(BaseModel):
+    """Number of suppressions deleted by Mainframe."""
+
+    deleted: int
 
 
 @dataclass
@@ -160,6 +181,75 @@ class DragonflyServices:
             json={"production_score_threshold": production_score_threshold},
         )
         return AlertingConfiguration.model_validate(data)
+
+    @staticmethod
+    def _suppression_collection_path(package_name: str, package_version: str | None = None) -> str:
+        package_path = quote(package_name, safe="")
+        if package_version is None:
+            return f"/packages/{package_path}/suppressions"
+        version_path = quote(package_version, safe="")
+        return f"/packages/{package_path}/versions/{version_path}/suppressions"
+
+    async def get_suppressions(self: Self, package_name: str) -> list[Suppression]:
+        """Get every suppression for a package across all versions."""
+        path = self._suppression_collection_path(package_name)
+        data = await self.make_request("GET", path)
+        return [Suppression.model_validate(item) for item in data]
+
+    async def get_suppression(
+        self: Self,
+        package_name: str,
+        package_version: str,
+        suppression_id: uuid.UUID,
+    ) -> Suppression:
+        """Get one suppression by its stable identifier."""
+        path = f"{self._suppression_collection_path(package_name, package_version)}/{suppression_id}"
+        data = await self.make_request("GET", path)
+        return Suppression.model_validate(data)
+
+    async def create_suppression(
+        self: Self,
+        package_name: str,
+        package_version: str,
+        rules: list[str] | None = None,
+    ) -> Suppression:
+        """Create a suppression; null rules suppress every rule."""
+        path = self._suppression_collection_path(package_name, package_version)
+        data = await self.make_request("POST", path, json={"rules": rules})
+        return Suppression.model_validate(data)
+
+    async def update_suppression(
+        self: Self,
+        package_name: str,
+        package_version: str,
+        suppression_id: uuid.UUID,
+        rules: list[str] | None,
+    ) -> Suppression:
+        """Replace one suppression's rule corpus."""
+        path = f"{self._suppression_collection_path(package_name, package_version)}/{suppression_id}"
+        data = await self.make_request("PATCH", path, json={"rules": rules})
+        return Suppression.model_validate(data)
+
+    async def delete_suppression(
+        self: Self,
+        package_name: str,
+        package_version: str,
+        suppression_id: uuid.UUID,
+    ) -> SuppressionDeleteResponse:
+        """Delete one suppression."""
+        path = f"{self._suppression_collection_path(package_name, package_version)}/{suppression_id}"
+        data = await self.make_request("DELETE", path)
+        return SuppressionDeleteResponse.model_validate(data)
+
+    async def delete_version_suppressions(
+        self: Self,
+        package_name: str,
+        package_version: str,
+    ) -> SuppressionDeleteResponse:
+        """Delete every suppression for one package version."""
+        path = self._suppression_collection_path(package_name, package_version)
+        data = await self.make_request("DELETE", path)
+        return SuppressionDeleteResponse.model_validate(data)
 
     async def report_package(
         self: Self,

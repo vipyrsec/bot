@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import uuid
 from typing import Any, Self
 from unittest.mock import AsyncMock, Mock
 
@@ -262,3 +263,91 @@ def test_update_alerting_configuration() -> None:
         "/alerting/configuration",
         json={"production_score_threshold": 12},
     )
+
+
+def _suppression_payload(
+    *,
+    suppression_id: uuid.UUID,
+    package_name: str = "example-package",
+    package_version: str = "1.0+local",
+    rules: list[str] | None = None,
+) -> dict[str, Any]:
+    timestamp = int(dt.datetime(2026, 7, 26, 12, 0, tzinfo=dt.UTC).timestamp())
+    return {
+        "suppression_id": str(suppression_id),
+        "package_name": package_name,
+        "package_version": package_version,
+        "rules": rules,
+        "created_at": timestamp,
+        "created_by": "operator",
+        "updated_at": timestamp,
+        "updated_by": "operator",
+    }
+
+
+def test_get_suppressions() -> None:
+    service = _service()
+    suppression_id = uuid.uuid4()
+    service.make_request = AsyncMock(return_value=[_suppression_payload(suppression_id=suppression_id)])
+
+    suppressions = asyncio.run(service.get_suppressions("Example Package"))
+
+    assert [suppression.suppression_id for suppression in suppressions] == [suppression_id]
+    service.make_request.assert_awaited_once_with("GET", "/packages/Example%20Package/suppressions")
+
+
+def test_get_suppression() -> None:
+    service = _service()
+    suppression_id = uuid.uuid4()
+    service.make_request = AsyncMock(return_value=_suppression_payload(suppression_id=suppression_id))
+
+    suppression = asyncio.run(service.get_suppression("example-package", "1.0+local", suppression_id))
+
+    assert suppression.suppression_id == suppression_id
+    service.make_request.assert_awaited_once_with(
+        "GET",
+        f"/packages/example-package/versions/1.0%2Blocal/suppressions/{suppression_id}",
+    )
+
+
+def test_create_and_update_suppression() -> None:
+    service = _service()
+    suppression_id = uuid.uuid4()
+    created_payload = _suppression_payload(suppression_id=suppression_id)
+    updated_payload = _suppression_payload(suppression_id=suppression_id, rules=["replacement"])
+    service.make_request = AsyncMock(side_effect=[created_payload, updated_payload])
+
+    created = asyncio.run(service.create_suppression("example-package", "1.0+local"))
+    updated = asyncio.run(
+        service.update_suppression(
+            "example-package",
+            "1.0+local",
+            suppression_id,
+            ["replacement"],
+        )
+    )
+
+    assert created.rules is None
+    assert updated.rules == ["replacement"]
+    collection_path = "/packages/example-package/versions/1.0%2Blocal/suppressions"
+    assert service.make_request.await_args_list == [
+        ((("POST", collection_path)), {"json": {"rules": None}}),
+        ((("PATCH", f"{collection_path}/{suppression_id}")), {"json": {"rules": ["replacement"]}}),
+    ]
+
+
+def test_delete_suppression_resources() -> None:
+    service = _service()
+    suppression_id = uuid.uuid4()
+    service.make_request = AsyncMock(side_effect=[{"deleted": 1}, {"deleted": 3}])
+
+    deleted_one = asyncio.run(service.delete_suppression("example", "1.0.0", suppression_id))
+    deleted_all = asyncio.run(service.delete_version_suppressions("example", "1.0.0"))
+
+    assert deleted_one.deleted == 1
+    assert deleted_all.deleted == 3
+    collection_path = "/packages/example/versions/1.0.0/suppressions"
+    assert service.make_request.await_args_list == [
+        ((("DELETE", f"{collection_path}/{suppression_id}")), {}),
+        ((("DELETE", collection_path)), {}),
+    ]
