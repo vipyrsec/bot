@@ -519,7 +519,7 @@ def _suppression_scope(suppression: Suppression) -> str:
     return f"{len(suppression.rules)} selected rule{'s' if len(suppression.rules) != 1 else ''}"
 
 
-def _build_suppression_embed(suppression: Suppression, *, title: str) -> discord.Embed:
+def build_suppression_embed(suppression: Suppression, *, title: str) -> discord.Embed:
     """Build a detailed embed for one suppression."""
     embed = discord.Embed(
         title=title,
@@ -546,7 +546,7 @@ def _build_suppression_embed(suppression: Suppression, *, title: str) -> discord
     return embed
 
 
-def _build_suppression_list_embeds(package_name: str, suppressions: list[Suppression]) -> list[discord.Embed]:
+def build_suppression_list_embeds(package_name: str, suppressions: list[Suppression]) -> list[discord.Embed]:
     """Build bounded summary embeds for every suppression against a package."""
     if not suppressions:
         return [
@@ -586,7 +586,7 @@ async def _send_suppression_list(
     suppressions: list[Suppression],
 ) -> None:
     """Send each bounded suppression list page as an ephemeral embed."""
-    for embed in _build_suppression_list_embeds(package_name, suppressions):
+    for embed in build_suppression_list_embeds(package_name, suppressions):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
 
@@ -625,7 +625,7 @@ class SuppressionCommandGroup(discord.app_commands.Group):
 
     async def on_error(
         self: Self,
-        interaction: discord.Interaction[Bot],
+        interaction: discord.Interaction[discord.Client],
         error: discord.app_commands.AppCommandError,
     ) -> None:
         """Return an actionable ephemeral response for suppression command failures."""
@@ -973,7 +973,7 @@ class Dragonfly(commands.Cog):
             parsed_id,
         )
         await interaction.followup.send(
-            embed=_build_suppression_embed(suppression, title="Suppression details"),
+            embed=build_suppression_embed(suppression, title="Suppression details"),
             ephemeral=True,
         )
 
@@ -1005,7 +1005,7 @@ class Dragonfly(commands.Cog):
             parsed_rules,
         )
         await interaction.followup.send(
-            embed=_build_suppression_embed(suppression, title="Suppression created"),
+            embed=build_suppression_embed(suppression, title="Suppression created"),
             ephemeral=True,
         )
 
@@ -1044,7 +1044,7 @@ class Dragonfly(commands.Cog):
             parsed_rules,
         )
         await interaction.followup.send(
-            embed=_build_suppression_embed(suppression, title="Suppression updated"),
+            embed=build_suppression_embed(suppression, title="Suppression updated"),
             ephemeral=True,
         )
 
