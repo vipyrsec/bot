@@ -150,11 +150,11 @@ def test_suppression_embeds_bound_large_rule_corpora_and_lists() -> None:
     rules = [f"false_positive_rule_{index:02d}" for index in range(30)]
     suppressions = [suppression(version=f"1.0.{index}", rules=rules) for index in range(11)]
 
-    details = dragonfly._build_suppression_embed(  # noqa: SLF001
+    details = dragonfly.build_suppression_embed(
         suppressions[0],
         title="Suppression details",
     )
-    pages = dragonfly._build_suppression_list_embeds("example-package", suppressions)  # noqa: SLF001
+    pages = dragonfly.build_suppression_list_embeds("example-package", suppressions)
 
     assert details.title == "Suppression details"
     assert details.fields[0].value == "30 selected rules"
@@ -173,7 +173,7 @@ def test_suppression_list_pages_stay_within_aggregate_embed_limit() -> None:
         for index in range(9)
     ]
 
-    pages = dragonfly._build_suppression_list_embeds("p" * 500, suppressions)  # noqa: SLF001
+    pages = dragonfly.build_suppression_list_embeds("p" * 500, suppressions)
 
     assert [len(page.fields) for page in pages] == [8, 1]
     assert all(len(page) <= 6000 for page in pages)

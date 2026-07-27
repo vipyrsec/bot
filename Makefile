@@ -1,6 +1,8 @@
 .ONESHELL:
 .SILENT:
 .DEFAULT_GOAL = help
+SHELL := /bin/bash
+.SHELLFLAGS := -eu -o pipefail -c
 
 PYTHON_FILES = $(shell find src/ tests/ -type f -name '*.py')
 
@@ -11,12 +13,10 @@ all: format lint test ## Format, lint, and run tests
 format: $(PYTHON_FILES) ## Format Python files
 	uv run --locked ruff format $?
 
-LINT_OPTIONS = --fix # Fix the lint violations
-
 .PHONY: lint
 lint: $(PYTHON_FILES) ## Lint Python files
 	uv run --locked pyright
-	uv run --locked ruff check $(LINT_OPTIONS) $?
+	uv run --locked ruff check $(PYTHON_FILES)
 
 .PHONY: test
 test: $(PYTHON_FILES) ## Run tests in Docker
