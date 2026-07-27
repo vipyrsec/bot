@@ -38,6 +38,8 @@ def _invoke_command(
     api_key: str = "test-api-key",
     response: _MockResponse | None = None,
     request_error: Exception | None = None,
+    name: str = "example-package",
+    version: str = "1.2.3",
 ) -> tuple[Mock, Mock]:
     session = Mock()
     if request_error is not None:
@@ -61,7 +63,7 @@ def _invoke_command(
     )
 
     with patch.object(sandbox.SandboxConfig, "api_key", SecretStr(api_key)):
-        asyncio.run(callback(cog, interaction, "example-package", "1.2.3"))
+        asyncio.run(callback(cog, interaction, name, version))
 
     interaction_mock.response.defer.assert_awaited_once_with(thinking=True, ephemeral=True)
     return interaction_mock, session
@@ -98,6 +100,32 @@ def test_sandbox_command_queues_package() -> None:
     )
     interaction.followup.send.assert_awaited_once_with(
         "Queued `example-package v1.2.3` for sandbox analysis. Run ID: `test-run-id`",
+        ephemeral=True,
+    )
+
+
+def test_sandbox_command_escapes_inline_code_values() -> None:
+    """Package and service text must not inject Discord inline-code delimiters."""
+    interaction, _ = _invoke_command(
+        name="example`package",
+        version="1.`2.3",
+        response=_MockResponse(HTTPStatus.ACCEPTED, {"run_id": "run`id"}),
+    )
+
+    interaction.followup.send.assert_awaited_once_with(
+        "Queued `example'package v1.'2.3` for sandbox analysis. Run ID: `run'id`",
+        ephemeral=True,
+    )
+
+
+def test_inline_code_bounds_response_values() -> None:
+    """Unexpectedly large service values must remain within a Discord response."""
+    interaction, _ = _invoke_command(
+        response=_MockResponse(HTTPStatus.ACCEPTED, {"run_id": "x" * 301}),
+    )
+
+    interaction.followup.send.assert_awaited_once_with(
+        f"Queued `example-package v1.2.3` for sandbox analysis. Run ID: `{'x' * 299}…`",
         ephemeral=True,
     )
 

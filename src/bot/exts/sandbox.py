@@ -79,9 +79,17 @@ class Sandbox(commands.Cog):
             return
 
         await interaction.followup.send(
-            f"Queued `{name} v{version}` for sandbox analysis. Run ID: `{run_id}`",
+            f"Queued {_inline_code(f'{name} v{version}')} for sandbox analysis. Run ID: {_inline_code(run_id)}",
             ephemeral=True,
         )
+
+
+def _inline_code(value: str, *, limit: int = 300) -> str:
+    """Format bounded text as inline code without allowing delimiter injection."""
+    escaped = value.replace("`", "'")
+    if len(escaped) > limit:
+        escaped = escaped[: limit - 1] + "…"
+    return f"`{escaped}`"
 
 
 def _read_run_id(payload: object) -> str | None:
