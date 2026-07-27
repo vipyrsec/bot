@@ -8,7 +8,7 @@ An `.env` file is used to populate env vars, if present.
 from os import getenv
 from typing import ClassVar
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -83,6 +83,15 @@ class _DragonflyConfig(EnvConfig, env_prefix="dragonfly_"):
 
 
 DragonflyConfig = _DragonflyConfig()
+
+
+class _Sandbox(EnvConfig, env_prefix="sandbox_"):
+    """Snakehook sandbox configuration."""
+
+    api_key: SecretStr = SecretStr("")
+
+
+Sandbox = _Sandbox()
 
 
 class _PyPi(EnvConfig, env_prefix="pypi_"):
