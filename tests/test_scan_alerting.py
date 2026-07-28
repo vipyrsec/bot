@@ -377,10 +377,27 @@ def test_run_delivers_alert_when_suppressions_are_unavailable() -> None:
     logs_channel_mock.send.assert_awaited_once()
 
 
-def test_scan_iteration_advances_cursor_with_large_rule_set() -> None:
+@pytest.mark.parametrize(
+    "rules",
+    [
+        [f"suspicious_rule_{index:03d}_{'x' * 100}" for index in range(100)],
+        [
+            "x"
+            * (
+                dragonfly.EMBED_DESCRIPTION_LIMIT
+                - len(dragonfly.RULES_DESCRIPTION_PREFIX)
+                - len(dragonfly.RULES_DESCRIPTION_SUFFIX)
+                - len(", … (+10 more)")
+            ),
+            *[f"omitted_rule_{index}" for index in range(10)],
+        ],
+    ],
+    ids=["many-rules", "omission-digit-boundary"],
+)
+def test_scan_iteration_advances_cursor_with_large_rule_set(rules: list[str]) -> None:
     bot = cast("Bot", Mock())
     configure_alerting_api(bot)
-    result = package_result(rules=[f"suspicious_rule_{index:03d}_{'x' * 100}" for index in range(100)])
+    result = package_result(rules=rules)
     bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[result])
     bot.dragonfly_services.get_suppressions = AsyncMock(return_value=[])
     cog = dragonfly.Dragonfly(bot)

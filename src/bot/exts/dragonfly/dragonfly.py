@@ -405,8 +405,8 @@ def _format_scan_rules(rules: list[str]) -> str:
     included: list[str] = []
     for rule in rules:
         candidate = ", ".join((*included, rule))
-        omitted = len(rules) - len(included) - 1
-        truncation_notice = f", … (+{omitted} more)" if omitted else ""
+        omitted_if_excluded = len(rules) - len(included)
+        truncation_notice = f", … (+{omitted_if_excluded} more)"
         if len(candidate) + len(truncation_notice) > content_limit:
             break
         included.append(rule)
