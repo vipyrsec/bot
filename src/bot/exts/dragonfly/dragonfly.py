@@ -35,6 +35,9 @@ SUPPRESSION_SERVICE_ERRORS = (
     UnicodeDecodeError,
     ValidationError,
 )
+EMBED_DESCRIPTION_LIMIT = 4096
+RULES_DESCRIPTION_PREFIX = "```YARA rules matched: "
+RULES_DESCRIPTION_SUFFIX = "```"
 
 
 def _build_modal_title(name: str, version: str) -> str:
@@ -370,7 +373,7 @@ def _build_package_scan_result_embed(
 
     embed = discord.Embed(
         title=f"{title} package found: {scan_result.name} @ {scan_result.version}",
-        description=f"```YARA rules matched: {', '.join(scan_result.rules) or 'None'}```",
+        description=_format_scan_rules(scan_result.rules),
         color=color,
         timestamp=scan_result.queued_at,
     )
@@ -391,6 +394,32 @@ def _build_package_scan_result_embed(
     )
 
     return embed
+
+
+def _format_scan_rules(rules: list[str]) -> str:
+    """Format matched rules without exceeding Discord's embed description limit."""
+    if not rules:
+        return f"{RULES_DESCRIPTION_PREFIX}None{RULES_DESCRIPTION_SUFFIX}"
+
+    content_limit = EMBED_DESCRIPTION_LIMIT - len(RULES_DESCRIPTION_PREFIX) - len(RULES_DESCRIPTION_SUFFIX)
+    included: list[str] = []
+    for rule in rules:
+        candidate = ", ".join((*included, rule))
+        omitted = len(rules) - len(included) - 1
+        truncation_notice = f", … (+{omitted} more)" if omitted else ""
+        if len(candidate) + len(truncation_notice) > content_limit:
+            break
+        included.append(rule)
+
+    omitted = len(rules) - len(included)
+    if not included:
+        content = f"… ({omitted} rules omitted)"
+    else:
+        content = ", ".join(included)
+        if omitted:
+            content += f", … (+{omitted} more)"
+
+    return f"{RULES_DESCRIPTION_PREFIX}{content}{RULES_DESCRIPTION_SUFFIX}"
 
 
 def _build_all_packages_scanned_embed(scan_results: list[Package]) -> discord.Embed:

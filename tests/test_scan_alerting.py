@@ -377,6 +377,35 @@ def test_run_delivers_alert_when_suppressions_are_unavailable() -> None:
     logs_channel_mock.send.assert_awaited_once()
 
 
+def test_scan_iteration_advances_cursor_with_large_rule_set() -> None:
+    bot = cast("Bot", Mock())
+    configure_alerting_api(bot)
+    result = package_result(rules=[f"suspicious_rule_{index:03d}_{'x' * 100}" for index in range(100)])
+    bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[result])
+    bot.dragonfly_services.get_suppressions = AsyncMock(return_value=[])
+    cog = dragonfly.Dragonfly(bot)
+    previous_cursor = cog.since
+    logs_channel_mock = Mock()
+    logs_channel_mock.send = AsyncMock()
+    logs_channel = cast("discord.abc.Messageable", logs_channel_mock)
+
+    async def reject_oversized_alert(*_args: object, **kwargs: object) -> None:
+        embed = cast("discord.Embed", kwargs["embed"])
+        assert embed.description is not None
+        assert len(embed.description) <= dragonfly.EMBED_DESCRIPTION_LIMIT
+
+    alerts_channel_mock = Mock()
+    alerts_channel_mock.send = AsyncMock(side_effect=reject_oversized_alert)
+    alerts_channel = cast("discord.abc.Messageable", alerts_channel_mock)
+
+    with patch.object(dragonfly, "AlertView", return_value=Mock()):
+        asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
+
+    assert cog.since > previous_cursor
+    alerts_channel_mock.send.assert_awaited_once()
+    logs_channel_mock.send.assert_awaited_once()
+
+
 def test_inactivity_threshold_is_inclusive() -> None:
     """The configured boundary must trigger exactly when it is reached."""
     now = datetime.now(tz=UTC)
