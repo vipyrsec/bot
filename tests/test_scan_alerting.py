@@ -138,6 +138,7 @@ def test_opengrep_thread_chunks_are_bounded_and_neutralize_mentions() -> None:
 
 def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     bot = cast("Bot", Mock())
+    bot.dragonfly_services.heartbeat_opengrep_publication = AsyncMock()
     bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock()
     bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
     thread = Mock(spec=discord.Thread)
@@ -165,12 +166,14 @@ def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     assert "not a production verdict" in summary.description
     message.create_thread.assert_awaited_once()
     assert thread.send.await_count == 1
+    assert bot.dragonfly_services.heartbeat_opengrep_publication.await_count == 3
     assert bot.dragonfly_services.checkpoint_opengrep_publication.await_count == 3
     bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
 
 
 def test_publish_opengrep_result_does_not_ack_partial_thread() -> None:
     bot = cast("Bot", Mock())
+    bot.dragonfly_services.heartbeat_opengrep_publication = AsyncMock()
     bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock()
     bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
     thread = Mock(spec=discord.Thread)
@@ -198,6 +201,7 @@ def test_publish_opengrep_result_does_not_ack_partial_thread() -> None:
 def test_publish_opengrep_result_resumes_recorded_thread_progress() -> None:
     bot_mock = Mock()
     bot = cast("Bot", bot_mock)
+    bot.dragonfly_services.heartbeat_opengrep_publication = AsyncMock()
     bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock()
     bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
     thread = Mock(spec=discord.Thread)
@@ -225,6 +229,34 @@ def test_publish_opengrep_result_resumes_recorded_thread_progress() -> None:
     channel.fetch_message.assert_awaited_once_with(100)
     assert thread.send.await_count == 0
     bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
+
+
+def test_discord_operation_renews_opengrep_lease_while_waiting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bot = cast("Bot", Mock())
+    bot.dragonfly_services.heartbeat_opengrep_publication = AsyncMock()
+    result = opengrep_result()
+    completed = False
+
+    async def slow_operation() -> str:
+        nonlocal completed
+        await asyncio.sleep(0.01)
+        completed = True
+        return "complete"
+
+    monkeypatch.setattr(dragonfly, "OPENGREP_PUBLICATION_HEARTBEAT_SECONDS", 0.001)
+    response = asyncio.run(
+        dragonfly.await_discord_with_opengrep_lease(
+            bot,
+            result,
+            slow_operation,
+        )
+    )
+
+    assert response == "complete"
+    assert completed
+    assert bot.dragonfly_services.heartbeat_opengrep_publication.await_count > 1
 
 
 def test_publish_opengrep_results_isolates_each_result_failure() -> None:

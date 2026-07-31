@@ -291,12 +291,14 @@ def test_get_and_acknowledge_opengrep_results() -> None:
                 }
             ],
             {},
+            {},
             {"published_at": int(finished_at.timestamp())},
         ]
     )
 
     results = asyncio.run(service.get_opengrep_results())
     result = results[0]
+    asyncio.run(service.heartbeat_opengrep_publication(result))
     asyncio.run(
         service.checkpoint_opengrep_publication(
             result,
@@ -325,7 +327,12 @@ def test_get_and_acknowledge_opengrep_results() -> None:
         )
     ]
     assert service.make_request.await_args_list == [
-        call("GET", "/opengrep/results"),
+        call("GET", "/opengrep/results", params={"limit": 1}),
+        call(
+            "POST",
+            f"/opengrep/results/{scan_id}/heartbeat",
+            json={"publication_id": str(publication_id)},
+        ),
         call(
             "POST",
             f"/opengrep/results/{scan_id}/publication",

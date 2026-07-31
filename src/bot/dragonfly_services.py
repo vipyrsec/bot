@@ -205,8 +205,16 @@ class DragonflyServices:
 
     async def get_opengrep_results(self: Self) -> list[OpenGrepResult]:
         """Get completed, unpublished OpenGrep shadow results."""
-        data = await self.make_request("GET", "/opengrep/results")
+        data = await self.make_request("GET", "/opengrep/results", params={"limit": 1})
         return [OpenGrepResult.model_validate(item) for item in data]
+
+    async def heartbeat_opengrep_publication(self: Self, result: OpenGrepResult) -> None:
+        """Renew a publication lease while a Discord operation is in flight."""
+        await self.make_request(
+            "POST",
+            f"/opengrep/results/{result.scan_id}/heartbeat",
+            json={"publication_id": str(result.publication_id)},
+        )
 
     async def checkpoint_opengrep_publication(
         self: Self,
