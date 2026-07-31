@@ -113,6 +113,11 @@ def opengrep_finding(index: int = 0, *, message: str = "Behavioral evidence.") -
     )
 
 
+def discord_not_found() -> discord.NotFound:
+    response = Mock(status=404, reason="Not Found")
+    return discord.NotFound(response, "Unknown Channel")
+
+
 def test_opengrep_thread_chunks_are_bounded_and_neutralize_mentions() -> None:
     findings = [
         opengrep_finding(
@@ -161,6 +166,7 @@ def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     thread.send = AsyncMock()
     message = Mock()
     message.id = 100
+    message.fetch_thread = AsyncMock(side_effect=discord_not_found())
     message.create_thread = AsyncMock(return_value=thread)
     channel = Mock()
     channel.send = AsyncMock(return_value=message)
@@ -181,7 +187,7 @@ def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     assert "not a production verdict" in summary.description
     message.create_thread.assert_awaited_once()
     assert thread.send.await_count == 1
-    assert bot.dragonfly_services.heartbeat_opengrep_publication.await_count == 3
+    assert bot.dragonfly_services.heartbeat_opengrep_publication.await_count == 4
     assert bot.dragonfly_services.checkpoint_opengrep_publication.await_count == 3
     bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
 
@@ -196,6 +202,7 @@ def test_publish_opengrep_result_does_not_ack_partial_thread() -> None:
     thread.send = AsyncMock(side_effect=RuntimeError("Discord unavailable"))
     message = Mock()
     message.id = 100
+    message.fetch_thread = AsyncMock(side_effect=discord_not_found())
     message.create_thread = AsyncMock(return_value=thread)
     channel = Mock()
     channel.send = AsyncMock(return_value=message)
@@ -211,6 +218,76 @@ def test_publish_opengrep_result_does_not_ack_partial_thread() -> None:
         )
 
     bot.dragonfly_services.acknowledge_opengrep_result.assert_not_awaited()
+
+
+def test_publish_opengrep_retry_uses_stable_summary_nonce() -> None:
+    bot = cast("Bot", Mock())
+    bot.dragonfly_services.heartbeat_opengrep_publication = AsyncMock()
+    bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock(
+        side_effect=[RuntimeError("checkpoint unavailable"), None]
+    )
+    bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
+    message = Mock(id=100)
+    channel = Mock()
+    channel.send = AsyncMock(return_value=message)
+    result = opengrep_result()
+
+    with pytest.raises(RuntimeError, match="checkpoint unavailable"):
+        asyncio.run(
+            dragonfly.publish_opengrep_result(
+                bot,
+                cast("discord.TextChannel", channel),
+                result,
+            )
+        )
+    asyncio.run(
+        dragonfly.publish_opengrep_result(
+            bot,
+            cast("discord.TextChannel", channel),
+            result,
+        )
+    )
+
+    first_nonce = channel.send.await_args_list[0].kwargs["nonce"]
+    second_nonce = channel.send.await_args_list[1].kwargs["nonce"]
+    assert first_nonce == second_nonce
+    assert first_nonce == dragonfly.opengrep_publication_nonce(result.scan_id, "summary")
+    bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
+
+
+def test_publish_opengrep_retry_recovers_existing_thread() -> None:
+    bot = cast("Bot", Mock())
+    bot.dragonfly_services.heartbeat_opengrep_publication = AsyncMock()
+    bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock()
+    bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
+    thread = Mock(spec=discord.Thread)
+    thread.id = 100
+    thread.send = AsyncMock()
+    message = Mock()
+    message.fetch_thread = AsyncMock(return_value=thread)
+    message.create_thread = AsyncMock()
+    channel = Mock()
+    channel.fetch_message = AsyncMock(return_value=message)
+    result = opengrep_result(
+        findings=[opengrep_finding()],
+        discord_message_id=100,
+    )
+
+    asyncio.run(
+        dragonfly.publish_opengrep_result(
+            bot,
+            cast("discord.TextChannel", channel),
+            result,
+        )
+    )
+
+    message.fetch_thread.assert_awaited_once()
+    message.create_thread.assert_not_awaited()
+    assert thread.send.await_args.kwargs["nonce"] == dragonfly.opengrep_publication_nonce(
+        result.scan_id,
+        "chunk",
+        1,
+    )
 
 
 def test_publish_opengrep_result_resumes_recorded_thread_progress() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import re
 import urllib.parse
@@ -535,6 +536,16 @@ def build_opengrep_summary_embed(result: OpenGrepResult) -> discord.Embed:
     return embed
 
 
+def opengrep_publication_nonce(
+    scan_id: uuid.UUID,
+    operation: str,
+    index: int = 0,
+) -> str:
+    """Build a stable Discord nonce so retried sends are idempotent."""
+    source = f"{scan_id}:{operation}:{index}".encode()
+    return hashlib.blake2s(source, digest_size=8).hexdigest()
+
+
 async def await_discord_with_opengrep_lease[T](
     bot: Bot,
     result: OpenGrepResult,
@@ -573,7 +584,10 @@ async def publish_opengrep_result(
         message = await await_discord_with_opengrep_lease(
             bot,
             result,
-            lambda: channel.send(embed=build_opengrep_summary_embed(result)),
+            lambda: channel.send(
+                embed=build_opengrep_summary_embed(result),
+                nonce=opengrep_publication_nonce(result.scan_id, "summary"),
+            ),
         )
         message_id = message.id
         await bot.dragonfly_services.checkpoint_opengrep_publication(
@@ -595,14 +609,21 @@ async def publish_opengrep_result(
             msg = "Stored OpenGrep publication progress exceeds its evidence chunks"
             raise RuntimeError(msg)
         if thread_id is None:
-            thread = await await_discord_with_opengrep_lease(
-                bot,
-                result,
-                lambda: message.create_thread(
-                    name=f"OpenGrep · {result.name} {result.version}"[:100],
-                    auto_archive_duration=1440,
-                ),
-            )
+            try:
+                thread = await await_discord_with_opengrep_lease(
+                    bot,
+                    result,
+                    message.fetch_thread,
+                )
+            except discord.NotFound:
+                thread = await await_discord_with_opengrep_lease(
+                    bot,
+                    result,
+                    lambda: message.create_thread(
+                        name=f"OpenGrep · {result.name} {result.version}"[:100],
+                        auto_archive_duration=1440,
+                    ),
+                )
             thread_id = thread.id
             await bot.dragonfly_services.checkpoint_opengrep_publication(
                 result,
@@ -625,7 +646,10 @@ async def publish_opengrep_result(
             await await_discord_with_opengrep_lease(
                 bot,
                 result,
-                lambda chunk=chunk: thread.send(chunk),
+                lambda chunk=chunk, index=index: thread.send(
+                    chunk,
+                    nonce=opengrep_publication_nonce(result.scan_id, "chunk", index),
+                ),
             )
             published_chunks = index
             await bot.dragonfly_services.checkpoint_opengrep_publication(
