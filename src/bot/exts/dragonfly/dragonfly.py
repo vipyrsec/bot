@@ -480,28 +480,64 @@ def _safe_discord_text(value: str) -> str:
     return value.replace("@", "@\u200b").replace("`", "'")
 
 
-def _format_opengrep_finding(finding: OpenGrepFinding) -> str:
-    """Format one bounded OpenGrep finding for a thread message."""
-    location = f"{_safe_discord_text(finding.path)}:{finding.start_line}-{finding.end_line}"
-    header = (
-        f"**{_safe_discord_text(finding.rule_id)}** · `{location}`\n"
-        f"{_safe_discord_text(finding.evidence)} / "
-        f"{_safe_discord_text(finding.confidence)} / "
-        f"{_safe_discord_text(finding.execution_context)}\n"
+def _format_opengrep_group(findings: list[OpenGrepFinding]) -> str:
+    """Aggregate equivalent findings into one bounded rule block."""
+    finding = findings[0]
+    locations = list(
+        dict.fromkeys(f"{_safe_discord_text(item.path)}:{item.start_line}-{item.end_line}" for item in findings)
     )
-    message = _safe_discord_text(finding.message)
-    rendered = header + message
-    if len(rendered) > OPENGREP_THREAD_CHUNK_LIMIT:
-        rendered = rendered[: OPENGREP_THREAD_CHUNK_LIMIT - 1] + "…"
-    return rendered
+    match_label = "match" if len(findings) == 1 else "matches"
+    header = (
+        f"**{_safe_discord_text(finding.rule_id)[:200]}** · {len(findings)} {match_label}\n"
+        f"{_safe_discord_text(finding.evidence)[:32]} / "
+        f"{_safe_discord_text(finding.confidence)[:20]} / "
+        f"{_safe_discord_text(finding.execution_context)[:64]}\n"
+    )
+    message = _safe_discord_text(finding.message)[:800]
+    prefix = f"{header}{message}\nLocations: "
+    included: list[str] = []
+    for location in locations:
+        omitted = len(locations) - len(included) - 1
+        suffix = f" … (+{omitted} more)" if omitted else ""
+        candidate = ", ".join([*included, location]) + suffix
+        if len(prefix) + len(candidate) > OPENGREP_THREAD_CHUNK_LIMIT:
+            break
+        included.append(location)
+
+    omitted = len(locations) - len(included)
+    location_text = ", ".join(included)
+    if omitted:
+        location_text += f" … (+{omitted} more)"
+    return prefix + location_text
 
 
-def build_opengrep_thread_chunks(findings: list[OpenGrepFinding]) -> list[str]:
-    """Pack findings into Discord messages without losing finding boundaries."""
+def build_opengrep_thread_chunks(result: OpenGrepResult) -> list[str]:
+    """Pack one scan into bounded messages grouped by equivalent findings."""
+    duration = "unknown duration" if result.duration_ms is None else f"{result.duration_ms} ms"
+    header = (
+        f"**OpenGrep shadow** · {len(result.findings)} findings · {duration}\n"
+        "Staging evaluation evidence only; this is not a production verdict."
+    )
+    if result.status is ScanStatus.FAILED:
+        reason = _safe_discord_text(result.fail_reason or "unknown failure")
+        return [f"{header}\nScan failed: {reason}"[:OPENGREP_THREAD_CHUNK_LIMIT]]
+
+    grouped: dict[tuple[str, str, str, str, str, str], list[OpenGrepFinding]] = {}
+    for finding in result.findings:
+        key = (
+            finding.rule_id,
+            finding.message,
+            finding.severity,
+            finding.evidence,
+            finding.confidence,
+            finding.execution_context,
+        )
+        grouped.setdefault(key, []).append(finding)
+
     chunks: list[str] = []
-    current = ""
-    for finding in findings:
-        rendered = _format_opengrep_finding(finding)
+    current = header
+    for findings in grouped.values():
+        rendered = _format_opengrep_group(findings)
         candidate = f"{current}\n\n{rendered}" if current else rendered
         if len(candidate) <= OPENGREP_THREAD_CHUNK_LIMIT:
             current = candidate
@@ -511,7 +547,7 @@ def build_opengrep_thread_chunks(findings: list[OpenGrepFinding]) -> list[str]:
         current = rendered
     if current:
         chunks.append(current)
-    return chunks
+    return chunks or [header]
 
 
 def build_opengrep_summary_embed(result: OpenGrepResult) -> discord.Embed:
@@ -571,12 +607,12 @@ async def await_discord_with_opengrep_lease[T](
         raise
 
 
-async def publish_opengrep_result(
+async def _publish_legacy_opengrep_result(
     bot: Bot,
     channel: discord.TextChannel,
     result: OpenGrepResult,
 ) -> None:
-    """Resume a checkpointed evidence thread and acknowledge it when complete."""
+    """Publish results queued before alert-thread routing metadata existed."""
     message_id = result.discord_message_id
     thread_id = result.discord_thread_id
     published_chunks = result.published_chunks
@@ -604,7 +640,7 @@ async def publish_opengrep_result(
         )
 
     if result.findings:
-        chunks = build_opengrep_thread_chunks(result.findings)
+        chunks = build_opengrep_thread_chunks(result)
         if published_chunks > len(chunks):
             msg = "Stored OpenGrep publication progress exceeds its evidence chunks"
             raise RuntimeError(msg)
@@ -658,6 +694,84 @@ async def publish_opengrep_result(
                 discord_thread_id=thread_id,
                 published_chunks=published_chunks,
             )
+    await bot.dragonfly_services.acknowledge_opengrep_result(result)
+
+
+async def publish_opengrep_result(
+    bot: Bot,
+    channel: discord.TextChannel,
+    result: OpenGrepResult,
+) -> None:
+    """Reply to the originating package alert and acknowledge when complete."""
+    alert_message_id = result.discord_alert_message_id
+    if alert_message_id is None:
+        await _publish_legacy_opengrep_result(bot, channel, result)
+        return
+
+    thread_id = result.discord_thread_id
+    published_chunks = result.published_chunks
+    alert = await await_discord_with_opengrep_lease(
+        bot,
+        result,
+        lambda: channel.fetch_message(alert_message_id),
+    )
+    stored_thread_id = thread_id
+    thread = bot.get_channel(stored_thread_id) if stored_thread_id is not None else None
+    if stored_thread_id is not None:
+        try:
+            if thread is None:
+                thread = await await_discord_with_opengrep_lease(
+                    bot,
+                    result,
+                    lambda: bot.fetch_channel(stored_thread_id),
+                )
+        except discord.NotFound:
+            thread_id = None
+            published_chunks = 0
+
+    if thread_id is None:
+        try:
+            thread = await await_discord_with_opengrep_lease(bot, result, alert.fetch_thread)
+        except discord.NotFound:
+            thread = await await_discord_with_opengrep_lease(
+                bot,
+                result,
+                lambda: alert.create_thread(
+                    name=f"OpenGrep · {result.name} {result.version}"[:100],
+                    auto_archive_duration=1440,
+                ),
+            )
+        thread_id = thread.id
+        await bot.dragonfly_services.checkpoint_opengrep_publication(
+            result,
+            discord_message_id=result.discord_message_id,
+            discord_thread_id=thread_id,
+            published_chunks=published_chunks,
+        )
+    if not isinstance(thread, discord.Thread):
+        msg = "Stored OpenGrep publication channel is not a Discord thread"
+        raise TypeError(msg)
+
+    chunks = build_opengrep_thread_chunks(result)
+    if published_chunks > len(chunks):
+        msg = "Stored OpenGrep publication progress exceeds its evidence chunks"
+        raise RuntimeError(msg)
+    for index, chunk in enumerate(chunks[published_chunks:], start=published_chunks + 1):
+        await await_discord_with_opengrep_lease(
+            bot,
+            result,
+            lambda chunk=chunk, index=index: thread.send(
+                chunk,
+                nonce=opengrep_publication_nonce(result.scan_id, "chunk", index),
+            ),
+        )
+        published_chunks = index
+        await bot.dragonfly_services.checkpoint_opengrep_publication(
+            result,
+            discord_message_id=result.discord_message_id,
+            discord_thread_id=thread_id,
+            published_chunks=published_chunks,
+        )
     await bot.dragonfly_services.acknowledge_opengrep_result(result)
 
 
@@ -925,14 +1039,14 @@ async def run(
             result,
             production_score_threshold=score,
         )
-        await alerts_channel.send(
+        alert = await alerts_channel.send(
             f"<@&{DragonflyConfig.alerts_role_id}>",
             embed=embed,
             view=AlertView(bot, result),
         )
         if DragonflyConfig.opengrep_shadow_enabled:
             try:
-                await bot.dragonfly_services.queue_opengrep_alert(result)
+                await bot.dragonfly_services.queue_opengrep_alert(result, alert.id)
             except Exception as error:
                 log.exception(
                     "Failed to queue OpenGrep shadow work for alerting package %s@%s.",
@@ -998,8 +1112,8 @@ class Dragonfly(commands.Cog):
 
     @tasks.loop(seconds=DragonflyConfig.interval)
     async def opengrep_shadow_loop(self: Self) -> None:
-        """Publish OpenGrep evidence independently from canonical alerts."""
-        channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
+        """Publish OpenGrep evidence in the originating alert threads."""
+        channel = self.bot.get_channel(DragonflyConfig.alerts_channel_id)
         assert isinstance(channel, discord.TextChannel)
         try:
             results = await self.bot.dragonfly_services.get_opengrep_results()

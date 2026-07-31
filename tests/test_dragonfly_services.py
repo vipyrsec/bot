@@ -173,12 +173,16 @@ def test_queue_opengrep_alert() -> None:
         commit_hash=None,
     )
 
-    asyncio.run(service.queue_opengrep_alert(package))
+    asyncio.run(service.queue_opengrep_alert(package, 123))
 
     service.make_request.assert_awaited_once_with(
         "POST",
         "/opengrep/alerts",
-        json={"name": "example", "version": "1.0.0"},
+        json={
+            "name": "example",
+            "version": "1.0.0",
+            "discord_alert_message_id": 123,
+        },
     )
 
 

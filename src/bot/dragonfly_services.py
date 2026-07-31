@@ -96,6 +96,7 @@ class OpenGrepResult(BaseModel):
     fail_reason: str | None
     finished_at: datetime
     publication_id: uuid.UUID
+    discord_alert_message_id: int | None = None
     discord_message_id: int | None
     discord_thread_id: int | None
     published_chunks: int
@@ -208,12 +209,16 @@ class DragonflyServices:
         data = await self.make_request("GET", "/opengrep/results", params={"limit": 1})
         return [OpenGrepResult.model_validate(item) for item in data]
 
-    async def queue_opengrep_alert(self: Self, package: Package) -> None:
+    async def queue_opengrep_alert(self: Self, package: Package, discord_alert_message_id: int) -> None:
         """Queue staging shadow work for a package after its alert is delivered."""
         await self.make_request(
             "POST",
             "/opengrep/alerts",
-            json={"name": package.name, "version": package.version},
+            json={
+                "name": package.name,
+                "version": package.version,
+                "discord_alert_message_id": discord_alert_message_id,
+            },
         )
 
     async def heartbeat_opengrep_publication(self: Self, result: OpenGrepResult) -> None:
