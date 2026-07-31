@@ -488,10 +488,10 @@ def _format_opengrep_group(findings: list[OpenGrepFinding]) -> str:
     )
     match_label = "match" if len(findings) == 1 else "matches"
     header = (
-        f"**{_safe_discord_text(finding.rule_id)}** · {len(findings)} {match_label}\n"
-        f"{_safe_discord_text(finding.evidence)} / "
-        f"{_safe_discord_text(finding.confidence)} / "
-        f"{_safe_discord_text(finding.execution_context)}\n"
+        f"**{_safe_discord_text(finding.rule_id)[:200]}** · {len(findings)} {match_label}\n"
+        f"{_safe_discord_text(finding.evidence)[:32]} / "
+        f"{_safe_discord_text(finding.confidence)[:20]} / "
+        f"{_safe_discord_text(finding.execution_context)[:64]}\n"
     )
     message = _safe_discord_text(finding.message)[:800]
     prefix = f"{header}{message}\nLocations: "
@@ -715,6 +715,20 @@ async def publish_opengrep_result(
         result,
         lambda: channel.fetch_message(alert_message_id),
     )
+    stored_thread_id = thread_id
+    thread = bot.get_channel(stored_thread_id) if stored_thread_id is not None else None
+    if stored_thread_id is not None:
+        try:
+            if thread is None:
+                thread = await await_discord_with_opengrep_lease(
+                    bot,
+                    result,
+                    lambda: bot.fetch_channel(stored_thread_id),
+                )
+        except discord.NotFound:
+            thread_id = None
+            published_chunks = 0
+
     if thread_id is None:
         try:
             thread = await await_discord_with_opengrep_lease(bot, result, alert.fetch_thread)
@@ -734,17 +748,9 @@ async def publish_opengrep_result(
             discord_thread_id=thread_id,
             published_chunks=published_chunks,
         )
-    else:
-        thread = bot.get_channel(thread_id)
-        if thread is None:
-            thread = await await_discord_with_opengrep_lease(
-                bot,
-                result,
-                lambda: bot.fetch_channel(thread_id),
-            )
-        if not isinstance(thread, discord.Thread):
-            msg = "Stored OpenGrep publication channel is not a Discord thread"
-            raise TypeError(msg)
+    if not isinstance(thread, discord.Thread):
+        msg = "Stored OpenGrep publication channel is not a Discord thread"
+        raise TypeError(msg)
 
     chunks = build_opengrep_thread_chunks(result)
     if published_chunks > len(chunks):

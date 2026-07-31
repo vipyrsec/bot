@@ -138,6 +138,10 @@ def test_opengrep_thread_chunks_are_bounded_and_neutralize_mentions() -> None:
 
     oversized_header = opengrep_finding()
     oversized_header.path = "p" * 5000
+    oversized_header.rule_id = "r" * 5000
+    oversized_header.evidence = "e" * 5000
+    oversized_header.confidence = "c" * 5000
+    oversized_header.execution_context = "x" * 5000
     rendered = dragonfly.build_opengrep_thread_chunks(opengrep_result(findings=[oversized_header]))
     assert len(rendered) == 1
     assert len(rendered[0]) <= dragonfly.OPENGREP_THREAD_CHUNK_LIMIT
@@ -236,6 +240,40 @@ def test_publish_opengrep_result_replies_to_originating_alert_thread() -> None:
     alert.create_thread.assert_awaited_once()
     thread.send.assert_awaited_once()
     assert "2 matches" in thread.send.await_args.args[0]
+    bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
+
+
+def test_publish_opengrep_result_replaces_a_deleted_checkpointed_thread() -> None:
+    bot_mock = Mock()
+    bot = cast("Bot", bot_mock)
+    bot.dragonfly_services.heartbeat_opengrep_publication = AsyncMock()
+    bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock()
+    bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
+    replacement = Mock(spec=discord.Thread)
+    replacement.id = 300
+    replacement.send = AsyncMock()
+    alert = Mock()
+    alert.fetch_thread = AsyncMock(side_effect=discord_not_found())
+    alert.create_thread = AsyncMock(return_value=replacement)
+    channel = Mock()
+    channel.fetch_message = AsyncMock(return_value=alert)
+    bot_mock.get_channel.return_value = None
+    bot_mock.fetch_channel = AsyncMock(side_effect=discord_not_found())
+    result = opengrep_result(
+        findings=[opengrep_finding()],
+        discord_alert_message_id=123,
+        discord_thread_id=200,
+        published_chunks=1,
+    )
+
+    asyncio.run(dragonfly.publish_opengrep_result(bot, cast("discord.TextChannel", channel), result))
+
+    bot_mock.fetch_channel.assert_awaited_once_with(200)
+    alert.create_thread.assert_awaited_once()
+    first_checkpoint = bot.dragonfly_services.checkpoint_opengrep_publication.await_args_list[0]
+    assert first_checkpoint.kwargs["discord_thread_id"] == 300
+    assert first_checkpoint.kwargs["published_chunks"] == 0
+    replacement.send.assert_awaited_once()
     bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
 
 
