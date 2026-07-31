@@ -8,7 +8,7 @@ An `.env` file is used to populate env vars, if present.
 from os import getenv
 from typing import ClassVar
 
-from pydantic import SecretStr, field_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -78,8 +78,17 @@ class _DragonflyConfig(EnvConfig, env_prefix="dragonfly_"):
     interval: int = 60
     timeout: int = 25
     inactivity_threshold: int = 60 * 10  # 10 minutes
+    opengrep_shadow_enabled: bool = False
 
     reporter_url: str = ""
+
+    @model_validator(mode="after")
+    def restrict_opengrep_shadow_to_staging(self) -> "_DragonflyConfig":
+        """Reject shadow polling against any non-staging API."""
+        if self.opengrep_shadow_enabled and self.api_url.rstrip("/") != "https://dragonfly-staging.vipyrsec.com":
+            msg = "OpenGrep shadow requires the staging Dragonfly API URL"
+            raise ValueError(msg)
+        return self
 
 
 DragonflyConfig = _DragonflyConfig()

@@ -21,7 +21,15 @@ from pydantic import ValidationError
 from bot import constants
 from bot.bot import Bot
 from bot.constants import Channels, Colours, DragonflyConfig, Roles
-from bot.dragonfly_services import DragonflyServices, Package, PackageReport, Suppression
+from bot.dragonfly_services import (
+    DragonflyServices,
+    OpenGrepFinding,
+    OpenGrepResult,
+    Package,
+    PackageReport,
+    ScanStatus,
+    Suppression,
+)
 from bot.queue_status import build_queue_status_embed
 from bot.utils.pastebin import PasteFile, PasteRequest, PasteResponse, paste
 
@@ -38,6 +46,8 @@ SUPPRESSION_SERVICE_ERRORS = (
 EMBED_DESCRIPTION_LIMIT = 4096
 RULES_DESCRIPTION_PREFIX = "```YARA rules matched: "
 RULES_DESCRIPTION_SUFFIX = "```"
+DISCORD_MESSAGE_LIMIT = 2000
+OPENGREP_THREAD_CHUNK_LIMIT = 1900
 
 
 def _build_modal_title(name: str, version: str) -> str:
@@ -461,6 +471,85 @@ def _build_scan_error_embed() -> discord.Embed:
     )
 
 
+def _safe_discord_text(value: str) -> str:
+    """Prevent external finding text from creating mentions or code spans."""
+    return value.replace("@", "@\u200b").replace("`", "'")
+
+
+def _format_opengrep_finding(finding: OpenGrepFinding) -> str:
+    """Format one bounded OpenGrep finding for a thread message."""
+    location = f"{_safe_discord_text(finding.path)}:{finding.start_line}-{finding.end_line}"
+    header = (
+        f"**{_safe_discord_text(finding.rule_id)}** · `{location}`\n"
+        f"{_safe_discord_text(finding.evidence)} / "
+        f"{_safe_discord_text(finding.confidence)} / "
+        f"{_safe_discord_text(finding.execution_context)}\n"
+    )
+    available = OPENGREP_THREAD_CHUNK_LIMIT - len(header)
+    message = _safe_discord_text(finding.message)
+    if len(message) > available:
+        message = message[: max(0, available - 1)] + "…"
+    return header + message
+
+
+def build_opengrep_thread_chunks(findings: list[OpenGrepFinding]) -> list[str]:
+    """Pack findings into Discord messages without losing finding boundaries."""
+    chunks: list[str] = []
+    current = ""
+    for finding in findings:
+        rendered = _format_opengrep_finding(finding)
+        candidate = f"{current}\n\n{rendered}" if current else rendered
+        if len(candidate) <= OPENGREP_THREAD_CHUNK_LIMIT:
+            current = candidate
+            continue
+        if current:
+            chunks.append(current)
+        current = rendered
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def build_opengrep_summary_embed(result: OpenGrepResult) -> discord.Embed:
+    """Build a compact, explicitly non-verdict OpenGrep summary."""
+    failed = result.status is ScanStatus.FAILED
+    embed = discord.Embed(
+        title=f"OpenGrep shadow: {result.name} @ {result.version}"[:256],
+        description=(
+            "Staging evaluation evidence only; this is not a production verdict."
+            if not failed
+            else f"Shadow scan failed: {_safe_discord_text(result.fail_reason or 'unknown failure')}"
+        ),
+        color=discord.Color.red() if failed else discord.Color.blue(),
+        timestamp=result.finished_at,
+    )
+    embed.add_field(name="Findings", value=str(len(result.findings)), inline=True)
+    duration = "unknown" if result.duration_ms is None else f"{result.duration_ms} ms"
+    embed.add_field(name="Duration", value=duration, inline=True)
+    if result.commit:
+        embed.add_field(name="Rules commit", value=f"`{result.commit[:40]}`", inline=False)
+    embed.set_footer(text=f"OpenGrep shadow scan {result.scan_id}")
+    return embed
+
+
+async def publish_opengrep_result(
+    bot: Bot,
+    channel: discord.abc.Messageable,
+    result: OpenGrepResult,
+) -> None:
+    """Publish a summary and complete evidence thread before acknowledging."""
+    message = await channel.send(embed=build_opengrep_summary_embed(result))
+    if result.findings:
+        thread = await message.create_thread(
+            name=f"OpenGrep · {result.name} {result.version}"[:100],
+            auto_archive_duration=1440,
+        )
+        for chunk in build_opengrep_thread_chunks(result.findings):
+            assert len(chunk) <= DISCORD_MESSAGE_LIMIT
+            await thread.send(chunk)
+    await bot.dragonfly_services.acknowledge_opengrep_result(result.scan_id)
+
+
 def inactivity_threshold_reached(
     *,
     now: datetime,
@@ -769,6 +858,19 @@ class Dragonfly(commands.Cog):
         except Exception as error:  # noqa: BLE001 - A monitoring loop must survive unexpected failures.
             await self.handle_scan_error(error, alerts_channel)
 
+    @tasks.loop(seconds=DragonflyConfig.interval)
+    async def opengrep_shadow_loop(self: Self) -> None:
+        """Publish OpenGrep evidence independently from canonical alerts."""
+        channel = self.bot.get_channel(DragonflyConfig.logs_channel_id)
+        assert isinstance(channel, discord.abc.Messageable)
+        try:
+            results = await self.bot.dragonfly_services.get_opengrep_results()
+            for result in results:
+                await publish_opengrep_result(self.bot, channel, result)
+        except Exception as error:
+            log.exception("OpenGrep shadow publication failed; unacknowledged results will retry.")
+            sentry_sdk.capture_exception(error)
+
     async def run_scan_iteration(
         self,
         *,
@@ -842,6 +944,11 @@ class Dragonfly(commands.Cog):
 
     @scan_loop.before_loop
     async def before_scan_loop(self: Self) -> None:
+        """Wait until the bot is ready."""
+        await self.bot.wait_until_ready()
+
+    @opengrep_shadow_loop.before_loop
+    async def before_opengrep_shadow_loop(self: Self) -> None:
         """Wait until the bot is ready."""
         await self.bot.wait_until_ready()
 
@@ -1158,4 +1265,6 @@ async def setup(bot: Bot) -> None:
     task = cog.scan_loop
     if not task.is_running():
         task.start()
+    if DragonflyConfig.opengrep_shadow_enabled and not cog.opengrep_shadow_loop.is_running():
+        cog.opengrep_shadow_loop.start()
     await bot.add_cog(cog)

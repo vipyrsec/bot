@@ -6,13 +6,14 @@ import asyncio
 import datetime as dt
 import uuid
 from typing import Any, Self
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, call
 
 import pytest
 
 from bot.dragonfly_services import (
     AlertingConfiguration,
     DragonflyServices,
+    OpenGrepResult,
     Package,
     PackageReport,
     QueueStatus,
@@ -263,6 +264,51 @@ def test_update_alerting_configuration() -> None:
         "/alerting/configuration",
         json={"production_score_threshold": 12},
     )
+
+
+def test_get_and_acknowledge_opengrep_results() -> None:
+    service = _service()
+    scan_id = uuid.uuid4()
+    finished_at = dt.datetime(2026, 7, 30, 12, 0, tzinfo=dt.UTC)
+    service.make_request = AsyncMock(
+        side_effect=[
+            [
+                {
+                    "scan_id": str(scan_id),
+                    "name": "example",
+                    "version": "1.0.0",
+                    "status": "finished",
+                    "commit": "abc123",
+                    "duration_ms": 42,
+                    "findings": [],
+                    "fail_reason": None,
+                    "finished_at": int(finished_at.timestamp()),
+                }
+            ],
+            {"published_at": int(finished_at.timestamp())},
+        ]
+    )
+
+    results = asyncio.run(service.get_opengrep_results())
+    asyncio.run(service.acknowledge_opengrep_result(scan_id))
+
+    assert results == [
+        OpenGrepResult(
+            scan_id=scan_id,
+            name="example",
+            version="1.0.0",
+            status=ScanStatus.FINISHED,
+            commit="abc123",
+            duration_ms=42,
+            findings=[],
+            fail_reason=None,
+            finished_at=finished_at,
+        )
+    ]
+    assert service.make_request.await_args_list == [
+        call("GET", "/opengrep/results"),
+        call("POST", f"/opengrep/results/{scan_id}/published"),
+    ]
 
 
 def _suppression_payload(
