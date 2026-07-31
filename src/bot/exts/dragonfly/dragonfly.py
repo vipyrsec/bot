@@ -522,7 +522,7 @@ def build_opengrep_summary_embed(result: OpenGrepResult) -> discord.Embed:
             "Staging evaluation evidence only; this is not a production verdict."
             if not failed
             else f"Shadow scan failed: {_safe_discord_text(result.fail_reason or 'unknown failure')}"
-        ),
+        )[:EMBED_DESCRIPTION_LIMIT],
         color=discord.Color.red() if failed else discord.Color.blue(),
         timestamp=result.finished_at,
     )

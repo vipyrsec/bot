@@ -136,6 +136,21 @@ def test_opengrep_thread_chunks_are_bounded_and_neutralize_mentions() -> None:
     assert len(rendered[0]) == dragonfly.OPENGREP_THREAD_CHUNK_LIMIT
 
 
+def test_opengrep_failure_summary_is_bounded() -> None:
+    result = opengrep_result().model_copy(
+        update={
+            "status": ScanStatus.FAILED,
+            "fail_reason": "failure @" + ("x" * 5000),
+        }
+    )
+
+    embed = dragonfly.build_opengrep_summary_embed(result)
+
+    assert embed.description is not None
+    assert len(embed.description) == dragonfly.EMBED_DESCRIPTION_LIMIT
+    assert "@\u200b" in embed.description
+
+
 def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     bot = cast("Bot", Mock())
     bot.dragonfly_services.heartbeat_opengrep_publication = AsyncMock()
