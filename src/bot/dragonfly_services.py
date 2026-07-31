@@ -68,6 +68,39 @@ class AlertingConfiguration(BaseModel):
     updated_by: str
 
 
+class OpenGrepFinding(BaseModel):
+    """One source-level OpenGrep evidence record."""
+
+    rule_id: str
+    path: str
+    start_line: int
+    end_line: int
+    message: str
+    severity: str
+    evidence: str
+    confidence: str
+    execution_context: str
+    inspector_url: str
+
+
+class OpenGrepResult(BaseModel):
+    """A completed OpenGrep shadow result awaiting publication."""
+
+    scan_id: uuid.UUID
+    name: str
+    version: str
+    status: ScanStatus
+    commit: str | None
+    duration_ms: int | None
+    findings: list[OpenGrepFinding]
+    fail_reason: str | None
+    finished_at: datetime
+    publication_id: uuid.UUID
+    discord_message_id: int | None
+    discord_thread_id: int | None
+    published_chunks: int
+
+
 class Suppression(BaseModel):
     """A package-version alert suppression owned by Mainframe."""
 
@@ -169,6 +202,47 @@ class DragonflyServices:
         """Get Mainframe's durable production alerting configuration."""
         data = await self.make_request("GET", "/alerting/configuration")
         return AlertingConfiguration.model_validate(data)
+
+    async def get_opengrep_results(self: Self) -> list[OpenGrepResult]:
+        """Get completed, unpublished OpenGrep shadow results."""
+        data = await self.make_request("GET", "/opengrep/results", params={"limit": 1})
+        return [OpenGrepResult.model_validate(item) for item in data]
+
+    async def heartbeat_opengrep_publication(self: Self, result: OpenGrepResult) -> None:
+        """Renew a publication lease while a Discord operation is in flight."""
+        await self.make_request(
+            "POST",
+            f"/opengrep/results/{result.scan_id}/heartbeat",
+            json={"publication_id": str(result.publication_id)},
+        )
+
+    async def checkpoint_opengrep_publication(
+        self: Self,
+        result: OpenGrepResult,
+        *,
+        discord_message_id: int | None,
+        discord_thread_id: int | None,
+        published_chunks: int,
+    ) -> None:
+        """Persist monotonic Discord publication progress."""
+        await self.make_request(
+            "POST",
+            f"/opengrep/results/{result.scan_id}/publication",
+            json={
+                "publication_id": str(result.publication_id),
+                "discord_message_id": discord_message_id,
+                "discord_thread_id": discord_thread_id,
+                "published_chunks": published_chunks,
+            },
+        )
+
+    async def acknowledge_opengrep_result(self: Self, result: OpenGrepResult) -> None:
+        """Acknowledge a result after its complete Discord publication."""
+        await self.make_request(
+            "POST",
+            f"/opengrep/results/{result.scan_id}/published",
+            json={"publication_id": str(result.publication_id)},
+        )
 
     async def update_alerting_configuration(
         self: Self,

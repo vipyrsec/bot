@@ -6,13 +6,14 @@ import asyncio
 import datetime as dt
 import uuid
 from typing import Any, Self
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, call
 
 import pytest
 
 from bot.dragonfly_services import (
     AlertingConfiguration,
     DragonflyServices,
+    OpenGrepResult,
     Package,
     PackageReport,
     QueueStatus,
@@ -263,6 +264,91 @@ def test_update_alerting_configuration() -> None:
         "/alerting/configuration",
         json={"production_score_threshold": 12},
     )
+
+
+def test_get_and_acknowledge_opengrep_results() -> None:
+    service = _service()
+    scan_id = uuid.uuid4()
+    publication_id = uuid.uuid4()
+    finished_at = dt.datetime(2026, 7, 30, 12, 0, tzinfo=dt.UTC)
+    service.make_request = AsyncMock(
+        side_effect=[
+            [
+                {
+                    "scan_id": str(scan_id),
+                    "name": "example",
+                    "version": "1.0.0",
+                    "status": "finished",
+                    "commit": "abc123",
+                    "duration_ms": 42,
+                    "findings": [],
+                    "fail_reason": None,
+                    "finished_at": int(finished_at.timestamp()),
+                    "publication_id": str(publication_id),
+                    "discord_message_id": None,
+                    "discord_thread_id": None,
+                    "published_chunks": 0,
+                }
+            ],
+            {},
+            {},
+            {"published_at": int(finished_at.timestamp())},
+        ]
+    )
+
+    results = asyncio.run(service.get_opengrep_results())
+    result = results[0]
+    asyncio.run(service.heartbeat_opengrep_publication(result))
+    asyncio.run(
+        service.checkpoint_opengrep_publication(
+            result,
+            discord_message_id=100,
+            discord_thread_id=200,
+            published_chunks=1,
+        )
+    )
+    asyncio.run(service.acknowledge_opengrep_result(result))
+
+    assert results == [
+        OpenGrepResult(
+            scan_id=scan_id,
+            name="example",
+            version="1.0.0",
+            status=ScanStatus.FINISHED,
+            commit="abc123",
+            duration_ms=42,
+            findings=[],
+            fail_reason=None,
+            finished_at=finished_at,
+            publication_id=publication_id,
+            discord_message_id=None,
+            discord_thread_id=None,
+            published_chunks=0,
+        )
+    ]
+    assert service.make_request.await_args_list == [
+        call("GET", "/opengrep/results", params={"limit": 1}),
+        call(
+            "POST",
+            f"/opengrep/results/{scan_id}/heartbeat",
+            json={"publication_id": str(publication_id)},
+        ),
+        call(
+            "POST",
+            f"/opengrep/results/{scan_id}/publication",
+            json={
+                "publication_id": str(publication_id),
+                "discord_message_id": 100,
+                "discord_thread_id": 200,
+                "published_chunks": 1,
+            },
+        ),
+        call(
+            "POST",
+            f"/opengrep/results/{scan_id}/published",
+            json={"publication_id": str(publication_id)},
+        ),
+    ]
 
 
 def _suppression_payload(
