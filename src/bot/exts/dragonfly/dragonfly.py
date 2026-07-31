@@ -930,6 +930,16 @@ async def run(
             embed=embed,
             view=AlertView(bot, result),
         )
+        if DragonflyConfig.opengrep_shadow_enabled:
+            try:
+                await bot.dragonfly_services.queue_opengrep_alert(result)
+            except Exception as error:
+                log.exception(
+                    "Failed to queue OpenGrep shadow work for alerting package %s@%s.",
+                    result.name,
+                    result.version,
+                )
+                sentry_sdk.capture_exception(error)
 
     all_packages_scanned_embed = _build_all_packages_scanned_embed(scan_results)
     if len(all_packages_scanned_embed) <= 4096:  # noqa: PLR2004

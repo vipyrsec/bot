@@ -642,11 +642,15 @@ def test_alert_suppress_button_preserves_empty_rule_corpus() -> None:
     )
 
 
-def test_run_omits_suppressed_alert_but_keeps_scan_log() -> None:
+def test_run_omits_suppressed_alert_and_opengrep_work_but_keeps_scan_log(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     bot = cast("Bot", Mock())
     result = package_result(rules=["false_positive"])
     bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[result])
     bot.dragonfly_services.get_suppressions = AsyncMock(return_value=[suppression(rules=["false_positive"])])
+    bot.dragonfly_services.queue_opengrep_alert = AsyncMock()
+    monkeypatch.setattr(dragonfly.DragonflyConfig, "opengrep_shadow_enabled", True)
     alerts_channel_mock = Mock()
     alerts_channel_mock.send = AsyncMock()
     alerts_channel = cast("discord.abc.Messageable", alerts_channel_mock)
@@ -666,6 +670,7 @@ def test_run_omits_suppressed_alert_but_keeps_scan_log() -> None:
 
     assert scan_results == [result]
     bot.dragonfly_services.get_suppressions.assert_awaited_once_with("Example_Package")
+    bot.dragonfly_services.queue_opengrep_alert.assert_not_awaited()
     alerts_channel_mock.send.assert_not_awaited()
     logs_channel_mock.send.assert_awaited_once()
 
@@ -693,6 +698,68 @@ def test_run_delivers_alert_when_suppressions_are_unavailable() -> None:
             )
         )
 
+    alerts_channel_mock.send.assert_awaited_once()
+    logs_channel_mock.send.assert_awaited_once()
+
+
+def test_run_queues_opengrep_only_after_alert_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    bot = cast("Bot", Mock())
+    result = package_result(rules=["suspicious"])
+    bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[result])
+    bot.dragonfly_services.get_suppressions = AsyncMock(return_value=[])
+    alerts_channel_mock = Mock()
+    alerts_channel_mock.send = AsyncMock()
+    alerts_channel = cast("discord.abc.Messageable", alerts_channel_mock)
+    logs_channel_mock = Mock()
+    logs_channel_mock.send = AsyncMock()
+    logs_channel = cast("discord.abc.Messageable", logs_channel_mock)
+
+    async def assert_alert_was_delivered(_result: Package) -> None:
+        alerts_channel_mock.send.assert_awaited_once()
+
+    bot.dragonfly_services.queue_opengrep_alert = AsyncMock(side_effect=assert_alert_was_delivered)
+    monkeypatch.setattr(dragonfly.DragonflyConfig, "opengrep_shadow_enabled", True)
+
+    with patch.object(dragonfly, "AlertView", return_value=Mock()):
+        asyncio.run(
+            dragonfly.run(
+                bot,
+                since=datetime.now(tz=UTC),
+                alerts_channel=alerts_channel,
+                logs_channel=logs_channel,
+                score=8,
+            )
+        )
+
+    bot.dragonfly_services.queue_opengrep_alert.assert_awaited_once_with(result)
+
+
+def test_opengrep_queue_failure_does_not_interrupt_alerts(monkeypatch: pytest.MonkeyPatch) -> None:
+    bot = cast("Bot", Mock())
+    result = package_result(rules=["suspicious"])
+    bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[result])
+    bot.dragonfly_services.get_suppressions = AsyncMock(return_value=[])
+    bot.dragonfly_services.queue_opengrep_alert = AsyncMock(side_effect=RuntimeError("shadow unavailable"))
+    alerts_channel_mock = Mock()
+    alerts_channel_mock.send = AsyncMock()
+    alerts_channel = cast("discord.abc.Messageable", alerts_channel_mock)
+    logs_channel_mock = Mock()
+    logs_channel_mock.send = AsyncMock()
+    logs_channel = cast("discord.abc.Messageable", logs_channel_mock)
+    monkeypatch.setattr(dragonfly.DragonflyConfig, "opengrep_shadow_enabled", True)
+
+    with patch.object(dragonfly, "AlertView", return_value=Mock()):
+        scan_results = asyncio.run(
+            dragonfly.run(
+                bot,
+                since=datetime.now(tz=UTC),
+                alerts_channel=alerts_channel,
+                logs_channel=logs_channel,
+                score=8,
+            )
+        )
+
+    assert scan_results == [result]
     alerts_channel_mock.send.assert_awaited_once()
     logs_channel_mock.send.assert_awaited_once()
 
