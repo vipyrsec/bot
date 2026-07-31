@@ -152,6 +152,36 @@ def test_get_scanned_packages() -> None:
     )
 
 
+def test_queue_opengrep_alert() -> None:
+    service = _service()
+    service.make_request = AsyncMock()
+    package = Package(
+        scan_id="scan-id",
+        name="example",
+        version="1.0.0",
+        status=ScanStatus.FINISHED,
+        score=10,
+        inspector_url=None,
+        queued_at=None,
+        queued_by=None,
+        reported_at=None,
+        reported_by=None,
+        pending_at=None,
+        pending_by=None,
+        finished_at=None,
+        finished_by=None,
+        commit_hash=None,
+    )
+
+    asyncio.run(service.queue_opengrep_alert(package))
+
+    service.make_request.assert_awaited_once_with(
+        "POST",
+        "/opengrep/alerts",
+        json={"name": "example", "version": "1.0.0"},
+    )
+
+
 def test_report_package() -> None:
     service = _service()
     service.make_request = AsyncMock()
