@@ -74,7 +74,13 @@ def package_result(*, version: str = "1.0.0", rules: list[str] | None = None) ->
     )
 
 
-def opengrep_result(*, findings: list[OpenGrepFinding] | None = None) -> OpenGrepResult:
+def opengrep_result(
+    *,
+    findings: list[OpenGrepFinding] | None = None,
+    discord_message_id: int | None = None,
+    discord_thread_id: int | None = None,
+    published_chunks: int = 0,
+) -> OpenGrepResult:
     return OpenGrepResult(
         scan_id=uuid.uuid4(),
         name="example-package",
@@ -85,6 +91,10 @@ def opengrep_result(*, findings: list[OpenGrepFinding] | None = None) -> OpenGre
         findings=findings or [],
         fail_reason=None,
         finished_at=datetime.now(tz=UTC),
+        publication_id=uuid.uuid4(),
+        discord_message_id=discord_message_id,
+        discord_thread_id=discord_thread_id,
+        published_chunks=published_chunks,
     )
 
 
@@ -119,13 +129,22 @@ def test_opengrep_thread_chunks_are_bounded_and_neutralize_mentions() -> None:
     assert all("@\u200b" in chunk for chunk in chunks)
     assert all("`x" not in chunk for chunk in chunks)
 
+    oversized_header = opengrep_finding()
+    oversized_header.path = "p" * 5000
+    rendered = dragonfly.build_opengrep_thread_chunks([oversized_header])
+    assert len(rendered) == 1
+    assert len(rendered[0]) == dragonfly.OPENGREP_THREAD_CHUNK_LIMIT
+
 
 def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     bot = cast("Bot", Mock())
+    bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock()
     bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
-    thread = Mock()
+    thread = Mock(spec=discord.Thread)
+    thread.id = 200
     thread.send = AsyncMock()
     message = Mock()
+    message.id = 100
     message.create_thread = AsyncMock(return_value=thread)
     channel = Mock()
     channel.send = AsyncMock(return_value=message)
@@ -134,7 +153,7 @@ def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     asyncio.run(
         dragonfly.publish_opengrep_result(
             bot,
-            cast("discord.abc.Messageable", channel),
+            cast("discord.TextChannel", channel),
             result,
         )
     )
@@ -146,15 +165,19 @@ def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     assert "not a production verdict" in summary.description
     message.create_thread.assert_awaited_once()
     assert thread.send.await_count == 1
-    bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result.scan_id)
+    assert bot.dragonfly_services.checkpoint_opengrep_publication.await_count == 3
+    bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
 
 
 def test_publish_opengrep_result_does_not_ack_partial_thread() -> None:
     bot = cast("Bot", Mock())
+    bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock()
     bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
-    thread = Mock()
+    thread = Mock(spec=discord.Thread)
+    thread.id = 200
     thread.send = AsyncMock(side_effect=RuntimeError("Discord unavailable"))
     message = Mock()
+    message.id = 100
     message.create_thread = AsyncMock(return_value=thread)
     channel = Mock()
     channel.send = AsyncMock(return_value=message)
@@ -164,12 +187,63 @@ def test_publish_opengrep_result_does_not_ack_partial_thread() -> None:
         asyncio.run(
             dragonfly.publish_opengrep_result(
                 bot,
-                cast("discord.abc.Messageable", channel),
+                cast("discord.TextChannel", channel),
                 result,
             )
         )
 
     bot.dragonfly_services.acknowledge_opengrep_result.assert_not_awaited()
+
+
+def test_publish_opengrep_result_resumes_recorded_thread_progress() -> None:
+    bot_mock = Mock()
+    bot = cast("Bot", bot_mock)
+    bot.dragonfly_services.checkpoint_opengrep_publication = AsyncMock()
+    bot.dragonfly_services.acknowledge_opengrep_result = AsyncMock()
+    thread = Mock(spec=discord.Thread)
+    thread.send = AsyncMock()
+    bot_mock.get_channel.return_value = thread
+    channel = Mock()
+    channel.fetch_message = AsyncMock()
+    channel.send = AsyncMock()
+    result = opengrep_result(
+        findings=[opengrep_finding(index) for index in range(3)],
+        discord_message_id=100,
+        discord_thread_id=200,
+        published_chunks=1,
+    )
+
+    asyncio.run(
+        dragonfly.publish_opengrep_result(
+            bot,
+            cast("discord.TextChannel", channel),
+            result,
+        )
+    )
+
+    channel.send.assert_not_awaited()
+    channel.fetch_message.assert_awaited_once_with(100)
+    assert thread.send.await_count == 0
+    bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
+
+
+def test_publish_opengrep_results_isolates_each_result_failure() -> None:
+    bot = cast("Bot", Mock())
+    channel = cast("discord.TextChannel", Mock())
+    results = [opengrep_result(), opengrep_result()]
+
+    with (
+        patch.object(
+            dragonfly,
+            "publish_opengrep_result",
+            AsyncMock(side_effect=[RuntimeError("first failed"), None]),
+        ) as publish,
+        patch.object(dragonfly.sentry_sdk, "capture_exception") as capture_exception,
+    ):
+        asyncio.run(dragonfly.publish_opengrep_results(bot, channel, results))
+
+    assert publish.await_count == 2
+    capture_exception.assert_called_once()
 
 
 def suppression(*, version: str = "1.0.0", rules: list[str] | None = None) -> Suppression:

@@ -269,6 +269,7 @@ def test_update_alerting_configuration() -> None:
 def test_get_and_acknowledge_opengrep_results() -> None:
     service = _service()
     scan_id = uuid.uuid4()
+    publication_id = uuid.uuid4()
     finished_at = dt.datetime(2026, 7, 30, 12, 0, tzinfo=dt.UTC)
     service.make_request = AsyncMock(
         side_effect=[
@@ -283,14 +284,28 @@ def test_get_and_acknowledge_opengrep_results() -> None:
                     "findings": [],
                     "fail_reason": None,
                     "finished_at": int(finished_at.timestamp()),
+                    "publication_id": str(publication_id),
+                    "discord_message_id": None,
+                    "discord_thread_id": None,
+                    "published_chunks": 0,
                 }
             ],
+            {},
             {"published_at": int(finished_at.timestamp())},
         ]
     )
 
     results = asyncio.run(service.get_opengrep_results())
-    asyncio.run(service.acknowledge_opengrep_result(scan_id))
+    result = results[0]
+    asyncio.run(
+        service.checkpoint_opengrep_publication(
+            result,
+            discord_message_id=100,
+            discord_thread_id=200,
+            published_chunks=1,
+        )
+    )
+    asyncio.run(service.acknowledge_opengrep_result(result))
 
     assert results == [
         OpenGrepResult(
@@ -303,11 +318,29 @@ def test_get_and_acknowledge_opengrep_results() -> None:
             findings=[],
             fail_reason=None,
             finished_at=finished_at,
+            publication_id=publication_id,
+            discord_message_id=None,
+            discord_thread_id=None,
+            published_chunks=0,
         )
     ]
     assert service.make_request.await_args_list == [
         call("GET", "/opengrep/results"),
-        call("POST", f"/opengrep/results/{scan_id}/published"),
+        call(
+            "POST",
+            f"/opengrep/results/{scan_id}/publication",
+            json={
+                "publication_id": str(publication_id),
+                "discord_message_id": 100,
+                "discord_thread_id": 200,
+                "published_chunks": 1,
+            },
+        ),
+        call(
+            "POST",
+            f"/opengrep/results/{scan_id}/published",
+            json={"publication_id": str(publication_id)},
+        ),
     ]
 
 
