@@ -480,12 +480,18 @@ def _safe_discord_text(value: str) -> str:
     return value.replace("@", "@\u200b").replace("`", "'")
 
 
+def _format_opengrep_location(finding: OpenGrepFinding) -> str:
+    """Link one bounded source range directly into PyPI Inspector."""
+    label = f"{_safe_discord_text(finding.path)}:{finding.start_line}-{finding.end_line}"
+    label = label.replace("[", "\\[").replace("]", "\\]")
+    inspector_url = urllib.parse.quote(finding.inspector_url, safe=":/%")
+    return f"[{label}]({inspector_url}#line.{finding.start_line}-{finding.end_line})"
+
+
 def _format_opengrep_group(findings: list[OpenGrepFinding]) -> str:
     """Aggregate equivalent findings into one bounded rule block."""
     finding = findings[0]
-    locations = list(
-        dict.fromkeys(f"{_safe_discord_text(item.path)}:{item.start_line}-{item.end_line}" for item in findings)
-    )
+    locations = list(dict.fromkeys(_format_opengrep_location(item) for item in findings))
     match_label = "match" if len(findings) == 1 else "matches"
     header = (
         f"**{_safe_discord_text(finding.rule_id)[:200]}** · {len(findings)} {match_label}\n"
@@ -521,6 +527,9 @@ def build_opengrep_thread_chunks(result: OpenGrepResult) -> list[str]:
     if result.status is ScanStatus.FAILED:
         reason = _safe_discord_text(result.fail_reason or "unknown failure")
         return [f"{header}\nScan failed: {reason}"[:OPENGREP_THREAD_CHUNK_LIMIT]]
+    if result.fail_reason is not None:
+        reason = _safe_discord_text(result.fail_reason)
+        header = f"{header}\nPartial scan: {reason}"[:OPENGREP_THREAD_CHUNK_LIMIT]
 
     grouped: dict[tuple[str, str, str, str, str, str], list[OpenGrepFinding]] = {}
     for finding in result.findings:
@@ -553,14 +562,20 @@ def build_opengrep_thread_chunks(result: OpenGrepResult) -> list[str]:
 def build_opengrep_summary_embed(result: OpenGrepResult) -> discord.Embed:
     """Build a compact, explicitly non-verdict OpenGrep summary."""
     failed = result.status is ScanStatus.FAILED
+    partial = not failed and result.fail_reason is not None
+    if failed:
+        description = f"Shadow scan failed: {_safe_discord_text(result.fail_reason or 'unknown failure')}"
+    elif partial:
+        description = (
+            "Staging evaluation evidence only; partial results were preserved. "
+            f"{_safe_discord_text(result.fail_reason or '')}"
+        )
+    else:
+        description = "Staging evaluation evidence only; this is not a production verdict."
     embed = discord.Embed(
         title=f"OpenGrep shadow: {result.name} @ {result.version}"[:256],
-        description=(
-            "Staging evaluation evidence only; this is not a production verdict."
-            if not failed
-            else f"Shadow scan failed: {_safe_discord_text(result.fail_reason or 'unknown failure')}"
-        )[:EMBED_DESCRIPTION_LIMIT],
-        color=discord.Color.red() if failed else discord.Color.blue(),
+        description=description[:EMBED_DESCRIPTION_LIMIT],
+        color=discord.Color.red() if failed else discord.Color.orange() if partial else discord.Color.blue(),
         timestamp=result.finished_at,
     )
     embed.add_field(name="Findings", value=str(len(result.findings)), inline=True)

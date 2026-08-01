@@ -161,6 +161,45 @@ def test_opengrep_thread_chunks_aggregate_equivalent_findings() -> None:
     assert "src/other.py:9-9" in rendered
 
 
+def test_opengrep_locations_link_to_inspector_source_lines() -> None:
+    finding = opengrep_finding().model_copy(
+        update={
+            "path": ("python_library_ai_agent-0.1.5/examples/search/.mcp-venv/Lib/site-packages/adodbapi/setup.py"),
+            "start_line": 45,
+            "end_line": 63,
+            "inspector_url": (
+                "https://inspector.pypi.io/project/python-library-ai-agent/0.1.5/packages/"
+                "c9/21/ea70f55d4204480caa0767b4d0a1c673cae2af302755bcbe05c18129dbd4/"
+                "python_library_ai_agent-0.1.5.tar.gz/python_library_ai_agent-0.1.5/"
+                "examples/search/.mcp-venv/Lib/site-packages/adodbapi/setup.py"
+            ),
+        }
+    )
+
+    rendered = "\n".join(dragonfly.build_opengrep_thread_chunks(opengrep_result(findings=[finding])))
+
+    assert (
+        "https://inspector.pypi.io/project/python-library-ai-agent/0.1.5/packages/"
+        "c9/21/ea70f55d4204480caa0767b4d0a1c673cae2af302755bcbe05c18129dbd4/"
+        "python_library_ai_agent-0.1.5.tar.gz/python_library_ai_agent-0.1.5/"
+        "examples/search/.mcp-venv/Lib/site-packages/adodbapi/setup.py#line.45-63"
+    ) in rendered
+
+
+def test_opengrep_partial_results_show_findings_and_diagnostic() -> None:
+    result = opengrep_result(findings=[opengrep_finding()]).model_copy(
+        update={"fail_reason": "Rule python-flow-example timed out."}
+    )
+
+    chunks = dragonfly.build_opengrep_thread_chunks(result)
+    summary = dragonfly.build_opengrep_summary_embed(result)
+
+    assert "Partial scan: Rule python-flow-example timed out." in chunks[0]
+    assert "**python-flow-example-0**" in "\n".join(chunks)
+    assert summary.description is not None
+    assert "partial results were preserved" in summary.description
+
+
 def test_opengrep_failure_summary_is_bounded() -> None:
     result = opengrep_result().model_copy(
         update={
