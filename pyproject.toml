@@ -18,12 +18,12 @@ dependencies = [
   "coloredlogs==15.0.1",
   "discord-py==2.7.1",
   "psycopg[binary]==3.3.4",
-  "pydantic-settings==2.14.2",
+  "pydantic-settings==2.15.0",
   "pydantic==2.13.4",
   "pydis-core==11.10.0",
   "rapidfuzz==3.14.5",
-  "sentry-sdk==2.66.1",
-  "sqlalchemy==2.0.51",
+  "sentry-sdk==2.67.1",
+  "sqlalchemy==2.0.52",
 ]
 
   [project.urls]
