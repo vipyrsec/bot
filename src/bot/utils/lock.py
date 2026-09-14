@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Awaitable, Callable, Hashable
 from functools import partial
 from types import TracebackType
-from typing import Any, Self, cast
+from typing import Any, Self, TypeGuard, cast
 from weakref import WeakValueDictionary
 
 from bot.log import get_logger
@@ -24,6 +24,11 @@ _IdCallable = Callable[[function.BoundArgs], _IdCallableReturn]
 ResourceId = Hashable | _IdCallable
 AsyncCallable = Callable[..., Awaitable[Any]]
 AsyncDecorator = Callable[[AsyncCallable], AsyncCallable]
+
+
+def _is_id_callable(resource_id: ResourceId) -> TypeGuard[_IdCallable]:
+    """Narrow callable resource IDs, which can also satisfy Hashable."""
+    return callable(resource_id)
 
 
 class SharedEvent:
@@ -84,13 +89,13 @@ def lock(
     """
 
     def decorator(func: AsyncCallable) -> AsyncCallable:
-        name = func.__name__
+        name = cast("types.FunctionType", func).__name__
 
         @command_wraps(cast("types.FunctionType", func))
         async def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401 -- preserves the decorated signature
             log.trace(f"{name}: mutually exclusive decorator called")
 
-            if callable(resource_id):
+            if _is_id_callable(resource_id):
                 log.trace(f"{name}: binding args to signature")
                 bound_args = function.get_bound_args(func, args, kwargs)
 
@@ -103,7 +108,6 @@ def lock(
             else:
                 id_ = resource_id
 
-            id_ = cast("Hashable", id_)
             log.trace(f"{name}: getting the lock object for resource {namespace!r}:{id_!r}")
 
             # Get the lock for the ID. Create a lock if one doesn't exist yet.

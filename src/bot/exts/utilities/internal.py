@@ -198,10 +198,13 @@ async def func():  # (None,) -> Any
             else:
                 paste_text = f"full contents at {paste_link}"
 
-            await ctx.send(f"```py\n{out[:truncate_index]}\n```... response truncated; {paste_text}", embed=embed)  # type: ignore[arg-type]
+            await ctx.send(
+                f"```py\n{out[:truncate_index]}\n```... response truncated; {paste_text}",
+                embeds=[embed] if embed is not None else [],
+            )
             return None
 
-        await ctx.send(f"```py\n{out}```", embed=embed)  # type: ignore[arg-type]
+        await ctx.send(f"```py\n{out}```", embeds=[embed] if embed is not None else [])
         return None
 
     @commands.group(name="internal", aliases=("int",))
