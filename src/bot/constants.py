@@ -83,10 +83,13 @@ class _DragonflyConfig(EnvConfig, env_prefix="dragonfly_"):
     reporter_url: str = ""
 
     @model_validator(mode="after")
-    def restrict_opengrep_shadow_to_staging(self) -> "_DragonflyConfig":
-        """Reject shadow polling against any non-staging API."""
-        if self.opengrep_shadow_enabled and self.api_url.rstrip("/") != "https://dragonfly-staging.vipyrsec.com":
-            msg = "OpenGrep shadow requires the staging Dragonfly API URL"
+    def validate_opengrep_api_origin(self) -> "_DragonflyConfig":
+        """Restrict OpenGrep polling to the supported Dragonfly APIs."""
+        if self.opengrep_shadow_enabled and self.api_url.rstrip("/") not in {
+            "https://dragonfly-staging.vipyrsec.com",
+            "https://dragonfly.vipyrsec.com",
+        }:
+            msg = "OpenGrep requires a supported Dragonfly API URL"
             raise ValueError(msg)
         return self
 

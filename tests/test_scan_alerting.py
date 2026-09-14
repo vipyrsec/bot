@@ -38,16 +38,17 @@ def configure_alerting_api(bot: Bot, threshold: int = 8) -> None:
     )
 
 
-def test_opengrep_bot_polling_is_staging_only() -> None:
+@pytest.mark.parametrize("api_url", ["https://dragonfly-staging.vipyrsec.com", "https://dragonfly.vipyrsec.com"])
+def test_opengrep_bot_polling_requires_supported_api(api_url: str) -> None:
     config_type = type(DragonflyConfig)
-    with pytest.raises(ValueError, match="staging Dragonfly API URL"):
+    with pytest.raises(ValueError, match="supported Dragonfly API URL"):
         config_type(
-            api_url="https://dragonfly.vipyrsec.com",
+            api_url="https://untrusted.example",
             opengrep_shadow_enabled=True,
         )
 
     config = config_type(
-        api_url="https://dragonfly-staging.vipyrsec.com",
+        api_url=api_url,
         opengrep_shadow_enabled=True,
     )
 
