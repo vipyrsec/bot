@@ -59,7 +59,7 @@ def get_logger(name: str | None = None) -> CustomLogger:
 
 def setup() -> None:
     """Set up loggers."""
-    logging.TRACE = TRACE_LEVEL  # type: ignore[attr-defined]
+    logging.__dict__["TRACE"] = TRACE_LEVEL
     logging.addLevelName(TRACE_LEVEL, "TRACE")
     logging.setLoggerClass(CustomLogger)
 
@@ -83,10 +83,12 @@ def setup() -> None:
             "debug": coloredlogs.DEFAULT_LEVEL_STYLES["info"],
         }
 
-    if "COLOREDLOGS_LOG_FORMAT" not in os.environ:
-        coloredlogs.DEFAULT_LOG_FORMAT = format_string
-
-    coloredlogs.install(level=TRACE_LEVEL, logger=root_log, stream=sys.stdout)
+    coloredlogs.install(
+        level=TRACE_LEVEL,
+        logger=root_log,
+        stream=sys.stdout,
+        fmt=os.environ.get("COLOREDLOGS_LOG_FORMAT", format_string),
+    )
 
     root_log.setLevel(logging.DEBUG if constants.DEBUG_MODE else logging.INFO)
     get_logger("discord").setLevel(logging.WARNING)

@@ -14,6 +14,7 @@ import pytest
 from discord import app_commands
 from discord.ext import commands
 
+from bot import constants
 from bot.bot import Bot
 from bot.constants import DragonflyConfig
 from bot.dragonfly_services import (
@@ -240,6 +241,7 @@ def test_publish_opengrep_result_acks_after_complete_thread() -> None:
     )
 
     channel.send.assert_awaited_once()
+    assert channel.send.await_args is not None
     summary = channel.send.await_args.kwargs["embed"]
     assert summary.title == "OpenGrep shadow: example-package @ 1.0.0"
     assert summary.description is not None
@@ -278,6 +280,7 @@ def test_publish_opengrep_result_replies_to_originating_alert_thread() -> None:
     channel.send.assert_not_awaited()
     alert.create_thread.assert_awaited_once()
     thread.send.assert_awaited_once()
+    assert thread.send.await_args is not None
     assert "2 matches" in thread.send.await_args.args[0]
     bot.dragonfly_services.acknowledge_opengrep_result.assert_awaited_once_with(result)
 
@@ -407,6 +410,7 @@ def test_publish_opengrep_retry_recovers_existing_thread() -> None:
 
     message.fetch_thread.assert_awaited_once()
     message.create_thread.assert_not_awaited()
+    assert thread.send.await_args is not None
     assert thread.send.await_args.kwargs["nonce"] == dragonfly.opengrep_publication_nonce(
         result.scan_id,
         "chunk",
@@ -949,6 +953,72 @@ def test_scan_iteration_advances_cursor_with_large_rule_set(rules: list[str]) ->
     assert cog.since > previous_cursor
     alerts_channel_mock.send.assert_awaited_once()
     logs_channel_mock.send.assert_awaited_once()
+
+
+@pytest.mark.parametrize("count", [300, 50_000])
+def test_large_scan_summary_uses_bounded_attachment(count: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(constants.Pastebin, "base_url", None)
+    results = [package_result()] * count
+    received: list[bytes] = []
+
+    async def capture_attachment(message: str, *, file: discord.File) -> None:
+        assert str(count) in message
+        assert file.filename == "scan-summary.txt"
+        received.append(file.fp.read())
+        assert ("truncated" in message) == (count == 50_000)
+
+    channel = Mock()
+    channel.send = AsyncMock(side_effect=capture_attachment)
+    asyncio.run(dragonfly.send_scan_summary(channel, results))
+
+    channel.send.assert_awaited_once()
+    assert 0 < len(received[0]) <= dragonfly.SCAN_SUMMARY_ATTACHMENT_LIMIT
+    assert received[0].decode("utf-8").splitlines()[0] == str(results[0])
+
+
+def test_summary_failure_does_not_replay_delivered_alerts(monkeypatch: pytest.MonkeyPatch) -> None:
+    bot = cast("Bot", Mock())
+    configure_alerting_api(bot)
+    result = package_result()
+    bot.dragonfly_services.get_scanned_packages = AsyncMock(side_effect=[[result], []])
+    bot.dragonfly_services.get_suppressions = AsyncMock(return_value=[])
+    monkeypatch.setattr(dragonfly.DragonflyConfig, "opengrep_shadow_enabled", False)
+    cog = dragonfly.Dragonfly(bot)
+    previous_cursor = cog.since
+    alerts_channel = Mock()
+    alerts_channel.send = AsyncMock()
+    logs_channel = Mock()
+    logs_channel.send = AsyncMock(side_effect=TimeoutError("Discord summary unavailable"))
+
+    with patch.object(dragonfly, "AlertView", return_value=Mock()):
+        asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
+        first_cursor = cog.since
+        asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
+
+    assert first_cursor > previous_cursor
+    assert bot.dragonfly_services.get_scanned_packages.await_args_list[1].kwargs["since"] == first_cursor
+    alerts_channel.send.assert_awaited_once()
+    assert not cog.scan_error_alert_fired
+
+
+def test_alert_delivery_failure_preserves_scan_cursor(monkeypatch: pytest.MonkeyPatch) -> None:
+    bot = cast("Bot", Mock())
+    configure_alerting_api(bot)
+    bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[package_result()])
+    bot.dragonfly_services.get_suppressions = AsyncMock(return_value=[])
+    monkeypatch.setattr(dragonfly.DragonflyConfig, "opengrep_shadow_enabled", False)
+    cog = dragonfly.Dragonfly(bot)
+    previous_cursor = cog.since
+    alerts_channel = Mock()
+    alerts_channel.send = AsyncMock(side_effect=TimeoutError("Discord alert unavailable"))
+    logs_channel = Mock()
+    logs_channel.send = AsyncMock()
+
+    with patch.object(dragonfly, "AlertView", return_value=Mock()), pytest.raises(TimeoutError):
+        asyncio.run(cog.run_scan_iteration(logs_channel=logs_channel, alerts_channel=alerts_channel))
+
+    assert cog.since == previous_cursor
+    logs_channel.send.assert_not_awaited()
 
 
 def test_inactivity_threshold_is_inclusive() -> None:

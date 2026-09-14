@@ -144,7 +144,8 @@ class CommandErrorHandler(commands.Cog):
         with push_scope() as scope:
             scope.user = {"id": ctx.author.id, "username": str(ctx.author)}
 
-            scope.set_tag("command", ctx.command.qualified_name)  # type: ignore[union-attr]
+            if ctx.command is not None:
+                scope.set_tag("command", ctx.command.qualified_name)
             scope.set_tag("message_id", ctx.message.id)
             scope.set_tag("channel_id", ctx.channel.id)
 

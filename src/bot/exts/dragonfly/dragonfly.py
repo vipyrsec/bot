@@ -12,6 +12,7 @@ from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
+from io import BytesIO
 from json import JSONDecodeError
 from logging import getLogger
 from typing import Self
@@ -35,7 +36,6 @@ from bot.dragonfly_services import (
     Suppression,
 )
 from bot.queue_status import build_queue_status_embed
-from bot.utils.pastebin import PasteFile, PasteRequest, PasteResponse, paste
 
 log = getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -48,6 +48,7 @@ SUPPRESSION_SERVICE_ERRORS = (
     ValidationError,
 )
 EMBED_DESCRIPTION_LIMIT = 4096
+SCAN_SUMMARY_ATTACHMENT_LIMIT = 1_000_000
 RULES_DESCRIPTION_PREFIX = "```YARA rules matched: "
 RULES_DESCRIPTION_SUFFIX = "```"
 OPENGREP_THREAD_CHUNK_LIMIT = 1900
@@ -444,17 +445,24 @@ def _build_all_packages_scanned_embed(scan_results: list[Package]) -> discord.Em
     return discord.Embed(description="_No packages scanned_")
 
 
-def _build_pastebin_embed(paste_response: PasteResponse) -> discord.Embed:
-    """Build the embed that links to a pastebin when the output would have otherwise been too long."""
-    return discord.Embed(
-        title="Embed too large",
-        description=(
-            "This embed would have been too large, so the contents were uploaded to a pastebin instead."
-            f"Click [here]({paste_response.link}) to view the pastebin."
-        ),
-        color=discord.Color.orange(),
-        url=paste_response.link,
-    )
+async def send_scan_summary(channel: discord.abc.Messageable, scan_results: list[Package]) -> None:
+    """Send a bounded scan summary without depending on an external paste service."""
+    embed = _build_all_packages_scanned_embed(scan_results)
+    if len(embed) <= EMBED_DESCRIPTION_LIMIT:
+        await channel.send(embed=embed)
+        return
+
+    content = "\n".join(map(str, scan_results)).encode("utf-8")
+    message = f"Scanned {len(scan_results)} packages. See the attached summary."
+    if len(content) > SCAN_SUMMARY_ATTACHMENT_LIMIT:
+        content = content[:SCAN_SUMMARY_ATTACHMENT_LIMIT].rsplit(b"\n", 1)[0]
+        message += " The attachment is truncated to 1 MB."
+
+    attachment = discord.File(BytesIO(content), filename="scan-summary.txt")
+    try:
+        await channel.send(message, file=attachment)
+    finally:
+        attachment.close()
 
 
 def _build_inactivity_embed(last_seen_package: datetime) -> discord.Embed:
@@ -1070,17 +1078,10 @@ async def run(
                 )
                 sentry_sdk.capture_exception(error)
 
-    all_packages_scanned_embed = _build_all_packages_scanned_embed(scan_results)
-    if len(all_packages_scanned_embed) <= 4096:  # noqa: PLR2004
-        await logs_channel.send(embed=all_packages_scanned_embed)
-        return scan_results
-
-    content = "\n".join(map(str, scan_results))
-    paste_request = PasteRequest(expiry="1day", files=[PasteFile(lexer="text", content=content)])
-    paste_response = await paste(paste_request, session=bot.http_session)
-    embed = _build_pastebin_embed(paste_response)
-    await logs_channel.send(embed=embed)
-    log.info("Package scan log embed would have exceeded size, sent in a pastebin instead")
+    try:
+        await send_scan_summary(logs_channel, scan_results)
+    except Exception:
+        log.exception("Failed to send the scan summary; package alerts were delivered and scan progress will advance.")
     return scan_results
 
 
