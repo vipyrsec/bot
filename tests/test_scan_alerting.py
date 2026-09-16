@@ -158,7 +158,7 @@ def test_lookup_posts_bounded_findings_in_a_thread_without_files(*, existing_thr
 def test_lookup_reports_thread_delivery_failure(failure: str) -> None:
     async def run() -> None:
         interaction = Mock()
-        interaction.followup.send = AsyncMock()
+        interaction.followup.send = AsyncMock(side_effect=discord_not_found())
         message = Mock()
         error = discord.Forbidden(Mock(status=403, reason="Forbidden"), "Denied")
         if failure != "unsupported_channel":
@@ -171,9 +171,7 @@ def test_lookup_reports_thread_delivery_failure(failure: str) -> None:
             )
         result = OpenGrepDetails.model_validate(opengrep_result().model_dump())
         assert await dragonfly.send_lookup_opengrep(interaction, message, package_result(), result) is None
-        interaction.followup.send.assert_awaited_once()
-        assert interaction.followup.send.await_args is not None
-        assert interaction.followup.send.await_args.kwargs["ephemeral"]
+        interaction.followup.send.assert_not_awaited()
 
     asyncio.run(run())
 

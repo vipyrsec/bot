@@ -588,20 +588,12 @@ async def send_lookup_opengrep(
                 message=message,
             )
         else:
-            await interaction.followup.send(
-                "OpenGrep lookup threads require a server text channel or thread.",
-                ephemeral=True,
-            )
+            log.warning("OpenGrep lookup requires a server text channel or thread: %s.", package)
             return None
         for chunk in build_opengrep_thread_chunks(result):
             await thread.send(chunk, allowed_mentions=discord.AllowedMentions.none())
     except (discord.HTTPException, ValueError):
         log.exception("Failed to post OpenGrep lookup findings for %s.", package)
-        await interaction.followup.send(
-            "The package lookup succeeded, but I couldn't post the OpenGrep findings. "
-            "Use a server text channel or thread, and check my thread permissions before trying again.",
-            ephemeral=True,
-        )
         return None
     else:
         return thread
@@ -1383,7 +1375,9 @@ class Dragonfly(commands.Cog):
             if opengrep is not None:
                 thread = await send_lookup_opengrep(interaction, message, package, opengrep)
                 delivery = (
-                    f"[View findings in thread]({thread.jump_url})" if thread else "Findings could not be posted."
+                    f"[View findings in thread]({thread.jump_url})"
+                    if thread
+                    else "Findings could not be posted. Check the channel supports threads and my thread permissions."
                 )
                 embed.set_field_at(
                     len(embed.fields) - 1,
