@@ -575,22 +575,28 @@ async def send_lookup_opengrep(
     message: discord.Message,
     package: Package,
     result: OpenGrepDetails,
-) -> None:
+) -> discord.Thread | None:
     """Post bounded evidence messages in the lookup's thread without attachments."""
     try:
         if isinstance(interaction.channel, discord.Thread):
             thread = interaction.channel
+        elif isinstance(interaction.channel, discord.TextChannel):
+            # Followup WebhookMessages may have no guild attached. The channel
+            # has guild context and needs only the response message's ID.
+            thread = await interaction.channel.create_thread(
+                name=f"OpenGrep · {package.name} {package.version}"[:100],
+                message=message,
+            )
         else:
-            thread = await message.create_thread(name=f"OpenGrep · {package.name} {package.version}"[:100])
+            log.warning("OpenGrep lookup requires a server text channel or thread: %s.", package)
+            return None
         for chunk in build_opengrep_thread_chunks(result):
             await thread.send(chunk, allowed_mentions=discord.AllowedMentions.none())
-    except discord.HTTPException:
+    except (discord.HTTPException, ValueError):
         log.exception("Failed to post OpenGrep lookup findings for %s.", package)
-        await interaction.followup.send(
-            "The package lookup succeeded, but I couldn't post the OpenGrep findings. "
-            "Please check my thread permissions and try again.",
-            ephemeral=True,
-        )
+        return None
+    else:
+        return thread
 
 
 def build_opengrep_summary_embed(result: OpenGrepResult) -> discord.Embed:
@@ -1360,14 +1366,26 @@ class Dragonfly(commands.Cog):
                         if opengrep.status is ScanStatus.FINISHED and opengrep.fail_reason
                         else opengrep.status.value.capitalize()
                     )
-                    opengrep_summary = f"{scan_status} · {len(opengrep.findings)} findings. Details in thread."
+                    opengrep_summary = f"{scan_status} · {len(opengrep.findings)} findings. Posting details…"
             except SUPPRESSION_SERVICE_ERRORS:
                 log.exception("OpenGrep lookup failed for %s.", package)
                 opengrep_summary = "OpenGrep results are temporarily unavailable."
             embed.add_field(name="OpenGrep", value=opengrep_summary, inline=False)
             message = await interaction.followup.send(embed=embed, view=view, wait=True)
             if opengrep is not None:
-                await send_lookup_opengrep(interaction, message, package, opengrep)
+                thread = await send_lookup_opengrep(interaction, message, package, opengrep)
+                delivery = (
+                    f"[View findings in thread]({thread.jump_url})"
+                    if thread
+                    else "Findings could not be posted. Check the channel supports threads and my thread permissions."
+                )
+                embed.set_field_at(
+                    len(embed.fields) - 1,
+                    name="OpenGrep",
+                    value=f"{opengrep_summary.removesuffix(' Posting details…')} {delivery}",
+                    inline=False,
+                )
+                await message.edit(embed=embed)
         else:
             if exists_on_pypi:
                 view = discord.ui.View()

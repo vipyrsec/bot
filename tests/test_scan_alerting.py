@@ -130,37 +130,48 @@ def test_lookup_posts_bounded_findings_in_a_thread_without_files(*, existing_thr
         thread = Mock(spec=discord.Thread)
         thread.send = AsyncMock()
         interaction.channel = thread if existing_thread else Mock(spec=discord.TextChannel)
-        message = Mock()
-        message.create_thread = AsyncMock(return_value=thread)
+        message = Mock(spec=discord.WebhookMessage, guild=None, id=123)
+        message.create_thread = AsyncMock(side_effect=ValueError("This message does not have guild info attached."))
+        if not existing_thread:
+            interaction.channel.create_thread = AsyncMock(return_value=thread)
         result = OpenGrepDetails.model_validate(
             opengrep_result(findings=[opengrep_finding(i, message="x" * 1024) for i in range(500)]).model_dump()
         )
-        await dragonfly.send_lookup_opengrep(interaction, message, package_result(), result)
+        assert await dragonfly.send_lookup_opengrep(interaction, message, package_result(), result) is thread
         assert thread.send.await_count > 1
         for sent in thread.send.await_args_list:
             assert len(sent.args[0]) <= dragonfly.OPENGREP_THREAD_CHUNK_LIMIT
             assert "file" not in sent.kwargs
             assert "files" not in sent.kwargs
             assert sent.kwargs["allowed_mentions"].everyone is False
-        if existing_thread:
-            message.create_thread.assert_not_awaited()
-        else:
-            message.create_thread.assert_awaited_once()
+        message.create_thread.assert_not_awaited()
+        if not existing_thread:
+            interaction.channel.create_thread.assert_awaited_once_with(
+                name=f"OpenGrep · {package_result().name} {package_result().version}",
+                message=message,
+            )
 
     asyncio.run(run())
 
 
-def test_lookup_reports_thread_permission_failure() -> None:
+@pytest.mark.parametrize("failure", ["permission", "unsupported_channel", "send"])
+def test_lookup_reports_thread_delivery_failure(failure: str) -> None:
     async def run() -> None:
         interaction = Mock()
-        interaction.followup.send = AsyncMock()
+        interaction.followup.send = AsyncMock(side_effect=discord_not_found())
         message = Mock()
-        message.create_thread = AsyncMock(side_effect=discord.Forbidden(Mock(status=403, reason="Forbidden"), "Denied"))
+        error = discord.Forbidden(Mock(status=403, reason="Forbidden"), "Denied")
+        if failure != "unsupported_channel":
+            interaction.channel = Mock(spec=discord.TextChannel)
+            thread = Mock(spec=discord.Thread)
+            thread.send = AsyncMock(side_effect=error)
+            interaction.channel.create_thread = AsyncMock(
+                return_value=thread,
+                side_effect=error if failure == "permission" else None,
+            )
         result = OpenGrepDetails.model_validate(opengrep_result().model_dump())
-        await dragonfly.send_lookup_opengrep(interaction, message, package_result(), result)
-        interaction.followup.send.assert_awaited_once()
-        assert interaction.followup.send.await_args is not None
-        assert interaction.followup.send.await_args.kwargs["ephemeral"]
+        assert await dragonfly.send_lookup_opengrep(interaction, message, package_result(), result) is None
+        interaction.followup.send.assert_not_awaited()
 
     asyncio.run(run())
 
@@ -171,7 +182,7 @@ def test_lookup_distinguishes_unfinished_scans(status: ScanStatus) -> None:
     assert "not available yet" in dragonfly.build_opengrep_thread_chunks(result)[0]
 
 
-@pytest.mark.parametrize("evidence_state", ["available", "partial", "absent", "error"])
+@pytest.mark.parametrize("evidence_state", ["available", "partial", "delivery_error", "absent", "error"])
 def test_lookup_defers_and_reads_evidence_for_the_selected_version(evidence_state: str) -> None:
     async def run() -> None:
         package = package_result(version="2.0.0")
@@ -181,7 +192,7 @@ def test_lookup_defers_and_reads_evidence_for_the_selected_version(evidence_stat
         bot = Mock()
         bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[package])
         bot.dragonfly_services.get_package_opengrep = AsyncMock(
-            return_value=result if evidence_state in {"available", "partial"} else None,
+            return_value=result if evidence_state in {"available", "partial", "delivery_error"} else None,
             side_effect=TimeoutError if evidence_state == "error" else None,
         )
         configure_alerting_api(bot)
@@ -193,11 +204,28 @@ def test_lookup_defers_and_reads_evidence_for_the_selected_version(evidence_stat
         interaction.response.defer = AsyncMock()
         interaction.followup.send = AsyncMock()
         with patch.object(dragonfly, "send_lookup_opengrep", new_callable=AsyncMock) as send_evidence:
+            send_evidence.return_value = (
+                None if evidence_state == "delivery_error" else Mock(jump_url="https://discord.com/channels/1/2")
+            )
             await dragonfly.Dragonfly.lookup.callback(cog, interaction, package.name)
             interaction.response.defer.assert_awaited_once_with(thinking=True)
             bot.dragonfly_services.get_package_opengrep.assert_awaited_once_with(package)
             interaction.followup.send.assert_awaited_once()
-            assert send_evidence.await_count == (1 if evidence_state in {"available", "partial"} else 0)
+            assert send_evidence.await_count == (
+                1 if evidence_state in {"available", "partial", "delivery_error"} else 0
+            )
+            message = interaction.followup.send.return_value
+            if evidence_state in {"available", "partial", "delivery_error"}:
+                message.edit.assert_awaited_once()
+                embed = message.edit.await_args.kwargs["embed"]
+                assert "Posting details" not in embed.fields[-1].value
+                if evidence_state == "delivery_error":
+                    assert "Findings could not be posted." in embed.fields[-1].value
+                    assert "https://discord.com/" not in embed.fields[-1].value
+                else:
+                    assert "[View findings in thread](https://discord.com/channels/1/2)" in embed.fields[-1].value
+            else:
+                message.edit.assert_not_awaited()
             if evidence_state == "partial":
                 assert interaction.followup.send.await_args is not None
                 embed = interaction.followup.send.await_args.kwargs["embed"]
