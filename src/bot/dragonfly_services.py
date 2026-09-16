@@ -9,7 +9,7 @@ from typing import Any, Self
 from urllib.parse import quote
 
 from aiohttp import ClientSession
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
 
 class ScanStatus(Enum):
@@ -81,6 +81,17 @@ class OpenGrepFinding(BaseModel):
     confidence: str
     execution_context: str
     inspector_url: str
+
+
+class OpenGrepDetails(BaseModel):
+    """Stored scan evidence returned without claiming publication."""
+
+    status: ScanStatus
+    commit: str | None
+    duration_ms: int | None
+    findings: list[OpenGrepFinding]
+    fail_reason: str | None
+    finished_at: datetime | None
 
 
 class OpenGrepResult(BaseModel):
@@ -198,6 +209,18 @@ class DragonflyServices:
         """Get Mainframe's latest cached queue snapshot."""
         data = await self.make_request("GET", "/queue-status")
         return QueueStatus.model_validate(data)
+
+    async def get_package_opengrep(self: Self, package: Package) -> OpenGrepDetails | None:
+        """Read evidence for the exact looked-up version without leasing a result."""
+        data = await self.make_request(
+            "GET",
+            "/package",
+            params={"name": package.name, "version": package.version, "include_opengrep": "true"},
+        )
+        packages = TypeAdapter(list[dict[str, Any]]).validate_python(data)
+        if not packages or packages[0].get("opengrep") is None:
+            return None
+        return OpenGrepDetails.model_validate(packages[0]["opengrep"])
 
     async def get_alerting_configuration(self: Self) -> AlertingConfiguration:
         """Get Mainframe's durable production alerting configuration."""

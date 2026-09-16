@@ -46,6 +46,32 @@ def _service() -> DragonflyServices:
 
 
 @pytest.mark.parametrize(
+    "stored",
+    [
+        None,
+        {
+            "status": "finished",
+            "commit": "abc",
+            "duration_ms": 42,
+            "findings": [],
+            "fail_reason": None,
+            "finished_at": None,
+        },
+    ],
+)
+def test_get_package_opengrep_uses_read_only_exact_lookup(stored: dict[str, Any] | None) -> None:
+    service = _service()
+    service.make_request = AsyncMock(return_value=[{"opengrep": stored}])
+    package = Mock(spec=Package, name="example", version="2.0.0")
+    package.name = "example"
+    result = asyncio.run(service.get_package_opengrep(package))
+    assert (result is None) == (stored is None)
+    service.make_request.assert_awaited_once_with(
+        "GET", "/package", params={"name": "example", "version": "2.0.0", "include_opengrep": "true"}
+    )
+
+
+@pytest.mark.parametrize(
     ("method", "path", "params", "json"),
     [
         ("GET", "/package", {"since": 1}, None),
