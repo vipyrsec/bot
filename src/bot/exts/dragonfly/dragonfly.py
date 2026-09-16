@@ -1355,9 +1355,12 @@ class Dragonfly(commands.Cog):
             try:
                 opengrep = await self.bot.dragonfly_services.get_package_opengrep(package)
                 if opengrep is not None:
-                    opengrep_summary = (
-                        f"{opengrep.status.value.capitalize()} · {len(opengrep.findings)} findings. Details in thread."
+                    scan_status = (
+                        "Partial"
+                        if opengrep.status is ScanStatus.FINISHED and opengrep.fail_reason
+                        else opengrep.status.value.capitalize()
                     )
+                    opengrep_summary = f"{scan_status} · {len(opengrep.findings)} findings. Details in thread."
             except SUPPRESSION_SERVICE_ERRORS:
                 log.exception("OpenGrep lookup failed for %s.", package)
                 opengrep_summary = "OpenGrep results are temporarily unavailable."

@@ -171,15 +171,17 @@ def test_lookup_distinguishes_unfinished_scans(status: ScanStatus) -> None:
     assert "not available yet" in dragonfly.build_opengrep_thread_chunks(result)[0]
 
 
-@pytest.mark.parametrize("evidence_state", ["available", "absent", "error"])
+@pytest.mark.parametrize("evidence_state", ["available", "partial", "absent", "error"])
 def test_lookup_defers_and_reads_evidence_for_the_selected_version(evidence_state: str) -> None:
     async def run() -> None:
         package = package_result(version="2.0.0")
         result = OpenGrepDetails.model_validate(opengrep_result().model_dump())
+        if evidence_state == "partial":
+            result.fail_reason = "One distribution timed out"
         bot = Mock()
         bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[package])
         bot.dragonfly_services.get_package_opengrep = AsyncMock(
-            return_value=result if evidence_state == "available" else None,
+            return_value=result if evidence_state in {"available", "partial"} else None,
             side_effect=TimeoutError if evidence_state == "error" else None,
         )
         configure_alerting_api(bot)
@@ -195,7 +197,11 @@ def test_lookup_defers_and_reads_evidence_for_the_selected_version(evidence_stat
             interaction.response.defer.assert_awaited_once_with(thinking=True)
             bot.dragonfly_services.get_package_opengrep.assert_awaited_once_with(package)
             interaction.followup.send.assert_awaited_once()
-            assert send_evidence.await_count == (1 if evidence_state == "available" else 0)
+            assert send_evidence.await_count == (1 if evidence_state in {"available", "partial"} else 0)
+            if evidence_state == "partial":
+                assert interaction.followup.send.await_args is not None
+                embed = interaction.followup.send.await_args.kwargs["embed"]
+                assert embed.fields[-1].value.startswith("Partial")
 
     asyncio.run(run())
 
