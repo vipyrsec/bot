@@ -19,6 +19,7 @@ from bot.bot import Bot
 from bot.constants import DragonflyConfig
 from bot.dragonfly_services import (
     AlertingConfiguration,
+    OpenGrepDetails,
     OpenGrepFinding,
     OpenGrepResult,
     Package,
@@ -120,6 +121,83 @@ def opengrep_finding(index: int = 0, *, message: str = "Behavioral evidence.") -
 def discord_not_found() -> discord.NotFound:
     response = Mock(status=404, reason="Not Found")
     return discord.NotFound(response, "Unknown Channel")
+
+
+@pytest.mark.parametrize("existing_thread", [False, True])
+def test_lookup_posts_bounded_findings_in_a_thread_without_files(*, existing_thread: bool) -> None:
+    async def run() -> None:
+        interaction = Mock()
+        thread = Mock(spec=discord.Thread)
+        thread.send = AsyncMock()
+        interaction.channel = thread if existing_thread else Mock(spec=discord.TextChannel)
+        message = Mock()
+        message.create_thread = AsyncMock(return_value=thread)
+        result = OpenGrepDetails.model_validate(
+            opengrep_result(findings=[opengrep_finding(i, message="x" * 1024) for i in range(500)]).model_dump()
+        )
+        await dragonfly.send_lookup_opengrep(interaction, message, package_result(), result)
+        assert thread.send.await_count > 1
+        for sent in thread.send.await_args_list:
+            assert len(sent.args[0]) <= dragonfly.OPENGREP_THREAD_CHUNK_LIMIT
+            assert "file" not in sent.kwargs
+            assert "files" not in sent.kwargs
+            assert sent.kwargs["allowed_mentions"].everyone is False
+        if existing_thread:
+            message.create_thread.assert_not_awaited()
+        else:
+            message.create_thread.assert_awaited_once()
+
+    asyncio.run(run())
+
+
+def test_lookup_reports_thread_permission_failure() -> None:
+    async def run() -> None:
+        interaction = Mock()
+        interaction.followup.send = AsyncMock()
+        message = Mock()
+        message.create_thread = AsyncMock(side_effect=discord.Forbidden(Mock(status=403, reason="Forbidden"), "Denied"))
+        result = OpenGrepDetails.model_validate(opengrep_result().model_dump())
+        await dragonfly.send_lookup_opengrep(interaction, message, package_result(), result)
+        interaction.followup.send.assert_awaited_once()
+        assert interaction.followup.send.await_args is not None
+        assert interaction.followup.send.await_args.kwargs["ephemeral"]
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("status", [ScanStatus.QUEUED, ScanStatus.PENDING])
+def test_lookup_distinguishes_unfinished_scans(status: ScanStatus) -> None:
+    result = OpenGrepDetails.model_validate(opengrep_result().model_dump() | {"status": status, "finished_at": None})
+    assert "not available yet" in dragonfly.build_opengrep_thread_chunks(result)[0]
+
+
+@pytest.mark.parametrize("evidence_state", ["available", "absent", "error"])
+def test_lookup_defers_and_reads_evidence_for_the_selected_version(evidence_state: str) -> None:
+    async def run() -> None:
+        package = package_result(version="2.0.0")
+        result = OpenGrepDetails.model_validate(opengrep_result().model_dump())
+        bot = Mock()
+        bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[package])
+        bot.dragonfly_services.get_package_opengrep = AsyncMock(
+            return_value=result if evidence_state == "available" else None,
+            side_effect=TimeoutError if evidence_state == "error" else None,
+        )
+        configure_alerting_api(bot)
+        bot.http_session.get.return_value = Mock(
+            __aenter__=AsyncMock(return_value=Mock(ok=True)), __aexit__=AsyncMock(return_value=None)
+        )
+        cog = Mock(bot=bot)
+        interaction = Mock()
+        interaction.response.defer = AsyncMock()
+        interaction.followup.send = AsyncMock()
+        with patch.object(dragonfly, "send_lookup_opengrep", new_callable=AsyncMock) as send_evidence:
+            await dragonfly.Dragonfly.lookup.callback(cog, interaction, package.name)
+            interaction.response.defer.assert_awaited_once_with(thinking=True)
+            bot.dragonfly_services.get_package_opengrep.assert_awaited_once_with(package)
+            interaction.followup.send.assert_awaited_once()
+            assert send_evidence.await_count == (1 if evidence_state == "available" else 0)
+
+    asyncio.run(run())
 
 
 def test_opengrep_thread_chunks_are_bounded_and_neutralize_mentions() -> None:
