@@ -550,7 +550,8 @@ def test_run_queues_opengrep_only_after_alert_delivery(monkeypatch: pytest.Monke
     bot.dragonfly_services.queue_opengrep_alert.assert_awaited_once_with(result, 123)
 
 
-def test_opengrep_queue_failure_does_not_interrupt_alerts(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("edit_fails", [False, True])
+def test_opengrep_queue_failure_does_not_interrupt_alerts(monkeypatch: pytest.MonkeyPatch, *, edit_fails: bool) -> None:
     bot = cast("Bot", Mock())
     result = package_result(rules=["suspicious"])
     bot.dragonfly_services.get_scanned_packages = AsyncMock(return_value=[result])
@@ -558,6 +559,9 @@ def test_opengrep_queue_failure_does_not_interrupt_alerts(monkeypatch: pytest.Mo
     bot.dragonfly_services.queue_opengrep_alert = AsyncMock(side_effect=RuntimeError("shadow unavailable"))
     alerts_channel_mock = Mock()
     alerts_channel_mock.send = AsyncMock()
+    alert = Mock(id=123)
+    alert.edit = AsyncMock(side_effect=discord_not_found() if edit_fails else None)
+    alerts_channel_mock.send.return_value = alert
     alerts_channel = cast("discord.abc.Messageable", alerts_channel_mock)
     logs_channel_mock = Mock()
     logs_channel_mock.send = AsyncMock()
@@ -578,6 +582,10 @@ def test_opengrep_queue_failure_does_not_interrupt_alerts(monkeypatch: pytest.Mo
     assert scan_results == [result]
     alerts_channel_mock.send.assert_awaited_once()
     logs_channel_mock.send.assert_awaited_once()
+    assert alert.edit.await_args is not None
+    summary = alert.edit.await_args.kwargs["embeds"][-1]
+    assert "not confirmed" in summary.description
+    assert "Pending" not in summary.description
 
 
 @pytest.mark.parametrize(

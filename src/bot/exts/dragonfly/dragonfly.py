@@ -809,6 +809,17 @@ class SuppressionCommandGroup(discord.app_commands.Group):
             await interaction.response.send_message(message, ephemeral=True)
 
 
+async def mark_opengrep_queue_unconfirmed(alert: discord.Message, embeds: list[discord.Embed]) -> None:
+    """Do not leave an alert promising a result when queueing was unsuccessful."""
+    embeds[-1].description = (
+        "OpenGrep queueing was not confirmed for this alert. Use **View findings** to check for an existing scan."
+    )
+    try:
+        await alert.edit(embeds=embeds, allowed_mentions=discord.AllowedMentions.none())
+    except Exception:
+        log.exception("Failed to update the OpenGrep queue status on alert %s.", alert.id)
+
+
 async def run(
     bot: Bot,
     *,
@@ -863,6 +874,8 @@ async def run(
                     result.version,
                 )
                 sentry_sdk.capture_exception(error)
+
+                await mark_opengrep_queue_unconfirmed(alert, embeds)
 
     try:
         await send_scan_summary(logs_channel, scan_results)
