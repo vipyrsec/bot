@@ -13,7 +13,7 @@ from test_scan_alerting import configure_alerting_api, opengrep_finding, opengre
 from bot.constants import Roles
 from bot.dragonfly_services import OpenGrepDetails, ScanStatus
 from bot.exts.dragonfly import dragonfly
-from bot.exts.dragonfly.opengrep_view import (
+from bot.opengrep_view import (
     FINDINGS_CUSTOM_ID,
     EvidencePages,
     FindingsView,
