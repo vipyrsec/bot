@@ -32,7 +32,7 @@ from bot.dragonfly_services import (
     PackageReport,
     Suppression,
 )
-from bot.exts.dragonfly.opengrep_view import (
+from bot.opengrep_view import (
     FINDINGS_CUSTOM_ID,
     SUMMARY_TITLE,
     FindingsButton,
