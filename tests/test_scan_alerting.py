@@ -584,8 +584,9 @@ def test_opengrep_queue_failure_does_not_interrupt_alerts(monkeypatch: pytest.Mo
     logs_channel_mock.send.assert_awaited_once()
     assert alert.edit.await_args is not None
     summary = alert.edit.await_args.kwargs["embeds"][-1]
-    assert "not confirmed" in summary.description
-    assert "Pending" not in summary.description
+    assert len(alert.edit.await_args.kwargs["embeds"]) == 1
+    assert "not confirmed" in summary.fields[-1].value
+    assert "Pending" not in summary.fields[-1].value
 
 
 @pytest.mark.parametrize(

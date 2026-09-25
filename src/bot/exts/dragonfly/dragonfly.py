@@ -37,6 +37,8 @@ from bot.opengrep_view import (
     SUMMARY_TITLE,
     FindingsButton,
     FindingsView,
+    add_evidence,
+    set_evidence_field,
     summary_embed,
 )
 from bot.queue_status import build_queue_status_embed
@@ -540,8 +542,11 @@ async def publish_opengrep_result(
         )
     else:
         message = await await_discord_with_opengrep_lease(bot, result, lambda: channel.fetch_message(message_id))
-        embeds = [embed for embed in message.embeds if embed.title != SUMMARY_TITLE]
-        embeds.append(summary)
+        original = next(
+            (embed for embed in message.embeds if embed.title != SUMMARY_TITLE), discord.Embed(title=SUMMARY_TITLE)
+        )
+        add_evidence(original, result.name, result.version, result)
+        embeds = [original]
         # Preserve the existing action view on new alerts: an embed-only edit
         # cannot re-enable an action an investigator just disabled.
         has_findings = any(
@@ -811,8 +816,9 @@ class SuppressionCommandGroup(discord.app_commands.Group):
 
 async def mark_opengrep_queue_unconfirmed(alert: discord.Message, embeds: list[discord.Embed]) -> None:
     """Do not leave an alert promising a result when queueing was unsuccessful."""
-    embeds[-1].description = (
-        "OpenGrep queueing was not confirmed for this alert. Use **View findings** to check for an existing scan."
+    set_evidence_field(
+        embeds[0],
+        "OpenGrep queueing was not confirmed for this alert. Use **View findings** to check for an existing scan.",
     )
     try:
         await alert.edit(embeds=embeds, allowed_mentions=discord.AllowedMentions.none())
@@ -858,7 +864,7 @@ async def run(
         embeds = [embed]
         if DragonflyConfig.opengrep_shadow_enabled:
             view.add_item(FindingsButton(bot))
-            embeds.append(summary_embed(result.name, result.version, None))
+            add_evidence(embed, result.name, result.version, None)
         alert = await alerts_channel.send(
             f"<@&{DragonflyConfig.alerts_role_id}>",
             embeds=embeds,
@@ -1133,13 +1139,12 @@ class Dragonfly(commands.Cog):
                 opengrep = await self.bot.dragonfly_services.get_package_opengrep(package)
             except SUPPRESSION_SERVICE_ERRORS:
                 log.exception("OpenGrep lookup failed for %s.", package)
-                summary = summary_embed(package.name, package.version, None)
-                summary.description = "OpenGrep results are temporarily unavailable. Use View findings to retry."
-                embeds.append(summary)
+                add_evidence(embed, package.name, package.version, None)
+                set_evidence_field(embed, "OpenGrep results are temporarily unavailable. Use View findings to retry.")
                 view.add_item(FindingsButton(self.bot))
             else:
                 if opengrep is not None:
-                    embeds.append(summary_embed(package.name, package.version, opengrep))
+                    add_evidence(embed, package.name, package.version, opengrep)
                     view.add_item(FindingsButton(self.bot))
                 else:
                     embed.add_field(name="OpenGrep", value="No stored OpenGrep scan for this version.", inline=False)

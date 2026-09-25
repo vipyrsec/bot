@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -17,6 +18,7 @@ from bot.opengrep_view import (
     FINDINGS_CUSTOM_ID,
     EvidencePages,
     FindingsView,
+    add_evidence,
     evidence_pages,
     summary_embed,
 )
@@ -49,6 +51,28 @@ def test_summary_handles_every_status_and_bounds_failure(status: ScanStatus) -> 
     assert ("Partial" if status is ScanStatus.FINISHED else status.value.capitalize()) in (summary.description or "")
 
 
+def test_pending_field_is_replaced_without_changing_verdict_or_exceeding_embed_limits() -> None:
+    package = package_result()
+    embed = discord.Embed(
+        title="Malicious package found", description="x" * 4096, color=0xF70606, timestamp=package.queued_at
+    )
+    embed.add_field(name="Inspector", value="https://inspector.example/package")
+    original = deepcopy(embed.to_dict())
+    add_evidence(embed, package.name, package.version, None)
+    assert "Pending" in (embed.fields[-1].value or "")
+    result = opengrep_result().model_copy(update={"fail_reason": "x" * 5000})
+    add_evidence(embed, package.name, package.version, result)
+    updated = embed.to_dict()
+    assert updated.get("title") == original.get("title")
+    assert updated.get("description") == original.get("description")
+    assert updated.get("color") == original.get("color")
+    assert updated.get("timestamp") == original.get("timestamp")
+    assert updated.get("fields", [])[:-1] == original.get("fields")
+    assert "Partial" in (embed.fields[-1].value or "")
+    assert len(embed.fields[-1].value or "") <= 1024
+    assert len(embed) <= 6000
+
+
 def test_private_pagination_has_independent_cursors_and_owner_checks() -> None:
     async def run() -> None:
         result = OpenGrepDetails.model_validate(
@@ -73,7 +97,8 @@ def test_private_pagination_has_independent_cursors_and_owner_checks() -> None:
 
 
 @pytest.mark.parametrize("state", ["complete", "absent", "unavailable", "unauthorized", "foreign_message"])
-def test_findings_can_be_reopened_after_restart_without_leasing(state: str) -> None:
+@pytest.mark.parametrize("legacy", [False, True])
+def test_findings_can_be_reopened_after_restart_without_leasing(state: str, *, legacy: bool) -> None:
     async def run() -> None:
         result = OpenGrepDetails.model_validate(opengrep_result(findings=[opengrep_finding()]).model_dump())
         bot = Mock(user=Mock(id=5))
@@ -85,9 +110,12 @@ def test_findings_can_be_reopened_after_restart_without_leasing(state: str) -> N
         if state == "unauthorized":
             user.roles = []
         interaction = Mock(user=user)
+        embed = summary_embed("example", "1+local", result) if legacy else discord.Embed(title="Package verdict")
+        if not legacy:
+            add_evidence(embed, "example", "1+local", result)
         interaction.message = Mock(
             author=Mock(id=6 if state == "foreign_message" else 5),
-            embeds=[summary_embed("example", "1+local", result)],
+            embeds=[embed],
         )
         interaction.response.defer = AsyncMock()
         interaction.response.send_message = AsyncMock()
@@ -140,9 +168,9 @@ def test_publication_edits_alert_preserves_actions_and_acknowledges_after_succes
         await dragonfly.publish_opengrep_result(bot, channel, result)
         assert message.edit.await_args is not None
         kwargs = message.edit.await_args.kwargs
-        assert len(kwargs["embeds"]) == 2
+        assert len(kwargs["embeds"]) == 1
         assert kwargs["embeds"][0] is original
-        assert "Complete" in kwargs["embeds"][1].description
+        assert "Complete" in (original.fields[-1].value or "")
         assert kwargs["allowed_mentions"].everyone is False
         if migrate:
             assert kwargs["view"].suppress.disabled
@@ -175,7 +203,8 @@ def test_publication_retry_replaces_summary_instead_of_appending() -> None:
         with pytest.raises(TimeoutError):
             await dragonfly.publish_opengrep_result(bot, channel, result)
         await dragonfly.publish_opengrep_result(bot, channel, result)
-        assert len(message.embeds) == 2
+        assert len(message.embeds) == 1
+        assert len(message.embeds[0].fields) == 1
 
     asyncio.run(run())
 
@@ -205,10 +234,10 @@ def test_lookup_uses_viewer_without_threads(state: str) -> None:
         bot.dragonfly_services.get_package_opengrep.assert_awaited_once_with(package)
         assert interaction.followup.send.await_args is not None
         sent = interaction.followup.send.await_args.kwargs
-        assert len(sent["embeds"]) == (1 if state == "absent" else 2)
+        assert len(sent["embeds"]) == 1
         interaction.channel.create_thread.assert_not_called()
         if state == "partial":
-            assert "Partial" in sent["embeds"][1].description
+            assert "Partial" in sent["embeds"][0].fields[-1].value
 
     asyncio.run(run())
 

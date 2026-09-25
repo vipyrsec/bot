@@ -51,6 +51,27 @@ def summary_embed(name: str, version: str, result: OpenGrepDetails | OpenGrepRes
     return embed
 
 
+def set_evidence_field(embed: discord.Embed, value: str) -> None:
+    """Replace the placeholder without changing the package verdict or its evidence."""
+    for index, field in enumerate(embed.fields):
+        if field.name == "OpenGrep":
+            embed.set_field_at(index, name="OpenGrep", value=value, inline=False)
+            return
+    embed.add_field(name="OpenGrep", value=value, inline=False)
+
+
+def add_evidence(
+    embed: discord.Embed, name: str, version: str, result: OpenGrepDetails | OpenGrepResult | None
+) -> None:
+    """Keep the summary and restart-safe package reference in the original alert."""
+    summary = summary_embed(name, version, result)
+    embed.url = summary.url
+    value = summary.description or ""
+    if summary.fields:
+        value += "\n" + (summary.fields[0].value or "")
+    set_evidence_field(embed, value)
+
+
 def evidence_pages(result: OpenGrepDetails) -> list[str]:
     """Include every stored finding and location in bounded pages."""
     heading = f"**OpenGrep · {result.status.value} · {len(result.findings)} findings**"
@@ -134,7 +155,14 @@ class FindingsButton(discord.ui.Button[discord.ui.View]):
         if message is None or self.bot.user is None or message.author.id != self.bot.user.id:
             await interaction.followup.send("This message does not contain a valid OpenGrep reference.", ephemeral=True)
             return
-        reference = next((embed.url for embed in message.embeds if embed.title == SUMMARY_TITLE), None)
+        reference = next(
+            (
+                embed.url
+                for embed in message.embeds
+                if embed.title == SUMMARY_TITLE or any(field.name == "OpenGrep" for field in embed.fields)
+            ),
+            None,
+        )
         parsed = urlsplit(reference or "")
         parts = parsed.path.strip("/").split("/")
         if (
