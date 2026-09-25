@@ -212,10 +212,14 @@ class DragonflyServices:
 
     async def get_package_opengrep(self: Self, package: Package) -> OpenGrepDetails | None:
         """Read evidence for the exact looked-up version without leasing a result."""
+        return await self.get_opengrep_details(package.name, package.version)
+
+    async def get_opengrep_details(self: Self, name: str, version: str) -> OpenGrepDetails | None:
+        """Read durable evidence using the package reference stored in an alert."""
         data = await self.make_request(
             "GET",
             "/package",
-            params={"name": package.name, "version": package.version, "include_opengrep": "true"},
+            params={"name": name, "version": version, "include_opengrep": "true"},
         )
         packages = TypeAdapter(list[dict[str, Any]]).validate_python(data)
         if not packages or packages[0].get("opengrep") is None:
